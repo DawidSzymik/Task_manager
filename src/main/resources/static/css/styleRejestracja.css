@@ -1,0 +1,177 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #1e1e1e;
+    color: white;
+    font-family: 'Poppins', sans-serif;
+}
+
+.container {
+    text-align: center;
+    background: #3c3f41;
+    padding: 80px 30px 30px; /* Zmniejszony padding od góry */
+    border-radius: 15px;
+    width: 450px;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    border: 1px solid #00e6e6;
+    position: relative;
+}
+
+.header {
+    background: #343434;
+    width: 100%;
+    height: 60px; /* Poprawiona wysokość */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 22px;
+    font-weight: bold;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.task {
+    background: black;
+    padding: 5px 10px;
+    color: white;
+    border-radius: 5px;
+}
+
+.manager {
+    color: #00e6e6;
+    margin-left: 5px;
+}
+
+/* Upewnienie się, że formularz nie nachodzi na header */
+.container > .input-group:first-of-type {
+    margin-top: 10px; /* Mniejsze przesunięcie */
+}
+
+.input-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 15px 0;
+    text-align: left;
+}
+
+.input-group label {
+    width: 35%;
+    font-weight: bold;
+    color: white;
+    text-transform: lowercase;
+}
+
+.input-group input {
+    width: 60%;
+    padding: 10px;
+    border: 2px solid white;
+    border-radius: 20px;
+    background: transparent;
+    color: white;
+    outline: none;
+}
+
+/* Poprawione pole hasła */
+.password-container {
+    position: relative;
+    width: 60%;
+}
+
+.password-container input {
+    width: 100%;
+    padding-right: 35px;
+    z-index: 1;
+}
+
+.password-container i {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: white;
+    cursor: pointer;
+    z-index: 2;
+}
+
+/* Przywrócenie poprawnego wyrównania inputów */
+.input-group input:-webkit-autofill {
+    background-color: transparent !important;
+    color: white !important;
+    box-shadow: 0 0 0px 1000px #3c3f41 inset !important;
+}
+
+.register-btn {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 20px;
+    background: #00e6e6;
+    color: black;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 15px 0;
+    color: white;
+}
+
+.separator span {
+    width: 30%;
+    height: 1px;
+    background: white;
+    margin: 0 10px;
+}
+
+.social-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.social-buttons button {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid white;
+    border-radius: 20px;
+    background: transparent;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.google {
+    background: #f8f9fa;
+    color: black;
+}
+
+.facebook {
+    background: #3b5998;
+    color: white;
+}
+
+.login-text {
+    margin-top: 15px;
+    color: white;
+}
+
+.login-text a {
+    color: #00e6e6;
+    text-decoration: none;
+}

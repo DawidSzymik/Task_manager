@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Task Manager - Kontakt</title>
+    <link rel="stylesheet" th:href="@{/css/Kontakt.css}">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #2E2E2E;
+            color: white;
+            padding-top: 100px;
+        }
+
+        .menu-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100px;
+            background-color: #2c2f33;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            z-index: 9999;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+
+        .logo img {
+            height: 60px;
+        }
+
+        .menu-links {
+            display: flex;
+            gap: 30px;
+        }
+
+        .menu-links a {
+            color: #FFFFFF;
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: 500;
+            padding: 10px 20px;
+            background-color: #444849;
+            border-radius: 10px;
+            transition: background 0.3s;
+        }
+
+        .menu-links a:hover {
+            background-color: #00C896;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 100px auto;
+            background-color: #3A3A3A;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+
+        h2 {
+            color: #00C896;
+            margin-bottom: 10px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        .button-container {
+            text-align: center;
+        }
+
+        button {
+            background-color: #00C896;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: #00b183;
+        }
+
+        .back-button {
+            display: block;
+            margin: 30px auto;
+            background: none;
+            color: white;
+            border: 2px solid white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .back-button:hover {
+            border-color: #00C896;
+            color: #00C896;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Nowe, spójne menu -->
+<div class="menu-bar">
+    <div class="logo">
+        <img src="/images/logo.png" alt="Logo">
+    </div>
+    <nav class="menu-links">
+        <a href="/tasks/dashboard">Strona główna</a>
+        <a href="/teams">Zespoły</a>
+        <a href="/kontakt">Kontakt</a>
+        <a href="/welcome">Profil</a>
+    </nav>
+</div>
+
+<!-- Formularz kontaktowy -->
+<div class="container">
+    <form th:action="@{/kontakt}" method="post">
+        <h2>Skontaktuj się z nami</h2>
+        <h2>Email</h2>
+        <input type="email" name="email" placeholder="e-mail" required>
+        <h2>Temat</h2>
+        <input type="text" name="subject" placeholder="Temat" required>
+        <h2>Wiadomość</h2>
+        <textarea name="message" placeholder="Wiadomość" rows="5" required></textarea>
+        <div class="button-container">
+            <button type="submit">Wyślij</button>
+        </div>
+    </form>
+</div>
+
+<a href="/welcome"><button class="back-button">Powrót</button></a>
+
+</body>
+</html>

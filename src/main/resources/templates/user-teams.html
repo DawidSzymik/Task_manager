@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zespoły użytkownika</title>
+</head>
+<body>
+<h1>Zespoły użytkownika <span th:text="${user.username}"></span></h1>
+
+<ul>
+    <li th:each="team : ${user.teams}" th:text="${team.name}"></li>
+</ul>
+
+<a href="/teams">Powrót do zespołów</a>
+</body>
+</html>

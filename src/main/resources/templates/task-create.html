@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Dodaj zadanie</title>
+  <link rel="stylesheet" th:href="@{/css/Kontakt.css}">
+</head>
+<body>
+<div class="header">
+  <img src="/images/logo.png" alt="logo.png">
+</div>
+
+<div class="container">
+  <form th:action="@{/tasks/create}" th:object="${task}" method="post" id="taskForm">
+    <h2>Dodaj nowe zadanie do zespołu: <span th:text="${team.name}"></span></h2>
+    <input type="hidden" name="teamId" th:value="${team.id}"/>
+
+    <h2>Tytuł</h2>
+    <input type="text" id="title" name="title" th:field="*{title}" placeholder="Tytuł zadania" required>
+
+    <h2>Opis</h2>
+    <textarea id="description" name="description" th:field="*{description}" placeholder="Opis zadania" rows="4"></textarea>
+
+    <h2>Termin</h2>
+    <input type="datetime-local" id="deadline" name="deadline" th:field="*{deadline}">
+
+    <h2>Przypisz użytkowników</h2>
+    <ul id="userList">
+      <li th:each="user : ${members}" th:id="'user-li-' + ${user.id}">
+        <span th:text="${user.username}"></span>
+        <button type="button" th:attr="onclick=|addUser(${user.id}, '${user.username}')|">➕</button>
+      </li>
+    </ul>
+
+    <h4>Przypisani użytkownicy:</h4>
+    <ul id="assignedList"></ul>
+    <div id="hiddenInputs"></div>
+
+    <div class="button-container">
+      <button type="submit">Utwórz zadanie</button>
+    </div>
+  </form>
+</div>
+
+<a href="/welcome"><button class="back-button">Powrót</button></a>
+
+<script>
+  const assignedUsers = new Map();
+
+  function addUser(id, name) {
+    if (assignedUsers.has(id)) return;
+
+    assignedUsers.set(id, name);
+
+    const li = document.createElement("li");
+    li.id = "assigned-user-" + id;
+    li.innerHTML = name + ' <button type="button" onclick="removeUser(' + id + ')">➖</button>';
+    document.getElementById("assignedList").appendChild(li);
+
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "assignedUserIds";
+    input.value = id;
+    input.id = "assigned-user-input-" + id;
+    document.getElementById("hiddenInputs").appendChild(input);
+  }
+
+  function removeUser(id) {
+    assignedUsers.delete(id);
+    document.getElementById("assigned-user-" + id).remove();
+    document.getElementById("assigned-user-input-" + id).remove();
+  }
+</script>
+
+</body>
+</html>
