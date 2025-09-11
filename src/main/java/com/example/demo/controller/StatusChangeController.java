@@ -71,7 +71,7 @@ public class StatusChangeController {
 
         statusRequestService.approveStatusChange(requestId, currentUser);
 
-        return "redirect:/projects/" + request.getTask().getProject().getId() + "/status-requests";
+        return "redirect:/projects/" + request.getTask().getProject().getId();
     }
 
     // Odrzucenie zmiany statusu (tylko admin)
@@ -89,6 +89,6 @@ public class StatusChangeController {
 
         statusRequestService.rejectStatusChange(requestId, currentUser, reason);
 
-        return "redirect:/projects/" + request.getTask().getProject().getId() + "/status-requests";
+        return "redirect:/projects/" + request.getTask().getProject().getId();
     }
 }

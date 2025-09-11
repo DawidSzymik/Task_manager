@@ -1,49 +1,302 @@
-<!-- src/main/resources/templates/task-create.html - ZMIENIONY -->
 <!DOCTYPE html>
 <html lang="pl" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
   <title>Dodaj zadanie</title>
-  <link rel="stylesheet" th:href="@{/css/Kontakt.css}">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #2E2E2E;
+      color: white;
+      padding-top: 100px;
+    }
+
+    .menu-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 100px;
+      background-color: #2c2f33;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+      z-index: 9999;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+    }
+
+    .logo img {
+      height: 60px;
+    }
+
+    .menu-links {
+      display: flex;
+      gap: 30px;
+    }
+
+    .menu-links a {
+      color: #FFFFFF;
+      text-decoration: none;
+      font-size: 18px;
+      font-weight: 500;
+      padding: 10px 20px;
+      background-color: #444849;
+      border-radius: 10px;
+      transition: background 0.3s;
+    }
+
+    .menu-links a:hover {
+      background-color: #00C896;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: 100px auto;
+      background-color: #3A3A3A;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    }
+
+    h2 {
+      color: #00C896;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .project-info {
+      background-color: #2c2f33;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      color: #00C896;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      background-color: #444849;
+      color: #fff;
+      box-sizing: border-box;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      outline: 2px solid #00C896;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .user-selection {
+      background-color: #2c2f33;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .user-selection h4 {
+      color: #00C896;
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+
+    .users-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .user-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #444849;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .user-name {
+      color: #fff;
+    }
+
+    .add-user-btn, .remove-user-btn {
+      background-color: #00C896;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .remove-user-btn {
+      background-color: #ff4757;
+    }
+
+    .add-user-btn:hover {
+      background-color: #00b183;
+    }
+
+    .remove-user-btn:hover {
+      background-color: #ff3742;
+    }
+
+    .assigned-users {
+      margin-top: 15px;
+    }
+
+    .assigned-user {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #00C896;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin: 5px 0;
+      font-size: 14px;
+    }
+
+    .button-container {
+      text-align: center;
+      margin-top: 30px;
+    }
+
+    button[type="submit"] {
+      background-color: #00C896;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 15px 40px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s;
+      font-size: 16px;
+    }
+
+    button[type="submit"]:hover {
+      background-color: #00b183;
+    }
+
+    .back-button {
+      display: block;
+      margin: 30px auto;
+      background: none;
+      color: white;
+      border: 2px solid white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      text-decoration: none;
+      text-align: center;
+      width: fit-content;
+    }
+
+    .back-button:hover {
+      border-color: #00C896;
+      color: #00C896;
+    }
+
+    .hidden-inputs {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-<div class="header">
-  <img src="/images/logo.png" alt="logo.png">
+
+<div class="menu-bar">
+  <div class="logo">
+    <img src="/images/logo.png" alt="Logo">
+  </div>
+  <nav class="menu-links">
+    <a href="/tasks/dashboard">Strona główna</a>
+    <a href="/teams">Zespoły</a>
+    <a href="/projects">Projekty</a>
+    <a href="/kontakt">Kontakt</a>
+    <a href="/welcome">Profil</a>
+  </nav>
 </div>
 
 <div class="container">
-  <form th:action="@{/tasks/create}" th:object="${task}" method="post" id="taskForm">
-    <h2>Dodaj nowe zadanie do projektu: <span th:text="${project.name}"></span></h2>
+  <h2>Dodaj nowe zadanie</h2>
+
+  <div class="project-info">
+    <h3 th:text="'Projekt: ' + ${project.name}">Projekt</h3>
+    <p th:text="${project.description}">Opis projektu</p>
+  </div>
+
+  <form th:action="@{/tasks/create}" method="post" id="taskForm">
     <input type="hidden" name="projectId" th:value="${project.id}"/>
 
-    <h2>Tytuł</h2>
-    <input type="text" id="title" name="title" th:field="*{title}" placeholder="Tytuł zadania" required>
+    <div class="form-group">
+      <label for="title">Tytuł zadania *</label>
+      <input type="text" id="title" name="title" placeholder="Wpisz tytuł zadania..." required>
+    </div>
 
-    <h2>Opis</h2>
-    <textarea id="description" name="description" th:field="*{description}" placeholder="Opis zadania" rows="4"></textarea>
+    <div class="form-group">
+      <label for="description">Opis zadania</label>
+      <textarea id="description" name="description" placeholder="Opisz szczegółowo co należy zrobić..."></textarea>
+    </div>
 
-    <h2>Termin</h2>
-    <input type="datetime-local" id="deadline" name="deadline" th:field="*{deadline}">
+    <div class="form-group">
+      <label for="deadline">Termin (opcjonalnie)</label>
+      <input type="datetime-local" id="deadline" name="deadline">
+    </div>
 
-    <h2>Przypisz użytkowników</h2>
-    <ul id="userList">
-      <li th:each="user : ${members}" th:id="'user-li-' + ${user.id}">
-        <span th:text="${user.username}"></span>
-        <button type="button" th:attr="onclick=|addUser(${user.id}, '${user.username}')|">➕</button>
-      </li>
-    </ul>
+    <div class="user-selection">
+      <h4>Przypisz użytkowników do zadania</h4>
 
-    <h4>Przypisani użytkownicy:</h4>
-    <ul id="assignedList"></ul>
-    <div id="hiddenInputs"></div>
+      <div class="users-grid">
+        <div th:each="user : ${members}" class="user-item" th:id="'user-item-' + ${user.id}">
+          <span class="user-name" th:text="${user.username}">Użytkownik</span>
+          <button type="button" class="add-user-btn" th:attr="onclick=|addUser(${user.id}, '${user.username}')|">
+            ➕ Dodaj
+          </button>
+        </div>
+      </div>
+
+      <div class="assigned-users" id="assignedUsers">
+        <h5 style="color: #00C896; margin-bottom: 10px;">Przypisani użytkownicy:</h5>
+        <div id="assignedList"></div>
+      </div>
+    </div>
+
+    <div id="hiddenInputs" class="hidden-inputs"></div>
 
     <div class="button-container">
       <button type="submit">Utwórz zadanie</button>
     </div>
   </form>
-</div>
 
-<a href="/welcome"><button class="back-button">Powrót</button></a>
+  <a th:href="@{/projects/{id}(id=${project.id})}" class="back-button">← Powrót do projektu</a>
+</div>
 
 <script>
   const assignedUsers = new Map();
@@ -53,11 +306,19 @@
 
     assignedUsers.set(id, name);
 
-    const li = document.createElement("li");
-    li.id = "assigned-user-" + id;
-    li.innerHTML = name + ' <button type="button" onclick="removeUser(' + id + ')">➖</button>';
-    document.getElementById("assignedList").appendChild(li);
+    // Ukryj przycisk dodawania
+    const userItem = document.getElementById('user-item-' + id);
+    const addBtn = userItem.querySelector('.add-user-btn');
+    addBtn.style.display = 'none';
 
+    // Dodaj do listy przypisanych
+    const assignedDiv = document.createElement("div");
+    assignedDiv.className = "assigned-user";
+    assignedDiv.id = "assigned-user-" + id;
+    assignedDiv.innerHTML = name + ' <button type="button" class="remove-user-btn" onclick="removeUser(' + id + ')">➖ Usuń</button>';
+    document.getElementById("assignedList").appendChild(assignedDiv);
+
+    // Dodaj ukryte pole do formularza
     const input = document.createElement("input");
     input.type = "hidden";
     input.name = "assignedUserIds";
@@ -68,6 +329,13 @@
 
   function removeUser(id) {
     assignedUsers.delete(id);
+
+    // Pokaż ponownie przycisk dodawania
+    const userItem = document.getElementById('user-item-' + id);
+    const addBtn = userItem.querySelector('.add-user-btn');
+    addBtn.style.display = 'inline-block';
+
+    // Usuń z listy przypisanych
     document.getElementById("assigned-user-" + id).remove();
     document.getElementById("assigned-user-input-" + id).remove();
   }

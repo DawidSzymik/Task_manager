@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/controller/TaskController.java - KOMPLETNY POPRAWIONY (DOKOŃCZONY)
+// src/main/java/com/example/demo/controller/TaskController.java - POPRAWKA METODY TWORZENIA
 package com.example.demo.controller;
 
 import com.example.demo.model.*;
@@ -62,7 +62,9 @@ public class TaskController {
     }
 
     @PostMapping("/create")
-    public String createTask(@ModelAttribute Task task,
+    public String createTask(@RequestParam String title,
+                             @RequestParam String description,
+                             @RequestParam(required = false) String deadline,
                              @RequestParam Long projectId,
                              @RequestParam(required = false) List<Long> assignedUserIds,
                              @AuthenticationPrincipal UserDetails userDetails) {
@@ -79,6 +81,19 @@ public class TaskController {
             throw new RuntimeException("Tylko admini mogą tworzyć zadania");
         }
 
+        // Stwórz zadanie
+        Task task = new Task();
+        task.setTitle(title);
+        task.setDescription(description);
+        task.setProject(project);
+        task.setCreatedAt(LocalDateTime.now());
+        task.setStatus("TODO");
+
+        // Ustaw deadline jeśli podano
+        if (deadline != null && !deadline.isEmpty()) {
+            task.setDeadline(LocalDateTime.parse(deadline));
+        }
+
         // Przypisz użytkowników jeśli zostali wybrani
         Set<User> assignedUsers = new HashSet<>();
         if (assignedUserIds != null && !assignedUserIds.isEmpty()) {
@@ -87,13 +102,7 @@ public class TaskController {
                             .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje: " + id)))
                     .collect(Collectors.toSet());
         }
-
-        task.setProject(project);
         task.setAssignedUsers(assignedUsers);
-        task.setCreatedAt(LocalDateTime.now());
-        if (task.getStatus() == null || task.getStatus().isEmpty()) {
-            task.setStatus("TODO");
-        }
 
         taskService.saveTask(task);
         return "redirect:/tasks/project/" + projectId;
@@ -158,14 +167,15 @@ public class TaskController {
             throw new RuntimeException("Brak uprawnień do zmiany statusu");
         }
 
-        // Admin może zmieniać bezpośrednio, member musi żądać zatwierdzenia
+        // Admin może zmieniać bezpośrednio
         if (userRole == ProjectRole.ADMIN) {
             task.setStatus(status);
             taskService.saveTask(task);
-        } else {
-            // Na razie tylko wiadomość - później dodamy StatusChangeRequestService
-            throw new RuntimeException("Członkowie muszą żądać zatwierdzenia zmiany statusu przez admina");
         }
+        // Member składa prośbę o zmianę (jeśli masz StatusChangeRequestService)
+        // else {
+        //     statusChangeRequestService.requestStatusChange(task, status, currentUser);
+        // }
 
         if ("task-view".equals(returnTo)) {
             return "redirect:/tasks/view/" + taskId;
@@ -230,29 +240,5 @@ public class TaskController {
         return "dashboard";
     }
 
-    @GetMapping("/{id}")
-    public String getTaskDetails(@PathVariable Long id, Model model,
-                                 @AuthenticationPrincipal UserDetails userDetails) {
-        User currentUser = userService.getUserByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
 
-        Task task = taskService.getTaskById(id)
-                .orElseThrow(() -> new RuntimeException("Zadanie nie istnieje"));
-
-        // Sprawdź czy użytkownik ma dostęp do projektu
-        Optional<ProjectMember> memberOpt = memberService.getProjectMember(task.getProject(), currentUser);
-        if (memberOpt.isEmpty()) {
-            throw new RuntimeException("Brak dostępu do projektu");
-        }
-
-        ProjectRole userRole = memberOpt.get().getRole();
-
-        model.addAttribute("task", task);
-        model.addAttribute("username", userDetails.getUsername());
-        model.addAttribute("userRole", userRole);
-        model.addAttribute("isAdmin", userRole == ProjectRole.ADMIN);
-        model.addAttribute("currentUsername", userDetails.getUsername());
-
-        return "task-details";
-    }
 }
