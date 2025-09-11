@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/model/User.java - DODANO RELACJĘ Z PROJEKTAMI
+// src/main/java/com/example/demo/model/User.java - POPRAWIONY
 package com.example.demo.model;
 
 import javax.persistence.*;
@@ -22,9 +22,9 @@ public class User {
     @ManyToMany(mappedBy = "assignedUsers")
     private Set<Task> tasks = new HashSet<>();
 
-    // NOWA RELACJA: Projekty użytkownika
-    @ManyToMany(mappedBy = "assignedUsers", fetch = FetchType.EAGER)
-    private Set<Project> projects = new HashSet<>();
+    // USUŃ TO MAPOWANIE - nie używamy już bezpośredniej relacji
+    // @ManyToMany(mappedBy = "assignedUsers", fetch = FetchType.EAGER)
+    // private Set<Project> projects = new HashSet<>();
 
     // Konstruktory
     public User() {}
@@ -50,6 +50,7 @@ public class User {
     public Set<Task> getTasks() { return tasks; }
     public void setTasks(Set<Task> tasks) { this.tasks = tasks; }
 
-    public Set<Project> getProjects() { return projects; }
-    public void setProjects(Set<Project> projects) { this.projects = projects; }
+    // USUŃ GETTERY/SETTERY dla projects
+    // public Set<Project> getProjects() { return projects; }
+    // public void setProjects(Set<Project> projects) { this.projects = projects; }
 }

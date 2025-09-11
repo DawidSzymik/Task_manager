@@ -1,10 +1,10 @@
 // src/main/java/com/example/demo/controller/WelcomeController.java - ZMIENIONY
 package com.example.demo.controller;
 
-import com.example.demo.model.Project;
+import com.example.demo.model.ProjectMember;
 import com.example.demo.model.Team;
 import com.example.demo.model.User;
-import com.example.demo.service.ProjectService;
+import com.example.demo.service.ProjectMemberService;
 import com.example.demo.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -13,7 +13,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Controller
 public class WelcomeController {
@@ -22,7 +24,7 @@ public class WelcomeController {
     private UserService userService;
 
     @Autowired
-    private ProjectService projectService;
+    private ProjectMemberService memberService;
 
     @GetMapping("/welcome")
     public String welcome(@AuthenticationPrincipal UserDetails userDetails, Model model) {
@@ -30,20 +32,23 @@ public class WelcomeController {
             throw new RuntimeException("Błąd: Brak zalogowanego użytkownika");
         }
 
-        // Pobranie użytkownika z bazy danych
         User user = userService.getUserByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
 
-        // Pobranie zespołów i projektów użytkownika
         Set<Team> teams = user.getTeams();
-        Set<Project> projects = user.getProjects();
+
+        // ZMIANA: Pobierz projekty przez ProjectMemberService
+        List<ProjectMember> userMemberships = memberService.getUserProjects(user);
+        List<String> projectNames = userMemberships.stream()
+                .map(member -> member.getProject().getName())
+                .collect(Collectors.toList());
 
         System.out.println("Zespoły użytkownika: " + teams);
-        System.out.println("Projekty użytkownika: " + projects);
+        System.out.println("Projekty użytkownika: " + projectNames);
 
         model.addAttribute("username", user.getUsername());
         model.addAttribute("teams", teams);
-        model.addAttribute("projects", projects);
+        model.addAttribute("projects", projectNames); // Lista nazw projektów
 
         return "welcome";
     }

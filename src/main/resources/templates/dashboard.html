@@ -1,4 +1,4 @@
-<!-- src/main/resources/templates/dashboard.html - ZMIENIONY -->
+<!-- src/main/resources/templates/dashboard.html -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="pl">
 <head>
@@ -123,21 +123,10 @@
             display: inline-block;
         }
 
-        .status.todo {
-            background-color: #00AEEF;
-        }
-
-        .status.in_progress {
-            background-color: #FFA500;
-        }
-
-        .status.done {
-            background-color: #28a745;
-        }
-
-        .status.suspended {
-            background-color: #888888;
-        }
+        .status.todo { background-color: #00AEEF; }
+        .status.in_progress { background-color: #FFA500; }
+        .status.done { background-color: #28a745; }
+        .status.suspended { background-color: #888888; }
 
         .dots {
             display: flex;
@@ -169,6 +158,7 @@
             text-align: center;
             font-size: 20px;
         }
+
         h3{
             color: #00C896;
         }
@@ -192,7 +182,7 @@
 </div>
 
 <!-- Główna zawartość -->
-<h2> <span th:text="${username}"></span></h2>
+<h2>Witaj, <span th:text="${username}"></span>!</h2>
 <h3>Twoje przypisane zadania:</h3>
 
 <div class="task-row header-row">
@@ -213,7 +203,7 @@
                      th:class="'status ' + ${#strings.toLowerCase(task.status)}">Status</span>
             </div>
             <div th:text="${task.project.name}">Projekt</div>
-            <div th:text="${#temporals.format(task.deadline, 'yyyy-MM-dd HH:mm')}">Termin</div>
+            <div th:text="${task.deadline != null ? #temporals.format(task.deadline, 'yyyy-MM-dd HH:mm') : 'Brak terminu'}">Termin</div>
             <div class="dots"><span></span><span></span><span></span></div>
         </div>
     </a>

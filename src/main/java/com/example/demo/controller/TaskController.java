@@ -1,15 +1,9 @@
-// src/main/java/com/example/demo/controller/TaskController.java - ZMIENIONY
+// src/main/java/com/example/demo/controller/TaskController.java - KOMPLETNY POPRAWIONY (DOKOŃCZONY)
 package com.example.demo.controller;
 
-import java.util.Set;
-import java.util.HashSet;
-
-import com.example.demo.model.Task;
-import com.example.demo.model.Project;
-import com.example.demo.model.User;
-import com.example.demo.service.TaskService;
-import com.example.demo.service.ProjectService;
-import com.example.demo.service.UserService;
+import com.example.demo.model.*;
+import com.example.demo.service.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
@@ -18,96 +12,161 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.ArrayList;
-import java.util.stream.Collectors;
-
 import java.util.Optional;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/tasks")
 public class TaskController {
 
-    private final TaskService taskService;
-    private final ProjectService projectService;
-    private final UserService userService;
+    @Autowired
+    private TaskService taskService;
 
-    public TaskController(TaskService taskService, ProjectService projectService, UserService userService) {
-        this.taskService = taskService;
-        this.projectService = projectService;
-        this.userService = userService;
-    }
+    @Autowired
+    private ProjectService projectService;
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private ProjectMemberService memberService;
 
     @GetMapping("/create/{projectId}")
-    public String createTaskForm(@PathVariable Long projectId, Model model) {
+    public String createTaskForm(@PathVariable Long projectId, Model model,
+                                 @AuthenticationPrincipal UserDetails userDetails) {
+        User currentUser = userService.getUserByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
+
         Project project = projectService.getProjectById(projectId)
                 .orElseThrow(() -> new RuntimeException("Projekt nie istnieje"));
-        List<User> projectMembers = new ArrayList<>(project.getAssignedUsers());
+
+        // Sprawdź czy użytkownik jest adminem projektu
+        Optional<ProjectMember> memberOpt = memberService.getProjectMember(project, currentUser);
+        if (memberOpt.isEmpty() || memberOpt.get().getRole() != ProjectRole.ADMIN) {
+            throw new RuntimeException("Tylko admini mogą tworzyć zadania");
+        }
+
+        // Pobierz członków projektu (nie viewerów)
+        List<ProjectMember> projectMembers = memberService.getProjectMembers(project);
+        List<User> availableUsers = projectMembers.stream()
+                .filter(member -> member.getRole() != ProjectRole.VIEWER)
+                .map(ProjectMember::getUser)
+                .collect(Collectors.toList());
+
         model.addAttribute("task", new Task());
         model.addAttribute("project", project);
-        model.addAttribute("members", projectMembers);
+        model.addAttribute("members", availableUsers);
         return "task-create";
     }
 
     @PostMapping("/create")
     public String createTask(@ModelAttribute Task task,
                              @RequestParam Long projectId,
-                             @RequestParam List<Long> assignedUserIds) {
+                             @RequestParam(required = false) List<Long> assignedUserIds,
+                             @AuthenticationPrincipal UserDetails userDetails) {
+
+        User currentUser = userService.getUserByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
 
         Project project = projectService.getProjectById(projectId)
                 .orElseThrow(() -> new RuntimeException("Projekt nie istnieje"));
 
-        Set<User> users = assignedUserIds.stream()
-                .map(id -> userService.getUserById(id)
-                        .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje: " + id)))
-                .collect(Collectors.toSet());
+        // Sprawdź uprawnienia
+        Optional<ProjectMember> memberOpt = memberService.getProjectMember(project, currentUser);
+        if (memberOpt.isEmpty() || memberOpt.get().getRole() != ProjectRole.ADMIN) {
+            throw new RuntimeException("Tylko admini mogą tworzyć zadania");
+        }
+
+        // Przypisz użytkowników jeśli zostali wybrani
+        Set<User> assignedUsers = new HashSet<>();
+        if (assignedUserIds != null && !assignedUserIds.isEmpty()) {
+            assignedUsers = assignedUserIds.stream()
+                    .map(id -> userService.getUserById(id)
+                            .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje: " + id)))
+                    .collect(Collectors.toSet());
+        }
 
         task.setProject(project);
-        task.setAssignedUsers(users);
+        task.setAssignedUsers(assignedUsers);
         task.setCreatedAt(LocalDateTime.now());
+        if (task.getStatus() == null || task.getStatus().isEmpty()) {
+            task.setStatus("TODO");
+        }
 
         taskService.saveTask(task);
-
         return "redirect:/tasks/project/" + projectId;
     }
 
     @GetMapping("/project/{projectId}/filter")
     public String filterTasksByStatus(@PathVariable Long projectId,
                                       @RequestParam(required = false) String status,
+                                      @AuthenticationPrincipal UserDetails userDetails,
                                       Model model) {
+        User currentUser = userService.getUserByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
+
         Project project = projectService.getProjectById(projectId)
                 .orElseThrow(() -> new RuntimeException("Projekt nie istnieje"));
+
+        // Sprawdź czy użytkownik ma dostęp do projektu
+        Optional<ProjectMember> memberOpt = memberService.getProjectMember(project, currentUser);
+        if (memberOpt.isEmpty()) {
+            throw new RuntimeException("Brak dostępu do projektu");
+        }
+
         List<Task> tasks = taskService.getTasksByProject(project);
         if (status != null && !status.isEmpty()) {
             tasks = tasks.stream()
                     .filter(task -> status.equals(task.getStatus()))
-                    .toList();
+                    .collect(Collectors.toList());
         }
+
+        ProjectRole userRole = memberOpt.get().getRole();
+
         model.addAttribute("tasks", tasks);
         model.addAttribute("project", project);
+        model.addAttribute("currentUsername", userDetails.getUsername());
+        model.addAttribute("userRole", userRole);
+        model.addAttribute("isAdmin", userRole == ProjectRole.ADMIN);
+
         return "tasks";
     }
 
-    // src/main/java/com/example/demo/controller/TaskController.java - FRAGMENT DO ZMIANY
     @PostMapping("/update-status/{taskId}")
     public String updateStatus(@PathVariable Long taskId,
                                @RequestParam String status,
-                               @RequestParam(required = false) String returnTo, // DODAJ TEN PARAMETR
+                               @RequestParam(required = false) String returnTo,
                                @AuthenticationPrincipal UserDetails userDetails) {
-
-        Task task = taskService.getTaskById(taskId)
-                .orElseThrow(() -> new RuntimeException("Zadanie nie istnieje"));
 
         User currentUser = userService.getUserByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Nie znaleziono użytkownika"));
 
-        if (!task.getAssignedUsers().contains(currentUser)) {
-            throw new RuntimeException("Nie masz uprawnień do zmiany statusu tego zadania");
+        Task task = taskService.getTaskById(taskId)
+                .orElseThrow(() -> new RuntimeException("Zadanie nie istnieje"));
+
+        // Sprawdź rolę w projekcie
+        Optional<ProjectMember> memberOpt = memberService.getProjectMember(task.getProject(), currentUser);
+        if (memberOpt.isEmpty()) {
+            throw new RuntimeException("Brak dostępu do projektu");
         }
 
-        task.setStatus(status);
-        taskService.saveTask(task);
+        ProjectRole userRole = memberOpt.get().getRole();
 
-        // DODAJ LOGIKĘ PRZEKIEROWANIA
+        if (userRole == ProjectRole.VIEWER) {
+            throw new RuntimeException("Brak uprawnień do zmiany statusu");
+        }
+
+        // Admin może zmieniać bezpośrednio, member musi żądać zatwierdzenia
+        if (userRole == ProjectRole.ADMIN) {
+            task.setStatus(status);
+            taskService.saveTask(task);
+        } else {
+            // Na razie tylko wiadomość - później dodamy StatusChangeRequestService
+            throw new RuntimeException("Członkowie muszą żądać zatwierdzenia zmiany statusu przez admina");
+        }
+
         if ("task-view".equals(returnTo)) {
             return "redirect:/tasks/view/" + taskId;
         } else {
@@ -119,12 +178,27 @@ public class TaskController {
     public String getTasksByProject(@PathVariable Long projectId,
                                     @AuthenticationPrincipal UserDetails userDetails,
                                     Model model) {
+        User currentUser = userService.getUserByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
+
         Project project = projectService.getProjectById(projectId)
                 .orElseThrow(() -> new RuntimeException("Projekt nie istnieje"));
+
+        // Sprawdź czy użytkownik ma dostęp do projektu
+        Optional<ProjectMember> memberOpt = memberService.getProjectMember(project, currentUser);
+        if (memberOpt.isEmpty()) {
+            throw new RuntimeException("Brak dostępu do projektu");
+        }
+
         List<Task> tasks = taskService.getTasksByProject(project);
+        ProjectRole userRole = memberOpt.get().getRole();
+
         model.addAttribute("tasks", tasks);
         model.addAttribute("project", project);
         model.addAttribute("currentUsername", userDetails.getUsername());
+        model.addAttribute("userRole", userRole);
+        model.addAttribute("isAdmin", userRole == ProjectRole.ADMIN);
+
         return "tasks";
     }
 
@@ -133,13 +207,25 @@ public class TaskController {
         User user = userService.getUserByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Nie znaleziono użytkownika"));
 
-        List<Task> allTasks = taskService.getAllTasks();
+        // Pobierz wszystkie projekty użytkownika
+        List<ProjectMember> userMemberships = memberService.getUserProjects(user);
+        List<Project> userProjects = userMemberships.stream()
+                .map(ProjectMember::getProject)
+                .collect(Collectors.toList());
+
+        // Pobierz zadania z projektów użytkownika
+        List<Task> allTasks = userProjects.stream()
+                .flatMap(project -> taskService.getTasksByProject(project).stream())
+                .collect(Collectors.toList());
+
+        // Filtruj zadania przypisane do użytkownika
         List<Task> assignedTasks = allTasks.stream()
                 .filter(task -> task.getAssignedUsers().contains(user))
                 .collect(Collectors.toList());
 
         model.addAttribute("username", user.getUsername());
         model.addAttribute("tasks", assignedTasks);
+        model.addAttribute("userProjects", userProjects);
 
         return "dashboard";
     }
@@ -147,11 +233,25 @@ public class TaskController {
     @GetMapping("/{id}")
     public String getTaskDetails(@PathVariable Long id, Model model,
                                  @AuthenticationPrincipal UserDetails userDetails) {
+        User currentUser = userService.getUserByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
+
         Task task = taskService.getTaskById(id)
                 .orElseThrow(() -> new RuntimeException("Zadanie nie istnieje"));
 
+        // Sprawdź czy użytkownik ma dostęp do projektu
+        Optional<ProjectMember> memberOpt = memberService.getProjectMember(task.getProject(), currentUser);
+        if (memberOpt.isEmpty()) {
+            throw new RuntimeException("Brak dostępu do projektu");
+        }
+
+        ProjectRole userRole = memberOpt.get().getRole();
+
         model.addAttribute("task", task);
         model.addAttribute("username", userDetails.getUsername());
+        model.addAttribute("userRole", userRole);
+        model.addAttribute("isAdmin", userRole == ProjectRole.ADMIN);
+        model.addAttribute("currentUsername", userDetails.getUsername());
 
         return "task-details";
     }
