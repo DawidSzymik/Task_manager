@@ -78,20 +78,6 @@ public class StatusChangeRequestService {
                 task.getId(),
                 "/tasks/view/" + task.getId()
         );
-
-        // Powiadomienia dla wszystkich przypisanych do zadania
-        for (User assignedUser : task.getAssignedUsers()) {
-            if (!assignedUser.equals(request.getRequestedBy())) {
-                notificationService.createNotification(
-                        assignedUser,
-                        "Status zadania zmieniony",
-                        "Status zadania '" + task.getTitle() + "' został zmieniony na " + request.getRequestedStatus(),
-                        NotificationType.TASK_STATUS_CHANGED,
-                        task.getId(),
-                        "/tasks/view/" + task.getId()
-                );
-            }
-        }
     }
 
     public void rejectStatusChange(Long requestId, User reviewedBy, String reason) {

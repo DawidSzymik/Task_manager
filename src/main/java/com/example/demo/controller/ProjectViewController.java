@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/controller/ProjectViewController.java - DODAJ/POPRAW
+// src/main/java/com/example/demo/controller/ProjectViewController.java - POPRAWIONY
 package com.example.demo.controller;
 
 import com.example.demo.model.*;
@@ -11,6 +11,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Controller
@@ -34,12 +35,12 @@ public class ProjectViewController {
     public String listProjects(Model model, @AuthenticationPrincipal UserDetails userDetails) {
         User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
 
-        // WAŻNE: Pobierz członkostwa użytkownika
+        // Pobierz członkostwa użytkownika
         List<ProjectMember> userMemberships = memberService.getUserProjects(currentUser);
 
-        System.out.println("Liczba członkostw użytkownika: " + userMemberships.size()); // Debug
+        System.out.println("Liczba członkostw użytkownika: " + userMemberships.size());
 
-        model.addAttribute("userMemberships", userMemberships); // To jest klucz!
+        model.addAttribute("userMemberships", userMemberships);
         return "projects";
     }
 
@@ -61,7 +62,7 @@ public class ProjectViewController {
         return "redirect:/projects";
     }
 
-    // SZCZEGÓŁY PROJEKTU
+    // SZCZEGÓŁY PROJEKTU - POPRAWIONE
     @GetMapping("/{projectId}")
     public String viewProject(@PathVariable Long projectId, Model model,
                               @AuthenticationPrincipal UserDetails userDetails) {
@@ -76,7 +77,12 @@ public class ProjectViewController {
         List<Team> teams = teamService.getAllTeams();
         List<User> allUsers = userService.getAllUsers();
 
-        // ZMIANA: Podziel użytkowników na tych w zespołach i bez zespołów
+        // DODAJ: Lista ID członków projektu (potrzebna w template)
+        Set<Long> memberUserIds = members.stream()
+                .map(member -> member.getUser().getId())
+                .collect(Collectors.toSet());
+
+        // Podziel użytkowników na tych w zespołach i bez zespołów
         List<User> usersInTeams = teams.stream()
                 .flatMap(team -> team.getUsers().stream())
                 .distinct()
@@ -90,7 +96,8 @@ public class ProjectViewController {
         model.addAttribute("members", members);
         model.addAttribute("teams", teams);
         model.addAttribute("usersWithoutTeam", usersWithoutTeam);
-        model.addAttribute("allUsers", allUsers); // DODAJ - wszyscy użytkownicy
+        model.addAttribute("allUsers", allUsers);
+        model.addAttribute("memberUserIds", memberUserIds); // KLUCZOWE - to brakowało!
         model.addAttribute("userRole", currentMembership.getRole());
         model.addAttribute("isAdmin", currentMembership.getRole() == ProjectRole.ADMIN);
 

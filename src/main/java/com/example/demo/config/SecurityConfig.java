@@ -1,4 +1,3 @@
-// src/main/java/com/example/demo/config/SecurityConfig.java - ZMIENIONY
 package com.example.demo.config;
 
 import com.example.demo.service.CustomUserDetailsService;
@@ -46,10 +45,11 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(auth -> auth
                         .antMatchers("/registration", "/login", "/kontakt").permitAll()
-                        .antMatchers("/css/**", "/js/**", "/images/**").permitAll()
-                        .antMatchers("/files/**").permitAll()
+                        .antMatchers("/css/**", "/js/**", "/images/**").permitAll()  // ✅ Pliki statyczne dostępne publicznie
+                        .antMatchers("/files/**").permitAll() // <-- dodaj to, jeśli trzeba
                         .antMatchers("/teams/**").authenticated()
-                        .antMatchers("/projects/**").authenticated() // DODANE
+                        .antMatchers("/projects/**").authenticated()
+                        .antMatchers("/proposals/**").authenticated() // DODAJ TO
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
@@ -61,8 +61,13 @@ public class SecurityConfig {
                         .logoutSuccessUrl("/login?logout")
                         .permitAll()
                 )
-                .csrf().ignoringAntMatchers("/teams/**", "/projects/**"); // DODANE
+                .csrf().ignoringAntMatchers("/teams/**", "/projects/**", "/proposals/**"); // DODAJ /proposals/**
 
         return http.build();
     }
+
+
+
+
+
 }

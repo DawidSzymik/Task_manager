@@ -32,21 +32,26 @@ public class TaskProposalController {
     @GetMapping("/create/{projectId}")
     public String createProposalForm(@PathVariable Long projectId, Model model,
                                      @AuthenticationPrincipal UserDetails userDetails) {
-        User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
-        Project project = projectService.getProjectById(projectId).orElseThrow();
+        try {
+            User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
+            Project project = projectService.getProjectById(projectId).orElseThrow();
 
-        // Sprawdź czy może proponować zadania (MEMBER lub ADMIN, ale nie VIEWER)
-        ProjectRole userRole = memberService.getProjectMember(project, currentUser)
-                .map(ProjectMember::getRole).orElse(null);
+            // Sprawdź czy może proponować zadania (MEMBER lub ADMIN, ale nie VIEWER)
+            ProjectRole userRole = memberService.getProjectMember(project, currentUser)
+                    .map(ProjectMember::getRole).orElse(null);
 
-        if (userRole == null || userRole == ProjectRole.VIEWER) {
-            throw new RuntimeException("Brak uprawnień do proponowania zadań");
+            if (userRole == null || userRole == ProjectRole.VIEWER) {
+                throw new RuntimeException("Brak uprawnień do proponowania zadań");
+            }
+
+            model.addAttribute("project", project);
+            model.addAttribute("proposal", new TaskProposal());
+
+            return "proposal-create";
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
         }
-
-        model.addAttribute("project", project);
-        model.addAttribute("proposal", new TaskProposal());
-
-        return "proposal-create";
     }
 
     // Tworzenie propozycji
@@ -54,48 +59,23 @@ public class TaskProposalController {
     public String createProposal(@RequestParam Long projectId,
                                  @RequestParam String title,
                                  @RequestParam String description,
-                                 @RequestParam(required = false) LocalDateTime deadline,
+                                 @RequestParam(required = false) String deadline,
                                  @AuthenticationPrincipal UserDetails userDetails) {
-        User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
-        Project project = projectService.getProjectById(projectId).orElseThrow();
+        try {
+            User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
+            Project project = projectService.getProjectById(projectId).orElseThrow();
 
-        proposalService.createProposal(project, currentUser, title, description, deadline);
+            LocalDateTime deadlineDate = null;
+            if (deadline != null && !deadline.isEmpty()) {
+                deadlineDate = LocalDateTime.parse(deadline);
+            }
 
-        return "redirect:/projects/" + projectId + "?proposalCreated=true";
-    }
+            proposalService.createProposal(project, currentUser, title, description, deadlineDate);
 
-    // Zatwierdzenie propozycji (tylko admin)
-    @PostMapping("/{proposalId}/approve")
-    public String approveProposal(@PathVariable Long proposalId,
-                                  @AuthenticationPrincipal UserDetails userDetails) {
-        User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
-        TaskProposal proposal = proposalService.getProposalById(proposalId).orElseThrow();
-
-        // Sprawdź uprawnienia
-        if (!memberService.isProjectAdmin(proposal.getProject(), currentUser)) {
-            throw new RuntimeException("Brak uprawnień admina");
+            return "redirect:/projects/" + projectId;
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw e;
         }
-
-        proposalService.approveProposal(proposalId, currentUser);
-
-        return "redirect:/projects/" + proposal.getProject().getId() + "/proposals";
-    }
-
-    // Odrzucenie propozycji (tylko admin)
-    @PostMapping("/{proposalId}/reject")
-    public String rejectProposal(@PathVariable Long proposalId,
-                                 @RequestParam String reason,
-                                 @AuthenticationPrincipal UserDetails userDetails) {
-        User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
-        TaskProposal proposal = proposalService.getProposalById(proposalId).orElseThrow();
-
-        // Sprawdź uprawnienia
-        if (!memberService.isProjectAdmin(proposal.getProject(), currentUser)) {
-            throw new RuntimeException("Brak uprawnień admina");
-        }
-
-        proposalService.rejectProposal(proposalId, currentUser, reason);
-
-        return "redirect:/projects/" + proposal.getProject().getId() + "/proposals";
     }
 }
