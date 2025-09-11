@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/controller/TaskViewController.java - POPRAWIONY
+// src/main/java/com/example/demo/controller/TaskViewController.java - ZMIENIONY
 package com.example.demo.controller;
 
 import com.example.demo.model.Comment;
@@ -51,21 +51,21 @@ public class TaskViewController {
     }
 
     @PostMapping("/{id}/comment")
-    public String addComment(@PathVariable Long id, @RequestParam String commentText) {
-        commentService.addCommentToTask(id, commentText);
+    public String addComment(@PathVariable Long id,
+                             @RequestParam String commentText,
+                             @AuthenticationPrincipal UserDetails userDetails) {
+        commentService.addCommentToTask(id, commentText, userDetails.getUsername());
         return "redirect:/tasks/view/" + id;
     }
 
     @PostMapping("/{id}/upload")
-    public String uploadFile(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+    public String uploadFile(@PathVariable Long id,
+                             @RequestParam("file") MultipartFile file,
+                             @AuthenticationPrincipal UserDetails userDetails) {
         System.out.println("Próba zapisu pliku: " + file.getOriginalFilename());
-        fileService.storeFileForTask(id, file);
+        fileService.storeFileForTask(id, file, userDetails.getUsername());
         return "redirect:/tasks/view/" + id;
     }
-
-    // USUŃ TĘ METODĘ - używamy tej z TaskController
-    // @PostMapping("/update-status/{taskId}")
-    // public String updateTaskStatus(...) { ... }
 
     @GetMapping("/files/{id}")
     public ResponseEntity<ByteArrayResource> downloadFile(@PathVariable Long id) {

@@ -1,4 +1,4 @@
-<!-- src/main/resources/templates/project-details.html - UPROSZCZONY -->
+<!-- src/main/resources/templates/project-details.html - KOMPLETNY Z WSZYSTKIMI UŻYTKOWNIKAMI -->
 <!DOCTYPE html>
 <html lang="pl" xmlns:th="http://www.thymeleaf.org">
 <head>
@@ -14,7 +14,7 @@
             padding-top: 120px;
         }
 
-        h1, h2 {
+        h1, h2, h3, h4 {
             text-align: center;
             color: #00C896;
         }
@@ -27,14 +27,21 @@
             border-radius: 10px;
         }
 
-        .project-description {
-            color: #ccc;
-            font-size: 16px;
-            margin-bottom: 20px;
-            line-height: 1.5;
+        .admin-section {
+            border: 2px solid #ff6b6b;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 800px;
+            background-color: rgba(255, 107, 107, 0.1);
         }
 
-        .teams-container {
+        .admin-section h3 {
+            color: #ff6b6b;
+            margin-top: 0;
+        }
+
+        .members-list {
             max-width: 800px;
             margin: 20px auto;
             background-color: #2c2f33;
@@ -42,135 +49,121 @@
             border-radius: 10px;
         }
 
-        .team-section {
-            margin-bottom: 30px;
-            border: 1px solid #444;
-            border-radius: 10px;
-            padding: 20px;
-            background-color: #3a3a3a;
-        }
-
-        .team-name {
-            color: #00C896;
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #00C896;
-        }
-
-        .user-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 10px;
-        }
-
-        .user-item {
+        .member-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background-color: #2c2f33;
-            padding: 10px 15px;
+            background-color: #444849;
+            padding: 15px;
+            margin: 10px 0;
             border-radius: 8px;
-            border: 1px solid #555;
         }
 
-        .user-name {
+        .member-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .member-name {
+            font-weight: bold;
             color: #fff;
-            font-size: 14px;
         }
 
-        .add-user-btn {
-            background-color: #00C896;
+        .role-badge {
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .role-admin {
+            background-color: #ff6b6b;
             color: white;
-            border: none;
+        }
+
+        .role-member {
+            background-color: #4ecdc4;
+            color: white;
+        }
+
+        .role-viewer {
+            background-color: #95a5a6;
+            color: white;
+        }
+
+        .creator-badge {
+            background-color: #f39c12;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            margin-left: 10px;
+        }
+
+        .member-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .role-select {
+            background-color: #2c2f33;
+            color: #fff;
+            border: 1px solid #555;
             padding: 5px 10px;
+            border-radius: 5px;
+            min-width: 80px;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            border: none;
             border-radius: 5px;
             cursor: pointer;
             font-size: 12px;
+            font-weight: bold;
             transition: background 0.3s;
         }
 
-        .add-user-btn:hover {
+        .btn-primary {
+            background-color: #00C896;
+            color: white;
+        }
+
+        .btn-primary:hover {
             background-color: #00b183;
         }
 
-        .add-user-btn:disabled {
-            background-color: #666;
-            cursor: not-allowed;
-        }
-
-        .no-team-section {
-            background-color: #444849;
-            border: 1px dashed #666;
-        }
-
-        ul {
-            list-style-type: none;
-            padding: 0;
-            max-width: 600px;
-            margin: 20px auto;
-        }
-
-        li {
-            margin-bottom: 10px;
-            background-color: #2c2f33;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .assigned-user-name {
-            color: #FFFFFF;
-            font-size: 16px;
-        }
-
-        .remove-btn {
+        .btn-danger {
             background-color: #ff4757;
             color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
         }
 
-        .remove-btn:hover {
+        .btn-danger:hover {
             background-color: #ff3742;
         }
 
-        .tasks-button {
-            display: block;
-            margin: 30px auto;
+        .action-buttons {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .action-buttons a {
+            display: inline-block;
+            margin: 0 10px;
             padding: 12px 30px;
-            font-size: 16px;
-            border-radius: 10px;
-            text-decoration: none;
             background-color: #00C896;
-            color: #ffffff;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
             font-weight: bold;
-            cursor: pointer;
             transition: background 0.3s;
         }
 
-        .tasks-button:hover {
+        .action-buttons a:hover {
             background-color: #00b183;
-        }
-
-        .return-link {
-            display: block;
-            text-align: center;
-            margin-top: 20px;
-            font-weight: bold;
-            color: #fff;
-            text-decoration: none;
-        }
-
-        .return-link:hover {
-            color: #00C896;
         }
 
         .menu-bar {
@@ -216,6 +209,101 @@
         .menu-links a:hover {
             background-color: #00C896;
         }
+
+        .users-section {
+            background-color: #2c2f33;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .users-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #444849;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #555;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-size: 14px;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .user-team {
+            font-size: 11px;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .add-btn {
+            background-color: #00C896;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .add-btn:disabled {
+            background-color: #666;
+            cursor: not-allowed;
+        }
+
+        .add-btn:hover:not(:disabled) {
+            background-color: #00b183;
+        }
+
+        .no-users-message {
+            text-align: center;
+            color: #888;
+            font-style: italic;
+            padding: 20px;
+        }
+
+        .no-members-message {
+            text-align: center;
+            color: #888;
+            font-style: italic;
+            padding: 20px;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #555;
+            border-radius: 8px;
+            background-color: #444849;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .search-box::placeholder {
+            color: #aaa;
+        }
     </style>
 </head>
 <body>
@@ -236,69 +324,118 @@
 <h1 th:text="${project.name}">Nazwa projektu</h1>
 
 <div class="project-info">
-    <div class="project-description" th:text="${project.description}">Opis projektu</div>
+    <p th:text="${project.description}">Opis projektu</p>
+    <p style="color: #888; font-size: 14px;">
+        Utworzono: <span th:text="${#temporals.format(project.createdAt, 'yyyy-MM-dd HH:mm')}">Data</span>
+        przez <span th:text="${project.createdBy.username}">Twórca</span>
+    </p>
 </div>
 
-<h2>Dodaj użytkowników do projektu</h2>
+<!-- SEKCJA ADMINISTRACYJNA - tylko dla adminów -->
+<div th:if="${isAdmin}" class="admin-section">
+    <h3>Panel Administratora</h3>
 
-<div class="teams-container">
-    <!-- SEKCJA DLA KAŻDEGO ZESPOŁU -->
-    <div th:each="team : ${teams}" class="team-section">
-        <div class="team-name" th:text="${team.name}">Nazwa zespołu</div>
-        <div class="user-grid" th:if="${not #lists.isEmpty(team.users)}">
-            <div th:each="user : ${team.users}" class="user-item">
-                <span class="user-name" th:text="${user.username}">Użytkownik</span>
-                <form th:action="@{/projects/{projectId}/addUser(projectId=${project.id})}" method="post" style="margin: 0;">
-                    <input type="hidden" name="userId" th:value="${user.id}" />
-                    <button type="submit" class="add-user-btn"
-                            th:disabled="${project.assignedUsers.contains(user)}"
-                            th:text="${project.assignedUsers.contains(user)} ? 'Dodany' : '➕ Dodaj'">
-                        ➕ Dodaj
-                    </button>
+    <h4>Dodaj użytkowników do projektu</h4>
+    <div class="users-section">
+        <input type="text" class="search-box" placeholder="Szukaj użytkowników..." onkeyup="filterUsers(this.value)">
+
+        <div class="users-grid" id="users-grid">
+            <div th:each="user : ${allUsers}"
+                 class="user-item"
+                 th:unless="${memberUserIds.contains(user.id)}"
+                 th:attr="data-username=${user.username}">
+                <div class="user-info">
+                    <div class="user-name" th:text="${user.username}">Użytkownik</div>
+                    <div class="user-team"
+                         th:text="${user.teams.size() > 0 ? user.teams.iterator().next().name : 'Bez zespołu'}">
+                        Zespół
+                    </div>
+                </div>
+                <div class="user-actions">
+                    <form th:action="@{/projects/{projectId}/addUser(projectId=${project.id})}" method="post" style="margin: 0; display: flex; gap: 8px; align-items: center;">
+                        <input type="hidden" name="userId" th:value="${user.id}">
+                        <select name="role" class="role-select">
+                            <option value="MEMBER">Member</option>
+                            <option value="ADMIN">Admin</option>
+                            <option value="VIEWER">Viewer</option>
+                        </select>
+                        <button type="submit" class="add-btn">Dodaj</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${allUsers.size() == members.size()}" class="no-users-message">
+            Wszyscy użytkownicy są już w projekcie
+        </div>
+    </div>
+</div>
+
+<!-- LISTA CZŁONKÓW PROJEKTU -->
+<div class="members-list">
+    <h2>Członkowie projektu</h2>
+
+    <div th:if="${not #lists.isEmpty(members)}">
+        <div th:each="member : ${members}" class="member-item">
+            <div class="member-info">
+                <span class="member-name" th:text="${member.user.username}">Użytkownik</span>
+                <span th:class="'role-badge role-' + ${#strings.toLowerCase(member.role)}"
+                      th:text="${member.role}">ROLA</span>
+                <span th:if="${member.user.id == project.createdBy.id}" class="creator-badge">TWÓRCA</span>
+            </div>
+
+            <!-- Akcje dla adminów -->
+            <div th:if="${isAdmin and member.user.id != project.createdBy.id}" class="member-actions">
+                <form th:action="@{/projects/{projectId}/changeRole(projectId=${project.id})}" method="post" style="display: inline;">
+                    <input type="hidden" name="userId" th:value="${member.user.id}">
+                    <select name="newRole" class="role-select">
+                        <option value="ADMIN" th:selected="${member.role == T(com.example.demo.model.ProjectRole).ADMIN}">Admin</option>
+                        <option value="MEMBER" th:selected="${member.role == T(com.example.demo.model.ProjectRole).MEMBER}">Member</option>
+                        <option value="VIEWER" th:selected="${member.role == T(com.example.demo.model.ProjectRole).VIEWER}">Viewer</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary">Zmień</button>
+                </form>
+
+                <form th:action="@{/projects/{projectId}/removeUser(projectId=${project.id})}" method="post" style="display: inline;">
+                    <input type="hidden" name="userId" th:value="${member.user.id}">
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Czy na pewno usunąć tego użytkownika?')">Usuń</button>
                 </form>
             </div>
         </div>
-        <div th:if="${#lists.isEmpty(team.users)}" style="color: #888; font-style: italic; text-align: center;">
-            Brak użytkowników w tym zespole
-        </div>
     </div>
 
-    <!-- SEKCJA DLA UŻYTKOWNIKÓW BEZ ZESPOŁU -->
-    <div class="team-section no-team-section" th:if="${not #lists.isEmpty(usersWithoutTeam)}">
-        <div class="team-name">👤 Użytkownicy bez zespołu</div>
-        <div class="user-grid">
-            <div th:each="user : ${usersWithoutTeam}" class="user-item">
-                <span class="user-name" th:text="${user.username}">Użytkownik</span>
-                <form th:action="@{/projects/{projectId}/addUser(projectId=${project.id})}" method="post" style="margin: 0;">
-                    <input type="hidden" name="userId" th:value="${user.id}" />
-                    <button type="submit" class="add-user-btn"
-                            th:disabled="${project.assignedUsers.contains(user)}"
-                            th:text="${project.assignedUsers.contains(user)} ? 'Dodany' : '➕ Dodaj'">
-                        ➕ Dodaj
-                    </button>
-                </form>
-            </div>
-        </div>
+    <!-- Brak członków -->
+    <div th:if="${#lists.isEmpty(members)}" class="no-members-message">
+        Projekt nie ma jeszcze żadnych członków
     </div>
 </div>
 
-<h2>Członkowie projektu:</h2>
-<ul th:if="${not #lists.isEmpty(project.assignedUsers)}">
-    <li th:each="user : ${project.assignedUsers}">
-        <span class="assigned-user-name" th:text="${user.username}"></span>
-        <form th:action="@{/projects/{projectId}/removeUser(projectId=${project.id})}" method="post" style="margin: 0;">
-            <input type="hidden" name="userId" th:value="${user.id}" />
-            <button type="submit" class="remove-btn">Usuń</button>
-        </form>
-    </li>
-</ul>
-<p th:if="${#lists.isEmpty(project.assignedUsers)}" style="text-align: center; color: #ccc;">Brak przypisanych użytkowników</p>
+<!-- AKCJE DLA PROJEKTU -->
+<div class="action-buttons">
+    <a th:href="@{/tasks/project/{id}(id=${project.id})}">📋 Lista zadań</a>
+    <a th:if="${isAdmin}" th:href="@{/tasks/create/{id}(id=${project.id})}">➕ Dodaj zadanie</a>
+    <a th:if="${userRole == T(com.example.demo.model.ProjectRole).MEMBER}" th:href="@{/proposals/create/{id}(id=${project.id})}">💡 Zaproponuj zadanie</a>
+</div>
 
-<a th:href="@{/tasks/project/{id}(id=${project.id})}" class="tasks-button">
-    Lista zadań w projekcie
-</a>
+<div style="text-align: center; margin-top: 30px;">
+    <a href="/projects" style="color: #00C896; text-decoration: none; font-weight: bold;">← Powrót do projektów</a>
+</div>
 
-<a class="return-link" href="/projects">Powrót do listy projektów</a>
+<script>
+    function filterUsers(searchTerm) {
+        const userItems = document.querySelectorAll('.user-item');
+        const searchLower = searchTerm.toLowerCase();
+
+        userItems.forEach(item => {
+            const username = item.getAttribute('data-username').toLowerCase();
+            if (username.includes(searchLower)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+</script>
 
 </body>
 </html>

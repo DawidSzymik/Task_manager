@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/controller/ProjectController.java
+// src/main/java/com/example/demo/controller/ProjectController.java - USUŃ TE METODY
 package com.example.demo.controller;
 
 import com.example.demo.model.Project;
@@ -18,20 +18,23 @@ public class ProjectController {
     // Tworzenie nowego projektu (POST)
     @PostMapping("/create")
     public Project createProject(@RequestBody Project project) {
-        return projectService.createProject(project.getName(), project.getDescription());
+        // ZMIEŃ NA NOWĄ SYGNATURĘ (ale potrzebujesz User creator)
+        // return projectService.createProject(project.getName(), project.getDescription(), creator);
+        throw new RuntimeException("Użyj /projects/create zamiast API");
     }
 
-    // Dodanie użytkownika do projektu (POST)
+    // USUŃ TE METODY - używamy teraz ProjectMemberService
+    /*
     @PostMapping("/{projectId}/addUser/{userId}")
     public Project addUserToProject(@PathVariable Long projectId, @PathVariable Long userId) {
         return projectService.addUserToProject(projectId, userId);
     }
 
-    // Usunięcie użytkownika z projektu (DELETE)
     @DeleteMapping("/{projectId}/removeUser/{userId}")
     public Project removeUserFromProject(@PathVariable Long projectId, @PathVariable Long userId) {
         return projectService.removeUserFromProject(projectId, userId);
     }
+    */
 
     // Pobranie projektu po ID (GET)
     @GetMapping("/{id}")

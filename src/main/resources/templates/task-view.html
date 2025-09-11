@@ -1,4 +1,4 @@
-<!-- src/main/resources/templates/task-view.html - ZMIENIONY -->
+<!-- src/main/resources/templates/task-view.html -->
 <!DOCTYPE html>
 <html lang="pl" xmlns:th="http://www.thymeleaf.org">
 <head>
@@ -14,7 +14,7 @@
         }
 
         .menu-bar {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             right: 0;
@@ -125,7 +125,6 @@
             margin-bottom: 30px;
         }
 
-        /* NOWE STYLE DLA STATUSU */
         .task-info {
             background-color: #2c2f33;
             padding: 20px;
@@ -167,25 +166,10 @@
             margin-bottom: 15px;
         }
 
-        .status-todo {
-            background-color: #00AEEF;
-            color: white;
-        }
-
-        .status-in_progress {
-            background-color: #FFA500;
-            color: white;
-        }
-
-        .status-done {
-            background-color: #28a745;
-            color: white;
-        }
-
-        .status-suspended {
-            background-color: #888888;
-            color: white;
-        }
+        .status-todo { background-color: #00AEEF; color: white; }
+        .status-in_progress { background-color: #FFA500; color: white; }
+        .status-done { background-color: #28a745; color: white; }
+        .status-suspended { background-color: #888888; color: white; }
 
         .status-form {
             display: flex;
@@ -233,6 +217,19 @@
             font-size: 12px;
         }
 
+        .role-badge {
+            padding: 4px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .role-admin { background-color: #ff6b6b; color: white; }
+        .role-member { background-color: #4ecdc4; color: white; }
+        .role-viewer { background-color: #95a5a6; color: white; }
+
         section {
             margin-bottom: 40px;
         }
@@ -272,22 +269,77 @@
             padding: 0;
         }
 
-        .activity li {
-            margin-bottom: 10px;
+        .activity-item {
+            background-color: #2c2f33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #00C896;
         }
 
-        .activity a {
+        .activity-content {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .activity-icon {
+            font-size: 18px;
+            margin-top: 2px;
+        }
+
+        .activity-details {
+            flex: 1;
+        }
+
+        .activity-text {
+            color: #fff;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .activity-text a {
             color: #00C896;
             text-decoration: none;
         }
 
-        .activity a:hover {
+        .activity-text a:hover {
             text-decoration: underline;
+        }
+
+        .activity-meta {
+            font-size: 12px;
+            color: #888;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .activity-author {
+            color: #00C896;
+            font-weight: bold;
+        }
+
+        .activity-separator {
+            color: #666;
+        }
+
+        .activity-date {
+            color: #ccc;
         }
 
         .not-assigned {
             color: #888;
             font-style: italic;
+        }
+
+        .viewer-notice {
+            background-color: #f39c12;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
         }
     </style>
 </head>
@@ -311,6 +363,7 @@
 <div class="layout">
     <aside class="sidebar">
         <h2 th:text="${project.name}">Projekt</h2>
+        <div class="role-badge" th:class="'role-badge role-' + ${#strings.toLowerCase(userRole)}" th:text="'Twoja rola: ' + ${userRole}">ROLA</div>
         <ul class="task-list">
             <li th:each="t : ${projectTasks}">
                 <a th:href="@{/tasks/view/{id}(id=${t.id})}" th:text="${t.title}">Zadanie</a>
@@ -322,6 +375,11 @@
     <main class="main-content">
         <h1 th:text="${task.title}" class="task-title">Tytuł zadania</h1>
         <p th:text="${task.description}" class="task-desc">Opis zadania</p>
+
+        <!-- INFORMACJA DLA VIEWERÓW -->
+        <div th:if="${userRole == T(com.example.demo.model.ProjectRole).VIEWER}" class="viewer-notice">
+            👁️ Masz uprawnienia tylko do przeglądania. Nie możesz dodawać komentarzy ani plików.
+        </div>
 
         <!-- INFORMACJE O ZADANIU -->
         <div class="task-info">
@@ -342,11 +400,10 @@
                 <div th:class="'current-status status-' + ${#strings.toLowerCase(task.status)}"
                      th:text="${task.status}">Status</div>
 
-                <!-- FORMULARZ ZMIANY STATUSU - tylko dla przypisanych użytkowników -->
-                <div th:if="${task.isAssignedToUser(currentUsername)}">
-                    <!-- W task-view.html - ZMIEŃ FORMULARZ STATUSU -->
+                <!-- Admin może zmieniać bezpośrednio -->
+                <div th:if="${isAdmin}">
                     <form th:action="@{/tasks/update-status/{id}(id=${task.id})}" method="post" class="status-form">
-                        <input type="hidden" name="returnTo" value="task-view" />
+                        <input type="hidden" name="returnTo" value="task-view">
                         <label for="status">Zmień status:</label>
                         <select name="status" id="status">
                             <option value="TODO" th:selected="${task.status == 'TODO'}">TODO</option>
@@ -357,8 +414,26 @@
                         <button type="submit">Zmień status</button>
                     </form>
                 </div>
-                <div th:unless="${task.isAssignedToUser(currentUsername)}" class="not-assigned">
-                    Tylko przypisani użytkownicy mogą zmieniać status zadania
+
+                <!-- Member może proponować zmiany -->
+                <div th:if="${userRole == T(com.example.demo.model.ProjectRole).MEMBER}">
+                    <form th:action="@{/status-requests/request}" method="post" class="status-form">
+                        <input type="hidden" name="taskId" th:value="${task.id}">
+                        <input type="hidden" name="returnTo" value="task-view">
+                        <label for="newStatus">Poproś o zmianę na:</label>
+                        <select name="newStatus" id="newStatus">
+                            <option value="TODO">TODO</option>
+                            <option value="IN_PROGRESS">W TRAKCIE</option>
+                            <option value="DONE">UKOŃCZONE</option>
+                            <option value="SUSPENDED">ZAWIESZONE</option>
+                        </select>
+                        <button type="submit">Poproś o zmianę</button>
+                    </form>
+                </div>
+
+                <!-- Viewer tylko widzi -->
+                <div th:if="${userRole == T(com.example.demo.model.ProjectRole).VIEWER}" class="not-assigned">
+                    Tylko administratorzy mogą zmieniać status zadania
                 </div>
             </div>
 
@@ -376,7 +451,8 @@
             </div>
         </div>
 
-        <section class="file-upload">
+        <!-- DODAWANIE PLIKÓW - tylko dla Admin i Member -->
+        <section th:if="${userRole != T(com.example.demo.model.ProjectRole).VIEWER}" class="file-upload">
             <h3>Dodaj plik</h3>
             <form th:action="@{/tasks/{id}/upload(id=${task.id})}" method="post" enctype="multipart/form-data">
                 <input type="file" name="file" required>
@@ -384,7 +460,8 @@
             </form>
         </section>
 
-        <section class="comments">
+        <!-- DODAWANIE KOMENTARZY - tylko dla Admin i Member -->
+        <section th:if="${userRole != T(com.example.demo.model.ProjectRole).VIEWER}" class="comments">
             <h3>Dodaj komentarz</h3>
             <form th:action="@{/tasks/{id}/comment(id=${task.id})}" method="post">
                 <textarea name="commentText" rows="3" placeholder="Wpisz komentarz..." required></textarea>
@@ -392,16 +469,37 @@
             </form>
         </section>
 
+        <!-- AKTYWNOŚĆ -->
         <section class="activity">
             <h3>Aktywność</h3>
             <ul>
-                <li th:each="comment : ${comments}">
-                    💬 <span th:text="${comment.text}">Komentarz</span>
-                    <small style="color: #888; margin-left: 10px;"
-                           th:text="${#temporals.format(comment.createdAt, 'yyyy-MM-dd HH:mm')}">Data</small>
+                <li th:each="comment : ${comments}" class="activity-item">
+                    <div class="activity-content">
+                        <span class="activity-icon">💬</span>
+                        <div class="activity-details">
+                            <div class="activity-text" th:text="${comment.text}">Komentarz</div>
+                            <div class="activity-meta">
+                                <span class="activity-author" th:text="${comment.author != null ? comment.author.username : 'Nieznany użytkownik'}">Autor</span>
+                                <span class="activity-separator">•</span>
+                                <span class="activity-date" th:text="${#temporals.format(comment.createdAt, 'yyyy-MM-dd HH:mm')}">Data</span>
+                            </div>
+                        </div>
+                    </div>
                 </li>
-                <li th:each="file : ${files}">
-                    📎 <a th:href="@{/files/{id}(id=${file.id})}" th:text="${file.originalName}">Plik</a>
+                <li th:each="file : ${files}" class="activity-item">
+                    <div class="activity-content">
+                        <span class="activity-icon">📎</span>
+                        <div class="activity-details">
+                            <div class="activity-text">
+                                <a th:href="@{/files/{id}(id=${file.id})}" th:text="${file.originalName}">Plik</a>
+                            </div>
+                            <div class="activity-meta">
+                                <span class="activity-author" th:text="${file.uploadedBy != null ? file.uploadedBy.username : 'Nieznany użytkownik'}">Autor</span>
+                                <span class="activity-separator">•</span>
+                                <span class="activity-date" th:text="${#temporals.format(file.uploadedAt, 'yyyy-MM-dd HH:mm')}">Data</span>
+                            </div>
+                        </div>
+                    </div>
                 </li>
             </ul>
             <div th:if="${#lists.isEmpty(comments) and #lists.isEmpty(files)}" class="not-assigned">
