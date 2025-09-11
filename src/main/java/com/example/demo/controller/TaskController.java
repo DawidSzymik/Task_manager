@@ -1,12 +1,14 @@
+// src/main/java/com/example/demo/controller/TaskController.java - ZMIENIONY
 package com.example.demo.controller;
+
 import java.util.Set;
 import java.util.HashSet;
 
 import com.example.demo.model.Task;
-import com.example.demo.model.Team;
+import com.example.demo.model.Project;
 import com.example.demo.model.User;
 import com.example.demo.service.TaskService;
-import com.example.demo.service.TeamService;
+import com.example.demo.service.ProjectService;
 import com.example.demo.service.UserService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -26,68 +28,70 @@ import java.util.Optional;
 public class TaskController {
 
     private final TaskService taskService;
-    private final TeamService teamService;
+    private final ProjectService projectService;
     private final UserService userService;
 
-    public TaskController(TaskService taskService, TeamService teamService, UserService userService) {
+    public TaskController(TaskService taskService, ProjectService projectService, UserService userService) {
         this.taskService = taskService;
-        this.teamService = teamService;
+        this.projectService = projectService;
         this.userService = userService;
     }
 
-
-
-    @GetMapping("/create/{teamId}")
-    public String createTaskForm(@PathVariable Long teamId, Model model) {
-        Team team = teamService.getTeamById(teamId)
-                .orElseThrow(() -> new RuntimeException("Zespół nie istnieje"));
-        List<User> teamMembers = new ArrayList<>(team.getUsers());
+    @GetMapping("/create/{projectId}")
+    public String createTaskForm(@PathVariable Long projectId, Model model) {
+        Project project = projectService.getProjectById(projectId)
+                .orElseThrow(() -> new RuntimeException("Projekt nie istnieje"));
+        List<User> projectMembers = new ArrayList<>(project.getAssignedUsers());
         model.addAttribute("task", new Task());
-        model.addAttribute("team", team);
-        model.addAttribute("members", teamMembers);
+        model.addAttribute("project", project);
+        model.addAttribute("members", projectMembers);
         return "task-create";
     }
 
     @PostMapping("/create")
     public String createTask(@ModelAttribute Task task,
-                             @RequestParam Long teamId,
+                             @RequestParam Long projectId,
                              @RequestParam List<Long> assignedUserIds) {
 
-        Team team = teamService.getTeamById(teamId)
-                .orElseThrow(() -> new RuntimeException("Zespół nie istnieje"));
+        Project project = projectService.getProjectById(projectId)
+                .orElseThrow(() -> new RuntimeException("Projekt nie istnieje"));
 
         Set<User> users = assignedUserIds.stream()
                 .map(id -> userService.getUserById(id)
                         .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje: " + id)))
                 .collect(Collectors.toSet());
 
-        task.setTeam(team);
+        task.setProject(project);
         task.setAssignedUsers(users);
         task.setCreatedAt(LocalDateTime.now());
 
         taskService.saveTask(task);
 
-        return "redirect:/tasks/team/" + teamId;
+        return "redirect:/tasks/project/" + projectId;
     }
-    @GetMapping("/team/{teamId}/filter")
-    public String filterTasksByStatus(@PathVariable Long teamId,
+
+    @GetMapping("/project/{projectId}/filter")
+    public String filterTasksByStatus(@PathVariable Long projectId,
                                       @RequestParam(required = false) String status,
                                       Model model) {
-        Team team = teamService.getTeamById(teamId)
-                .orElseThrow(() -> new RuntimeException("Zespół nie istnieje"));
-        List<Task> tasks = taskService.getTasksByTeam(team);
+        Project project = projectService.getProjectById(projectId)
+                .orElseThrow(() -> new RuntimeException("Projekt nie istnieje"));
+        List<Task> tasks = taskService.getTasksByProject(project);
         if (status != null && !status.isEmpty()) {
             tasks = tasks.stream()
                     .filter(task -> status.equals(task.getStatus()))
                     .toList();
         }
         model.addAttribute("tasks", tasks);
-        model.addAttribute("team", team);
+        model.addAttribute("project", project);
         return "tasks";
     }
+
+    // src/main/java/com/example/demo/controller/TaskController.java - FRAGMENT DO ZMIANY
     @PostMapping("/update-status/{taskId}")
     public String updateStatus(@PathVariable Long taskId,
                                @RequestParam String status,
+                               @RequestParam(required = false) String returnTo, // DODAJ TEN PARAMETR
                                @AuthenticationPrincipal UserDetails userDetails) {
 
         Task task = taskService.getTaskById(taskId)
@@ -96,7 +100,6 @@ public class TaskController {
         User currentUser = userService.getUserByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Nie znaleziono użytkownika"));
 
-        // sprawdzamy, czy użytkownik jest przypisany do zadania
         if (!task.getAssignedUsers().contains(currentUser)) {
             throw new RuntimeException("Nie masz uprawnień do zmiany statusu tego zadania");
         }
@@ -104,26 +107,33 @@ public class TaskController {
         task.setStatus(status);
         taskService.saveTask(task);
 
-        return "redirect:/tasks/team/" + task.getTeam().getId();
+        // DODAJ LOGIKĘ PRZEKIEROWANIA
+        if ("task-view".equals(returnTo)) {
+            return "redirect:/tasks/view/" + taskId;
+        } else {
+            return "redirect:/tasks/project/" + task.getProject().getId();
+        }
     }
-    @GetMapping("/team/{teamId}")
-    public String getTasksByTeam(@PathVariable Long teamId,
-                                 @AuthenticationPrincipal UserDetails userDetails,
-                                 Model model) {
-        Team team = teamService.getTeamById(teamId)
-                .orElseThrow(() -> new RuntimeException("Zespół nie istnieje"));
-        List<Task> tasks = taskService.getTasksByTeam(team);
+
+    @GetMapping("/project/{projectId}")
+    public String getTasksByProject(@PathVariable Long projectId,
+                                    @AuthenticationPrincipal UserDetails userDetails,
+                                    Model model) {
+        Project project = projectService.getProjectById(projectId)
+                .orElseThrow(() -> new RuntimeException("Projekt nie istnieje"));
+        List<Task> tasks = taskService.getTasksByProject(project);
         model.addAttribute("tasks", tasks);
-        model.addAttribute("team", team);
+        model.addAttribute("project", project);
         model.addAttribute("currentUsername", userDetails.getUsername());
         return "tasks";
     }
+
     @GetMapping("/dashboard")
     public String dashboard(@AuthenticationPrincipal UserDetails userDetails, Model model) {
         User user = userService.getUserByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Nie znaleziono użytkownika"));
 
-        List<Task> allTasks = taskService.getAllTasks(); // potrzebujemy tej metody w service
+        List<Task> allTasks = taskService.getAllTasks();
         List<Task> assignedTasks = allTasks.stream()
                 .filter(task -> task.getAssignedUsers().contains(user))
                 .collect(Collectors.toList());
@@ -133,6 +143,7 @@ public class TaskController {
 
         return "dashboard";
     }
+
     @GetMapping("/{id}")
     public String getTaskDetails(@PathVariable Long id, Model model,
                                  @AuthenticationPrincipal UserDetails userDetails) {
@@ -142,9 +153,6 @@ public class TaskController {
         model.addAttribute("task", task);
         model.addAttribute("username", userDetails.getUsername());
 
-        return "task-details"; // stworzysz ten plik HTML
+        return "task-details";
     }
-
-
-
 }

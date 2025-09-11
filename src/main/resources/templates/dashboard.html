@@ -1,3 +1,4 @@
+<!-- src/main/resources/templates/dashboard.html - ZMIENIONY -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="pl">
 <head>
@@ -19,7 +20,7 @@
         }
 
         .menu-bar {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             right: 0;
@@ -122,31 +123,21 @@
             display: inline-block;
         }
 
-        .status {
-            border-radius: 20px;
-            padding: 5px 10px;
-            font-weight: bold;
-            color: white;
-            display: inline-block;
-        }
-
         .status.todo {
-            background-color: #00AEEF; /* niebieski */
+            background-color: #00AEEF;
         }
 
         .status.in_progress {
-            background-color: #FFA500; /* pomarańczowy */
+            background-color: #FFA500;
         }
 
         .status.done {
-            background-color: #28a745; /* zielony */
+            background-color: #28a745;
         }
 
         .status.suspended {
-            background-color: #888888; /* szary */
+            background-color: #888888;
         }
-
-
 
         .dots {
             display: flex;
@@ -194,6 +185,7 @@
     <nav class="menu-links">
         <a href="/tasks/dashboard">Strona główna</a>
         <a href="/teams">Zespoły</a>
+        <a href="/projects">Projekty</a>
         <a href="/kontakt">Kontakt</a>
         <a href="/welcome">Profil</a>
     </nav>
@@ -206,7 +198,7 @@
 <div class="task-row header-row">
     <div>Tytuł</div>
     <div>Status</div>
-    <div>Zespół</div>
+    <div>Projekt</div>
     <div>Termin</div>
     <div></div>
 </div>
@@ -219,9 +211,8 @@
             <div>
                <span th:text="${task.status}"
                      th:class="'status ' + ${#strings.toLowerCase(task.status)}">Status</span>
-
             </div>
-            <div th:text="${task.team.name}">Zespół</div>
+            <div th:text="${task.project.name}">Projekt</div>
             <div th:text="${#temporals.format(task.deadline, 'yyyy-MM-dd HH:mm')}">Termin</div>
             <div class="dots"><span></span><span></span><span></span></div>
         </div>

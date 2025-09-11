@@ -1,3 +1,4 @@
+<!-- src/main/resources/templates/welcome.html - ZMIENIONY -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="pl">
 <head>
@@ -10,7 +11,7 @@
             color: white;
             font-family: Arial, sans-serif;
             margin: 0;
-            padding-top: 100px; /* 👉 obniżenie całej treści pod menu-bar */
+            padding-top: 100px;
         }
 
         .menu-bar {
@@ -102,7 +103,7 @@
             gap: 30px;
         }
 
-        .info, .teams {
+        .info, .teams, .projects {
             flex: 1;
         }
 
@@ -117,7 +118,7 @@
             margin-bottom: 15px;
         }
 
-        .team {
+        .team, .project {
             padding: 10px;
             border-radius: 5px;
             margin: 5px 0;
@@ -152,9 +153,10 @@
     <nav class="menu-links">
         <a href="/tasks/dashboard">Strona główna</a>
         <a href="/teams">Zespoły</a>
+        <a href="/projects">Projekty</a>
         <a href="/kontakt">Kontakt</a>
         <a href="/welcome">Profil</a>
-        <a href="/login">Wyloguj</a> <!-- ✅ Dodany przycisk -->
+        <a href="/login">Wyloguj</a>
     </nav>
 </div>
 
@@ -182,10 +184,17 @@
                 <li class="team" th:each="team : ${teams}" th:text="${team.name}">Brak zespołów</li>
             </ul>
         </div>
+        <div class="separator"></div>
+        <div class="projects">
+            <h3>Projekty</h3>
+            <ul>
+                <li class="project" th:each="project : ${projects}" th:text="${project.name}">Brak projektów</li>
+            </ul>
+        </div>
     </section>
 
     <footer>
-        <a href="/teams"><button class="back">&lt; POWRÓT</button></a>
+        <a href="/projects"><button class="back">&lt; PROJEKTY</button></a>
     </footer>
 </div>
 

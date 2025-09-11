@@ -1,7 +1,8 @@
+// src/main/java/com/example/demo/service/impl/TaskServiceImpl.java - ZMIENIONY
 package com.example.demo.service.impl;
 
 import com.example.demo.model.Task;
-import com.example.demo.model.Team;
+import com.example.demo.model.Project;
 import com.example.demo.repository.TaskRepository;
 import com.example.demo.service.TaskService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,8 +23,8 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public List<Task> getTasksByTeam(Team team) {
-        return taskRepository.findByTeam(team);
+    public List<Task> getTasksByProject(Project project) {
+        return taskRepository.findByProject(project);
     }
 
     @Override
@@ -47,7 +48,7 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public List<Task> findAllByTeam(Team team) {
-        return taskRepository.findByTeam(team);
+    public List<Task> findAllByProject(Project project) {
+        return taskRepository.findByProject(project);
     }
 }

@@ -1,8 +1,9 @@
+<!-- src/main/resources/templates/tasks.html - ZMIENIONY -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="pl">
 <head>
   <meta charset="UTF-8">
-  <title>Zadania zespołu</title>
+  <title>Zadania projektu</title>
   <style>
     body {
       margin: 0;
@@ -35,6 +36,8 @@
 
     select {
       min-width: 200px;
+      background-color: #2c2f33;
+      color: #fff;
     }
 
     button {
@@ -92,7 +95,7 @@
     }
 
     .menu-bar {
-      position: absolute;
+      position: fixed;
       top: 0;
       left: 0;
       right: 0;
@@ -145,25 +148,28 @@
   <nav class="menu-links">
     <a href="/tasks/dashboard">Strona główna</a>
     <a href="/teams">Zespoły</a>
+    <a href="/projects">Projekty</a>
     <a href="/kontakt">Kontakt</a>
     <a href="/welcome">Profil</a>
   </nav>
 </div>
 
-<h2>Zadania w zespole: <span th:text="${team.name}"></span></h2>
+<h2>Zadania w projekcie: <span th:text="${project.name}"></span></h2>
 
-<!-- 🔍 Filtracja po statusie -->
-<form th:action="@{/tasks/team/{teamId}/filter(teamId=${team.id})}" method="get">
+<!-- Filtracja po statusie -->
+<form th:action="@{/tasks/project/{projectId}/filter(projectId=${project.id})}" method="get">
   <label for="status">Filtruj po statusie:</label>
   <select name="status" id="status">
     <option value="">-- Wszystkie --</option>
     <option value="TODO">TODO</option>
     <option value="IN_PROGRESS">IN_PROGRESS</option>
     <option value="DONE">DONE</option>
+    <option value="SUSPENDED">ZAWIESZONE</option>
   </select>
   <button type="submit">Filtruj</button>
 </form>
-<a th:href="@{/tasks/create/{teamId}(teamId=${team.id})}">➕ Dodaj nowe zadanie</a>
+
+<a th:href="@{/tasks/create/{projectId}(projectId=${project.id})}">➕ Dodaj nowe zadanie</a>
 
 <table>
   <thead>
@@ -177,7 +183,7 @@
   </thead>
   <tbody>
   <tr th:each="task : ${tasks}">
-    <td th:text="${task.title}"></td>
+    <td><a th:href="@{/tasks/view/{id}(id=${task.id})}" th:text="${task.title}"></a></td>
     <td th:text="${task.description}"></td>
 
     <td>
@@ -187,8 +193,7 @@
             <option value="TODO" th:selected="${task.status == 'TODO'}">TODO</option>
             <option value="IN_PROGRESS" th:selected="${task.status == 'IN_PROGRESS'}">IN_PROGRESS</option>
             <option value="DONE" th:selected="${task.status == 'DONE'}">DONE</option>
-            <option value="SUSPENDED" th:selected="${task.status == 'SUSPENDED'}">ZAWIESZONE</option> <!-- 👈 Dodane -->
-
+            <option value="SUSPENDED" th:selected="${task.status == 'SUSPENDED'}">ZAWIESZONE</option>
           </select>
           <button type="submit">Zmień</button>
         </form>
@@ -206,8 +211,7 @@
   </tbody>
 </table>
 
-
-
+<a th:href="@{/projects/{id}(id=${project.id})}">← Powrót do projektu</a>
 
 </body>
 </html>

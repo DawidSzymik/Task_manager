@@ -1,16 +1,17 @@
+<!-- src/main/resources/templates/projects.html -->
 <!DOCTYPE html>
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lista zespołów</title>
+    <title>Lista projektów</title>
     <style>
         body {
             margin: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #343434;
             color: #FFFFFF;
-            padding-top: 120px; /* żeby nie przykryło menu-bar */
+            padding-top: 120px;
         }
 
         h1 {
@@ -23,13 +24,25 @@
             justify-content: center;
             gap: 10px;
             margin-bottom: 30px;
+            flex-wrap: wrap;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
-        input[type="text"] {
+        input[type="text"], textarea {
             padding: 10px;
             border-radius: 8px;
             border: none;
-            width: 250px;
+            background-color: #2c2f33;
+            color: #fff;
+            min-width: 250px;
+        }
+
+        textarea {
+            resize: vertical;
+            width: 100%;
+            margin-top: 10px;
         }
 
         button {
@@ -50,26 +63,39 @@
         ul {
             list-style-type: none;
             padding: 0;
-            max-width: 600px;
+            max-width: 800px;
             margin: auto;
         }
 
         li {
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             background-color: #2c2f33;
-            padding: 15px;
+            padding: 20px;
             border-radius: 10px;
-            text-align: center;
+            transition: background 0.3s;
+        }
+
+        li:hover {
+            background-color: #3a3a3a;
         }
 
         li a {
             color: #FFFFFF;
             text-decoration: none;
             font-size: 18px;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
         }
 
         li a:hover {
-            text-decoration: underline;
+            color: #00C896;
+        }
+
+        .project-description {
+            color: #ccc;
+            font-size: 14px;
+            margin-top: 5px;
         }
 
         .return {
@@ -84,8 +110,9 @@
         a[href="/welcome"]:hover {
             text-decoration: underline;
         }
+
         .menu-bar {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             right: 0;
@@ -93,7 +120,7 @@
             background-color: #2c2f33;
             display: flex;
             align-items: center;
-            justify-content: space-between; /* <--- kluczowe */
+            justify-content: space-between;
             padding: 0 40px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.5);
             z-index: 9999;
@@ -111,7 +138,6 @@
         .menu-links {
             display: flex;
             gap: 30px;
-            float: right;
         }
 
         .menu-links a {
@@ -129,7 +155,20 @@
             background-color: #00C896;
         }
 
+        .form-container {
+            background-color: #2c2f33;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 40px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
 
+        .form-container h2 {
+            color: #00C896;
+            margin-top: 0;
+        }
     </style>
 </head>
 <body>
@@ -139,26 +178,29 @@
         <img src="/images/logo.png" alt="Logo">
     </div>
     <nav class="menu-links">
-
         <a href="/tasks/dashboard">Strona główna</a>
         <a href="/teams">Zespoły</a>
         <a href="/projects">Projekty</a>
         <a href="/kontakt">Kontakt</a>
         <a href="/welcome">Profil</a>
-
     </nav>
 </div>
 
-<h1>Lista zespołów</h1>
+<h1>Lista projektów</h1>
 
-<form action="/teams/create" method="post">
-    <input type="text" name="name" placeholder="Nazwa zespołu" required>
-    <button type="submit">Utwórz zespół</button>
-</form>
+<div class="form-container">
+    <h2>Utwórz nowy projekt</h2>
+    <form action="/projects/create" method="post">
+        <input type="text" name="name" placeholder="Nazwa projektu" required>
+        <textarea name="description" placeholder="Opis projektu" rows="3"></textarea>
+        <button type="submit">Utwórz projekt</button>
+    </form>
+</div>
 
 <ul>
-    <li th:each="team : ${teams}">
-        <a th:href="@{/teams/{id}(id=${team.id})}" th:text="${team.name}"></a>
+    <li th:each="project : ${projects}">
+        <a th:href="@{/projects/{id}(id=${project.id})}" th:text="${project.name}">Nazwa projektu</a>
+        <div class="project-description" th:text="${project.description}">Opis projektu</div>
     </li>
 </ul>
 

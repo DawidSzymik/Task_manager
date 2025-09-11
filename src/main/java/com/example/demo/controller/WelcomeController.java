@@ -1,7 +1,10 @@
+// src/main/java/com/example/demo/controller/WelcomeController.java - ZMIENIONY
 package com.example.demo.controller;
 
+import com.example.demo.model.Project;
 import com.example.demo.model.Team;
 import com.example.demo.model.User;
+import com.example.demo.service.ProjectService;
 import com.example.demo.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,7 +19,10 @@ import java.util.Set;
 public class WelcomeController {
 
     @Autowired
-    private UserService userService;  // 🔥 Teraz jest wstrzyknięte poprawnie
+    private UserService userService;
+
+    @Autowired
+    private ProjectService projectService;
 
     @GetMapping("/welcome")
     public String welcome(@AuthenticationPrincipal UserDetails userDetails, Model model) {
@@ -28,12 +34,16 @@ public class WelcomeController {
         User user = userService.getUserByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
 
-        // Pobranie zespołów użytkownika
+        // Pobranie zespołów i projektów użytkownika
         Set<Team> teams = user.getTeams();
-        System.out.println("Zespoły użytkownika: " + teams); // 🔥 Logowanie do konsoli
+        Set<Project> projects = user.getProjects();
+
+        System.out.println("Zespoły użytkownika: " + teams);
+        System.out.println("Projekty użytkownika: " + projects);
 
         model.addAttribute("username", user.getUsername());
         model.addAttribute("teams", teams);
+        model.addAttribute("projects", projects);
 
         return "welcome";
     }

@@ -1,3 +1,4 @@
+<!-- src/main/resources/templates/task-create.html - ZMIENIONY -->
 <!DOCTYPE html>
 <html lang="pl" xmlns:th="http://www.thymeleaf.org">
 <head>
@@ -12,8 +13,8 @@
 
 <div class="container">
   <form th:action="@{/tasks/create}" th:object="${task}" method="post" id="taskForm">
-    <h2>Dodaj nowe zadanie do zespołu: <span th:text="${team.name}"></span></h2>
-    <input type="hidden" name="teamId" th:value="${team.id}"/>
+    <h2>Dodaj nowe zadanie do projektu: <span th:text="${project.name}"></span></h2>
+    <input type="hidden" name="projectId" th:value="${project.id}"/>
 
     <h2>Tytuł</h2>
     <input type="text" id="title" name="title" th:field="*{title}" placeholder="Tytuł zadania" required>

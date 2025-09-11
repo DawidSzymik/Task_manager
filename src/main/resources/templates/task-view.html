@@ -1,3 +1,4 @@
+<!-- src/main/resources/templates/task-view.html - ZMIENIONY -->
 <!DOCTYPE html>
 <html lang="pl" xmlns:th="http://www.thymeleaf.org">
 <head>
@@ -12,7 +13,6 @@
             padding-top: 120px;
         }
 
-        /* ========== MENU ========== */
         .menu-bar {
             position: absolute;
             top: 0;
@@ -57,7 +57,6 @@
             background-color: #00C896;
         }
 
-        /* ========== UKŁAD STRONY ========== */
         .layout {
             display: flex;
             margin-top: 40px;
@@ -126,6 +125,114 @@
             margin-bottom: 30px;
         }
 
+        /* NOWE STYLE DLA STATUSU */
+        .task-info {
+            background-color: #2c2f33;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .task-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .meta-item {
+            background-color: #444849;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .meta-label {
+            color: #00C896;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .status-section {
+            background-color: #444849;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .current-status {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .status-todo {
+            background-color: #00AEEF;
+            color: white;
+        }
+
+        .status-in_progress {
+            background-color: #FFA500;
+            color: white;
+        }
+
+        .status-done {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .status-suspended {
+            background-color: #888888;
+            color: white;
+        }
+
+        .status-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .status-form select {
+            background-color: #2c2f33;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .status-form button {
+            background-color: #00C896;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .status-form button:hover {
+            background-color: #00b183;
+        }
+
+        .assigned-users {
+            background-color: #444849;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .user-tag {
+            display: inline-block;
+            background-color: #00C896;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            margin: 2px;
+            font-size: 12px;
+        }
+
         section {
             margin-bottom: 40px;
         }
@@ -177,6 +284,11 @@
         .activity a:hover {
             text-decoration: underline;
         }
+
+        .not-assigned {
+            color: #888;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -189,6 +301,7 @@
     <nav class="menu-links">
         <a href="/tasks/dashboard">Strona główna</a>
         <a href="/teams">Zespoły</a>
+        <a href="/projects">Projekty</a>
         <a href="/kontakt">Kontakt</a>
         <a href="/welcome">Profil</a>
     </nav>
@@ -197,9 +310,9 @@
 <!-- GŁÓWNA ZAWARTOŚĆ -->
 <div class="layout">
     <aside class="sidebar">
-        <h2 th:text="${team.name}">Zespół</h2>
+        <h2 th:text="${project.name}">Projekt</h2>
         <ul class="task-list">
-            <li th:each="t : ${teamTasks}">
+            <li th:each="t : ${projectTasks}">
                 <a th:href="@{/tasks/view/{id}(id=${t.id})}" th:text="${t.title}">Zadanie</a>
             </li>
         </ul>
@@ -209,6 +322,59 @@
     <main class="main-content">
         <h1 th:text="${task.title}" class="task-title">Tytuł zadania</h1>
         <p th:text="${task.description}" class="task-desc">Opis zadania</p>
+
+        <!-- INFORMACJE O ZADANIU -->
+        <div class="task-info">
+            <div class="task-meta">
+                <div class="meta-item">
+                    <div class="meta-label">Utworzono</div>
+                    <div th:text="${#temporals.format(task.createdAt, 'yyyy-MM-dd HH:mm')}">Data utworzenia</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-label">Termin</div>
+                    <div th:text="${task.deadline != null ? #temporals.format(task.deadline, 'yyyy-MM-dd HH:mm') : 'Brak terminu'}">Termin</div>
+                </div>
+            </div>
+
+            <!-- STATUS ZADANIA -->
+            <div class="status-section">
+                <div class="meta-label">Status zadania</div>
+                <div th:class="'current-status status-' + ${#strings.toLowerCase(task.status)}"
+                     th:text="${task.status}">Status</div>
+
+                <!-- FORMULARZ ZMIANY STATUSU - tylko dla przypisanych użytkowników -->
+                <div th:if="${task.isAssignedToUser(currentUsername)}">
+                    <!-- W task-view.html - ZMIEŃ FORMULARZ STATUSU -->
+                    <form th:action="@{/tasks/update-status/{id}(id=${task.id})}" method="post" class="status-form">
+                        <input type="hidden" name="returnTo" value="task-view" />
+                        <label for="status">Zmień status:</label>
+                        <select name="status" id="status">
+                            <option value="TODO" th:selected="${task.status == 'TODO'}">TODO</option>
+                            <option value="IN_PROGRESS" th:selected="${task.status == 'IN_PROGRESS'}">W TRAKCIE</option>
+                            <option value="DONE" th:selected="${task.status == 'DONE'}">UKOŃCZONE</option>
+                            <option value="SUSPENDED" th:selected="${task.status == 'SUSPENDED'}">ZAWIESZONE</option>
+                        </select>
+                        <button type="submit">Zmień status</button>
+                    </form>
+                </div>
+                <div th:unless="${task.isAssignedToUser(currentUsername)}" class="not-assigned">
+                    Tylko przypisani użytkownicy mogą zmieniać status zadania
+                </div>
+            </div>
+
+            <!-- PRZYPISANI UŻYTKOWNICY -->
+            <div class="assigned-users">
+                <div class="meta-label">Przypisani użytkownicy</div>
+                <div th:if="${not #lists.isEmpty(task.assignedUsers)}">
+                    <span th:each="user : ${task.assignedUsers}"
+                          th:text="${user.username}"
+                          class="user-tag">Użytkownik</span>
+                </div>
+                <div th:if="${#lists.isEmpty(task.assignedUsers)}" class="not-assigned">
+                    Brak przypisanych użytkowników
+                </div>
+            </div>
+        </div>
 
         <section class="file-upload">
             <h3>Dodaj plik</h3>
@@ -231,11 +397,16 @@
             <ul>
                 <li th:each="comment : ${comments}">
                     💬 <span th:text="${comment.text}">Komentarz</span>
+                    <small style="color: #888; margin-left: 10px;"
+                           th:text="${#temporals.format(comment.createdAt, 'yyyy-MM-dd HH:mm')}">Data</small>
                 </li>
                 <li th:each="file : ${files}">
                     📎 <a th:href="@{/files/{id}(id=${file.id})}" th:text="${file.originalName}">Plik</a>
                 </li>
             </ul>
+            <div th:if="${#lists.isEmpty(comments) and #lists.isEmpty(files)}" class="not-assigned">
+                Brak aktywności w tym zadaniu
+            </div>
         </section>
     </main>
 </div>
