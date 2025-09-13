@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/controller/ProjectViewController.java - POPRAWIONY
+// src/main/java/com/example/demo/controller/ProjectViewController.java - ROZSZERZONY
 package com.example.demo.controller;
 
 import com.example.demo.model.*;
@@ -18,27 +18,19 @@ import java.util.stream.Collectors;
 @RequestMapping("/projects")
 public class ProjectViewController {
 
-    @Autowired
-    private ProjectService projectService;
-
-    @Autowired
-    private UserService userService;
-
-    @Autowired
-    private TeamService teamService;
-
-    @Autowired
-    private ProjectMemberService memberService;
+    @Autowired private ProjectService projectService;
+    @Autowired private UserService userService;
+    @Autowired private TeamService teamService;
+    @Autowired private ProjectMemberService memberService;
+    @Autowired private TaskProposalService taskProposalService;
+    @Autowired private StatusChangeRequestService statusChangeRequestService;
 
     // GŁÓWNA LISTA PROJEKTÓW
     @GetMapping
     public String listProjects(Model model, @AuthenticationPrincipal UserDetails userDetails) {
         User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
 
-        // Pobierz członkostwa użytkownika
         List<ProjectMember> userMemberships = memberService.getUserProjects(currentUser);
-
-        System.out.println("Liczba członkostw użytkownika: " + userMemberships.size());
 
         model.addAttribute("userMemberships", userMemberships);
         return "projects";
@@ -51,25 +43,19 @@ public class ProjectViewController {
                                 @AuthenticationPrincipal UserDetails userDetails) {
         User creator = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
 
-        // 1. Utwórz projekt
         Project project = projectService.createProject(name, description, creator);
-        System.out.println("Utworzono projekt: " + project.getName() + " (ID: " + project.getId() + ")");
-
-        // 2. Dodaj twórcę jako admina
-        ProjectMember membership = memberService.addMemberToProject(project, creator, ProjectRole.ADMIN);
-        System.out.println("Dodano członkostwo: " + membership.getUser().getUsername() + " jako " + membership.getRole());
+        memberService.addMemberToProject(project, creator, ProjectRole.ADMIN);
 
         return "redirect:/projects";
     }
 
-    // SZCZEGÓŁY PROJEKTU - POPRAWIONE
+    // SZCZEGÓŁY PROJEKTU
     @GetMapping("/{projectId}")
     public String viewProject(@PathVariable Long projectId, Model model,
                               @AuthenticationPrincipal UserDetails userDetails) {
         User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
         Project project = projectService.getProjectById(projectId).orElseThrow();
 
-        // Sprawdź czy użytkownik ma dostęp
         ProjectMember currentMembership = memberService.getProjectMember(project, currentUser)
                 .orElseThrow(() -> new RuntimeException("Brak dostępu do projektu"));
 
@@ -77,12 +63,10 @@ public class ProjectViewController {
         List<Team> teams = teamService.getAllTeams();
         List<User> allUsers = userService.getAllUsers();
 
-        // DODAJ: Lista ID członków projektu (potrzebna w template)
         Set<Long> memberUserIds = members.stream()
                 .map(member -> member.getUser().getId())
                 .collect(Collectors.toSet());
 
-        // Podziel użytkowników na tych w zespołach i bez zespołów
         List<User> usersInTeams = teams.stream()
                 .flatMap(team -> team.getUsers().stream())
                 .distinct()
@@ -92,12 +76,24 @@ public class ProjectViewController {
                 .filter(user -> user.getTeams() == null || user.getTeams().isEmpty())
                 .collect(Collectors.toList());
 
+        // DODAJ PROŚBY I PROPOZYCJE DLA ADMINÓW
+        if (currentMembership.getRole() == ProjectRole.ADMIN) {
+            List<TaskProposal> pendingProposals = taskProposalService.getProposalsByProject(project)
+                    .stream().filter(p -> p.getStatus() == ProposalStatus.PENDING).collect(Collectors.toList());
+
+            List<StatusChangeRequest> pendingStatusRequests = statusChangeRequestService.getPendingRequestsForAdmin(currentUser)
+                    .stream().filter(r -> r.getTask().getProject().equals(project)).collect(Collectors.toList());
+
+            model.addAttribute("pendingProposals", pendingProposals);
+            model.addAttribute("pendingStatusRequests", pendingStatusRequests);
+        }
+
         model.addAttribute("project", project);
         model.addAttribute("members", members);
         model.addAttribute("teams", teams);
         model.addAttribute("usersWithoutTeam", usersWithoutTeam);
         model.addAttribute("allUsers", allUsers);
-        model.addAttribute("memberUserIds", memberUserIds); // KLUCZOWE - to brakowało!
+        model.addAttribute("memberUserIds", memberUserIds);
         model.addAttribute("userRole", currentMembership.getRole());
         model.addAttribute("isAdmin", currentMembership.getRole() == ProjectRole.ADMIN);
 
@@ -114,7 +110,6 @@ public class ProjectViewController {
         Project project = projectService.getProjectById(projectId).orElseThrow();
         User userToAdd = userService.getUserById(userId).orElseThrow();
 
-        // Sprawdź uprawnienia
         if (!memberService.isProjectAdmin(project, currentUser)) {
             throw new RuntimeException("Brak uprawnień admina");
         }
@@ -159,6 +154,37 @@ public class ProjectViewController {
         }
 
         memberService.changeUserRole(project, targetUser, newRole, currentUser);
+        return "redirect:/projects/" + projectId;
+    }
+
+    // NOWE - ZATWIERDZANIE PROPOZYCJI ZADANIA
+    @PostMapping("/{projectId}/proposals/{proposalId}/approve")
+    public String approveProposal(@PathVariable Long projectId, @PathVariable Long proposalId,
+                                  @AuthenticationPrincipal UserDetails userDetails) {
+        User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
+        Project project = projectService.getProjectById(projectId).orElseThrow();
+
+        if (!memberService.isProjectAdmin(project, currentUser)) {
+            throw new RuntimeException("Brak uprawnień admina");
+        }
+
+        taskProposalService.approveProposal(proposalId, currentUser);
+        return "redirect:/projects/" + projectId;
+    }
+
+    // NOWE - ODRZUCANIE PROPOZYCJI ZADANIA
+    @PostMapping("/{projectId}/proposals/{proposalId}/reject")
+    public String rejectProposal(@PathVariable Long projectId, @PathVariable Long proposalId,
+                                 @RequestParam String reason,
+                                 @AuthenticationPrincipal UserDetails userDetails) {
+        User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
+        Project project = projectService.getProjectById(projectId).orElseThrow();
+
+        if (!memberService.isProjectAdmin(project, currentUser)) {
+            throw new RuntimeException("Brak uprawnień admina");
+        }
+
+        taskProposalService.rejectProposal(proposalId, currentUser, reason);
         return "redirect:/projects/" + projectId;
     }
 }

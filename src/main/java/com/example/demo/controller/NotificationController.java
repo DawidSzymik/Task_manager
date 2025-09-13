@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/controller/NotificationController.java
+// src/main/java/com/example/demo/controller/NotificationController.java - ROZSZERZONY
 package com.example.demo.controller;
 
 import com.example.demo.model.Notification;
@@ -34,6 +34,7 @@ public class NotificationController {
 
         model.addAttribute("notifications", notifications);
         model.addAttribute("unreadCount", unreadCount);
+        model.addAttribute("currentUsername", userDetails.getUsername());
 
         return "notifications";
     }

@@ -61,8 +61,7 @@ public class SecurityConfig {
                         .logoutSuccessUrl("/login?logout")
                         .permitAll()
                 )
-                .csrf().ignoringAntMatchers("/teams/**", "/projects/**", "/proposals/**"); // DODAJ /proposals/**
-
+                .csrf().ignoringAntMatchers("/teams/**", "/projects/**", "/proposals/**", "/tasks/**"); // DODAJ /tasks/**
         return http.build();
     }
 

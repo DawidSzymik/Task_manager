@@ -1,4 +1,4 @@
-<!-- src/main/resources/templates/tasks.html -->
+<!-- src/main/resources/templates/tasks.html - DODANIE USUWANIA ZADAŃ -->
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="pl">
 <head>
@@ -218,6 +218,38 @@
       max-width: 800px;
       text-align: center;
     }
+
+    /* NOWE STYLE - Przyciski usuwania zadań */
+    .task-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .delete-task-btn {
+      background-color: #ff4757;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+
+    .delete-task-btn:hover {
+      background-color: #ff3742;
+    }
+
+    .delete-task-btn:hover::before {
+      content: "⚠️ ";
+    }
+
+    .admin-column {
+      min-width: 120px;
+    }
   </style>
 </head>
 <body>
@@ -276,6 +308,8 @@
     <th>Status</th>
     <th>Termin</th>
     <th>Przypisany do</th>
+    <!-- NOWA KOLUMNA dla adminów -->
+    <th th:if="${isAdmin}" class="admin-column">Akcje</th>
   </tr>
   </thead>
   <tbody>
@@ -327,6 +361,19 @@
       </ul>
       <span th:if="${#lists.isEmpty(task.assignedUsers)}" style="color: #888;">Nie przypisano</span>
     </td>
+
+    <!-- NOWA KOLUMNA - Akcje dla adminów -->
+    <td th:if="${isAdmin}" class="admin-column">
+      <div class="task-actions">
+        <form th:action="@{/tasks/delete/{id}(id=${task.id})}" method="post" style="margin: 0;">
+          <button type="submit" class="delete-task-btn"
+                  onclick="return confirm('⚠️ UWAGA!\n\nCzy na pewno chcesz usunąć zadanie:\n\'' + this.form.getAttribute('data-task-title') + '\'?\n\nTo działanie usunie również:\n• Wszystkie komentarze\n• Wszystkie pliki\n• Całą historię aktywności\n\nTa operacja jest NIEODWRACALNA!')"
+                  th:attr="data-task-title=${task.title}">
+            🗑️ Usuń
+          </button>
+        </form>
+      </div>
+    </td>
   </tr>
   </tbody>
 </table>
@@ -334,6 +381,22 @@
 <p th:if="${tasks.size() == 0}" style="text-align: center; color: #ccc; margin: 50px 0;">
   Brak zadań w tym projekcie
 </p>
+
+<script>
+  // Ulepszone potwierdzenie usuwania z nazwą zadania
+  function confirmTaskDeletion(taskTitle) {
+    return confirm(
+            '⚠️ UWAGA!\n\n' +
+            'Czy na pewno chcesz usunąć zadanie:\n' +
+            '\'' + taskTitle + '\'?\n\n' +
+            'To działanie usunie również:\n' +
+            '• Wszystkie komentarze\n' +
+            '• Wszystkie pliki\n' +
+            '• Całą historię aktywności\n\n' +
+            'Ta operacja jest NIEODWRACALNA!'
+    );
+  }
+</script>
 
 </body>
 </html>

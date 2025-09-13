@@ -3,8 +3,10 @@ package com.example.demo.service;
 
 import com.example.demo.model.*;
 import com.example.demo.repository.TaskProposalRepository;
+import com.example.demo.repository.TaskRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,8 +21,9 @@ public class TaskProposalService {
     @Autowired
     private NotificationService notificationService;
 
+    // ZMIANA: Użyj TaskRepository zamiast TaskService
     @Autowired
-    private TaskService taskService;
+    private TaskRepository taskRepository;
 
     @Autowired
     private ProjectMemberService memberService;
@@ -66,7 +69,8 @@ public class TaskProposalService {
         task.setDeadline(proposal.getDeadline());
         task.setProject(proposal.getProject());
 
-        Task savedTask = taskService.saveTask(task);
+        // ZMIANA: Użyj TaskRepository zamiast TaskService
+        Task savedTask = taskRepository.save(task);
 
         // Zaktualizuj propozycję
         proposal.setStatus(ProposalStatus.APPROVED);
@@ -128,5 +132,18 @@ public class TaskProposalService {
 
     public Optional<TaskProposal> getProposalById(Long id) {
         return proposalRepository.findById(id);
+    }
+
+    // METODA USUWANIA PROPOZYCJI DLA USUNIĘTEGO ZADANIA
+    @Transactional
+    public void deleteProposalsForTask(Long taskId) {
+        try {
+            // TaskProposal nie ma bezpośredniego związku z Task
+            // Propozycje są niezależne od zadań
+            System.out.println("Propozycje zadań nie wymagają usuwania dla zadania ID: " + taskId);
+        } catch (Exception e) {
+            System.err.println("Błąd podczas sprawdzania propozycji dla zadania ID: " + taskId);
+            e.printStackTrace();
+        }
     }
 }

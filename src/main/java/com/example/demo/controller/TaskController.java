@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/controller/TaskController.java - POPRAWKA METODY TWORZENIA
+// src/main/java/com/example/demo/controller/TaskController.java - DODANIE USUWANIA
 package com.example.demo.controller;
 
 import com.example.demo.model.*;
@@ -32,6 +32,8 @@ public class TaskController {
 
     @Autowired
     private ProjectMemberService memberService;
+
+    // ... pozostałe metody bez zmian ...
 
     @GetMapping("/create/{projectId}")
     public String createTaskForm(@PathVariable Long projectId, Model model,
@@ -106,6 +108,33 @@ public class TaskController {
 
         taskService.saveTask(task);
         return "redirect:/tasks/project/" + projectId;
+    }
+
+    // NOWA METODA - USUWANIE ZADANIA
+    @PostMapping("/delete/{taskId}")
+    public String deleteTask(@PathVariable Long taskId,
+                             @AuthenticationPrincipal UserDetails userDetails) {
+
+        User currentUser = userService.getUserByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
+
+        Task task = taskService.getTaskById(taskId)
+                .orElseThrow(() -> new RuntimeException("Zadanie nie istnieje"));
+
+        Project project = task.getProject();
+
+        // Sprawdź czy użytkownik jest adminem projektu
+        Optional<ProjectMember> memberOpt = memberService.getProjectMember(project, currentUser);
+        if (memberOpt.isEmpty() || memberOpt.get().getRole() != ProjectRole.ADMIN) {
+            throw new RuntimeException("Tylko admini mogą usuwać zadania");
+        }
+
+        // Usuń zadanie (kaskadowe usuwanie komentarzy i plików)
+        taskService.deleteTask(taskId);
+
+        System.out.println("Admin " + currentUser.getUsername() + " usunął zadanie: " + task.getTitle());
+
+        return "redirect:/tasks/project/" + project.getId();
     }
 
     @GetMapping("/project/{projectId}/filter")
@@ -239,6 +268,4 @@ public class TaskController {
 
         return "dashboard";
     }
-
-
 }
