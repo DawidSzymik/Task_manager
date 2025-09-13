@@ -3,8 +3,10 @@ package com.example.demo.service;
 
 import com.example.demo.model.*;
 import com.example.demo.repository.StatusChangeRequestRepository;
+import com.example.demo.repository.TaskRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,8 +21,9 @@ public class StatusChangeRequestService {
     @Autowired
     private NotificationService notificationService;
 
+    // ZMIANA: Użyj TaskRepository zamiast TaskService
     @Autowired
-    private TaskService taskService;
+    private TaskRepository taskRepository;
 
     @Autowired
     private ProjectMemberService memberService;
@@ -58,10 +61,10 @@ public class StatusChangeRequestService {
         StatusChangeRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Prośba nie istnieje"));
 
-        // Zmień status zadania
+        // ZMIANA: Użyj TaskRepository zamiast TaskService
         Task task = request.getTask();
         task.setStatus(request.getRequestedStatus());
-        taskService.saveTask(task);
+        taskRepository.save(task);
 
         // Zaktualizuj prośbę
         request.setStatus(RequestStatus.APPROVED);
@@ -107,8 +110,9 @@ public class StatusChangeRequestService {
                 .filter(member -> member.getRole() == ProjectRole.ADMIN)
                 .toList();
 
+        // ZMIANA: Użyj TaskRepository zamiast TaskService
         List<Task> adminTasks = adminMemberships.stream()
-                .flatMap(member -> taskService.getTasksByProject(member.getProject()).stream())
+                .flatMap(member -> taskRepository.findByProject(member.getProject()).stream())
                 .toList();
 
         return requestRepository.findByTaskInAndStatus(adminTasks, RequestStatus.PENDING);
@@ -120,5 +124,40 @@ public class StatusChangeRequestService {
 
     public Optional<StatusChangeRequest> getRequestById(Long id) {
         return requestRepository.findById(id);
+    }
+
+    // METODA USUWANIA PROŚB DLA ZADANIA
+    @Transactional
+    public void deleteRequestsForTask(Long taskId) {
+        try {
+            // Znajdź wszystkie prośby dla tego zadania
+            List<StatusChangeRequest> requests = requestRepository.findAll().stream()
+                    .filter(request -> request.getTask() != null && request.getTask().getId().equals(taskId))
+                    .toList();
+
+            if (!requests.isEmpty()) {
+                requestRepository.deleteAll(requests);
+                System.out.println("Usunięto " + requests.size() + " prośb o zmianę statusu dla zadania ID: " + taskId);
+            }
+        } catch (Exception e) {
+            System.err.println("Błąd podczas usuwania prośb o zmianę statusu dla zadania ID: " + taskId);
+            e.printStackTrace();
+            // Nie rzucaj wyjątku - pozwól na kontynuację usuwania zadania
+        }
+    }
+
+    // METODA USUWANIA PROŚB PO ZADANIU (BEZPOŚREDNIE)
+    @Transactional
+    public void deleteRequestsByTask(Task task) {
+        try {
+            List<StatusChangeRequest> requests = requestRepository.findByTask(task);
+            if (!requests.isEmpty()) {
+                requestRepository.deleteAll(requests);
+                System.out.println("Usunięto " + requests.size() + " prośb o zmianę statusu dla zadania: " + task.getTitle());
+            }
+        } catch (Exception e) {
+            System.err.println("Błąd podczas usuwania prośb o zmianę statusu dla zadania: " + task.getTitle());
+            e.printStackTrace();
+        }
     }
 }

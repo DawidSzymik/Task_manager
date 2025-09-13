@@ -1,0 +1,274 @@
+<!-- src/main/resources/templates/notifications.html -->
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Powiadomienia - Task Manager</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #343434;
+            color: #FFFFFF;
+            padding-top: 120px;
+        }
+
+        .menu-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100px;
+            background-color: #2c2f33;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            z-index: 9999;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+
+        .logo img {
+            height: 60px;
+        }
+
+        .menu-links {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .menu-links a {
+            color: #FFFFFF;
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: 500;
+            padding: 10px 20px;
+            background-color: #444849;
+            border-radius: 10px;
+            transition: background 0.3s;
+            position: relative;
+        }
+
+        .menu-links a:hover {
+            background-color: #00C896;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background-color: #ff4757;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #00C896;
+            margin-bottom: 30px;
+        }
+
+        .notification-actions {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.3s;
+        }
+
+        .btn-primary {
+            background-color: #00C896;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #00b183;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .notification-item {
+            background-color: #2c2f33;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-left: 4px solid #00C896;
+            position: relative;
+        }
+
+        .notification-item.unread {
+            border-left-color: #ff4757;
+            background-color: #3a2f33;
+        }
+
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .notification-title {
+            color: #00C896;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .notification-date {
+            color: #888;
+            font-size: 12px;
+        }
+
+        .notification-message {
+            color: #fff;
+            line-height: 1.4;
+            margin-bottom: 15px;
+        }
+
+        .notification-actions-item {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        .no-notifications {
+            text-align: center;
+            color: #888;
+            font-style: italic;
+            padding: 50px 0;
+        }
+
+        .notification-icon {
+            font-size: 20px;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        .type-task-proposal { border-left-color: #ffc107; }
+        .type-status-change { border-left-color: #17a2b8; }
+        .type-approved { border-left-color: #28a745; }
+        .type-rejected { border-left-color: #dc3545; }
+    </style>
+</head>
+<body>
+
+<div class="menu-bar">
+    <div class="logo">
+        <img src="/images/logo.png" alt="Logo">
+    </div>
+    <nav class="menu-links">
+        <a href="/tasks/dashboard">Strona główna</a>
+        <a href="/teams">Zespoły</a>
+        <a href="/projects">Projekty</a>
+        <a href="/kontakt">Kontakt</a>
+        <a href="/notifications">
+            Powiadomienia
+            <span th:if="${unreadCount > 0}" class="notification-badge" th:text="${unreadCount}">0</span>
+        </a>
+        <a href="/welcome">Profil</a>
+    </nav>
+</div>
+
+<div class="container">
+    <h1>Powiadomienia</h1>
+
+    <div class="notification-actions">
+        <form th:action="@{/notifications/mark-all-read}" method="post" style="display: inline;">
+            <button type="submit" class="btn btn-secondary">Oznacz wszystkie jako przeczytane</button>
+        </form>
+    </div>
+
+    <div th:if="${notifications.size() > 0}">
+        <div th:each="notification : ${notifications}"
+             th:class="'notification-item' + (${notification.read} ? '' : ' unread') + ' type-' + ${#strings.toLowerCase(notification.type)}">
+
+            <div class="notification-header">
+                <div class="notification-title">
+                    <span class="notification-icon">
+                        <span th:switch="${notification.type}">
+                            <span th:case="'TASK_PROPOSAL_PENDING'">💡</span>
+                            <span th:case="'TASK_PROPOSAL_APPROVED'">✅</span>
+                            <span th:case="'TASK_PROPOSAL_REJECTED'">❌</span>
+                            <span th:case="'STATUS_CHANGE_PENDING'">🔄</span>
+                            <span th:case="'STATUS_CHANGE_APPROVED'">✅</span>
+                            <span th:case="'STATUS_CHANGE_REJECTED'">❌</span>
+                            <span th:case="*">📢</span>
+                        </span>
+                    </span>
+                    <span th:text="${notification.title}">Tytuł powiadomienia</span>
+                </div>
+                <div class="notification-date" th:text="${#temporals.format(notification.createdAt, 'yyyy-MM-dd HH:mm')}">Data</div>
+            </div>
+
+            <div class="notification-message" th:text="${notification.message}">Treść powiadomienia</div>
+
+            <div class="notification-actions-item">
+                <a th:if="${notification.actionUrl != null}" th:href="${notification.actionUrl}" class="btn btn-primary btn-sm">Przejdź</a>
+
+                <form th:if="${!notification.read}" th:action="@{/notifications/{id}/mark-read(id=${notification.id})}" method="post" style="display: inline;">
+                    <button type="submit" class="btn btn-secondary btn-sm">Oznacz jako przeczytane</button>
+                </form>
+
+                <form th:action="@{/notifications/{id}/delete(id=${notification.id})}" method="post" style="display: inline;">
+                    <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Czy na pewno chcesz usunąć to powiadomienie?')">Usuń</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div th:if="${notifications.size() == 0}" class="no-notifications">
+        Nie masz żadnych powiadomień
+    </div>
+</div>
+
+</body>
+</html>
