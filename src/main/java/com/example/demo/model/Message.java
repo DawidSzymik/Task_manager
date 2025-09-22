@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/model/Message.java
+// src/main/java/com/example/demo/model/Message.java - NAPRAWIONA WERSJA
 package com.example.demo.model;
 
 import javax.persistence.*;
@@ -19,8 +19,9 @@ public class Message {
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
+    // NAPRAWKA - author może być null dla wiadomości systemowych
     @ManyToOne
-    @JoinColumn(name = "author_id", nullable = false)
+    @JoinColumn(name = "author_id", nullable = true)
     private User author;
 
     @Column(nullable = false)
@@ -41,6 +42,14 @@ public class Message {
         this.content = content;
         this.project = project;
         this.author = author;
+    }
+
+    // NOWY - Konstruktor dla wiadomości systemowych
+    public Message(String content, Project project) {
+        this.content = content;
+        this.project = project;
+        this.author = null; // Wiadomości systemowe nie mają autora
+        this.type = MessageType.SYSTEM;
     }
 
     // Gettery i settery
@@ -76,11 +85,15 @@ public class Message {
 
     // Metody pomocnicze
     public boolean canBeEditedBy(User user) {
-        return this.author.equals(user);
+        return this.author != null && this.author.equals(user);
     }
 
     public boolean canBeDeletedBy(User user, ProjectRole userRole) {
-        return this.author.equals(user) || userRole == ProjectRole.ADMIN;
+        return (this.author != null && this.author.equals(user)) || userRole == ProjectRole.ADMIN;
+    }
+
+    public boolean isSystemMessage() {
+        return this.type == MessageType.SYSTEM || this.author == null;
     }
 
     // Formatowanie czasu dla widoku
@@ -88,5 +101,13 @@ public class Message {
         java.time.format.DateTimeFormatter formatter =
                 java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
         return createdAt.format(formatter);
+    }
+
+    // Nazwa autora (dla wiadomości systemowych zwraca "System")
+    public String getAuthorDisplayName() {
+        if (this.author == null || this.type == MessageType.SYSTEM) {
+            return "System";
+        }
+        return this.author.getUsername();
     }
 }

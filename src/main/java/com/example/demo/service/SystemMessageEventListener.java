@@ -1,7 +1,8 @@
-// src/main/java/com/example/demo/service/SystemMessageEventListener.java - ROZSZERZONY
+// src/main/java/com/example/demo/service/SystemMessageEventListener.java - NAPRAWIONY
 package com.example.demo.service;
 
 import com.example.demo.controller.TaskController;
+import com.example.demo.model.Message;
 import com.example.demo.service.ProjectMemberService.SystemMessageEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
@@ -16,14 +17,27 @@ public class SystemMessageEventListener {
     @Autowired
     private NotificationService notificationService;
 
-    // Obsługa wiadomości systemowych w czacie
+    // NAPRAWIONA - Obsługa wiadomości systemowych w czacie
     @EventListener
     public void handleSystemMessageEvent(SystemMessageEvent event) {
         try {
-            messageService.sendSystemMessage(event.getProject(), event.getMessage());
+            // Sprawdź czy projekt jeszcze istnieje
+            if (event.getProject() == null || event.getProject().getId() == null) {
+                System.err.println("⚠️  Próba wysłania wiadomości systemowej do nieistniejącego projektu");
+                return;
+            }
+
+            Message savedMessage = messageService.sendSystemMessage(event.getProject(), event.getMessage());
+
+            if (savedMessage != null) {
+                System.out.println("✅ Wysłano wiadomość systemową: " + event.getMessage());
+            } else {
+                System.err.println("⚠️  Nie udało się zapisać wiadomości systemowej (projekt może być w trakcie usuwania)");
+            }
+
         } catch (Exception e) {
-            System.err.println("Błąd przetwarzania eventu systemowego: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("❌ Błąd przetwarzania eventu systemowego: " + e.getMessage());
+            // NIE RZUCAJ WYJĄTKU - po prostu zaloguj błąd
         }
     }
 
@@ -40,8 +54,8 @@ public class SystemMessageEventListener {
                     event.getActionUrl()
             );
         } catch (Exception e) {
-            System.err.println("Błąd przetwarzania powiadomienia z MessageService: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("❌ Błąd przetwarzania powiadomienia z MessageService: " + e.getMessage());
+            // NIE RZUCAJ WYJĄTKU
         }
     }
 
@@ -58,8 +72,8 @@ public class SystemMessageEventListener {
                     event.getActionUrl()
             );
         } catch (Exception e) {
-            System.err.println("Błąd przetwarzania powiadomienia z ProjectMemberService: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("❌ Błąd przetwarzania powiadomienia z ProjectMemberService: " + e.getMessage());
+            // NIE RZUCAJ WYJĄTKU
         }
     }
 
@@ -76,8 +90,8 @@ public class SystemMessageEventListener {
                     event.getActionUrl()
             );
         } catch (Exception e) {
-            System.err.println("Błąd przetwarzania powiadomienia z CommentService: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("❌ Błąd przetwarzania powiadomienia z CommentService: " + e.getMessage());
+            // NIE RZUCAJ WYJĄTKU
         }
     }
 
@@ -94,8 +108,8 @@ public class SystemMessageEventListener {
                     event.getActionUrl()
             );
         } catch (Exception e) {
-            System.err.println("Błąd przetwarzania powiadomienia z FileService: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("❌ Błąd przetwarzania powiadomienia z FileService: " + e.getMessage());
+            // NIE RZUCAJ WYJĄTKU
         }
     }
 
@@ -112,8 +126,8 @@ public class SystemMessageEventListener {
                     event.getActionUrl()
             );
         } catch (Exception e) {
-            System.err.println("Błąd przetwarzania powiadomienia z TaskController: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("❌ Błąd przetwarzania powiadomienia z TaskController: " + e.getMessage());
+            // NIE RZUCAJ WYJĄTKU
         }
     }
 }
