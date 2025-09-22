@@ -33,7 +33,7 @@ public class User {
     @ManyToMany(mappedBy = "users", fetch = FetchType.EAGER)
     private Set<Team> teams = new HashSet<>();
 
-    @ManyToMany(mappedBy = "assignedUsers")
+    @ManyToMany(mappedBy = "assignedUsers", cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
     private Set<Task> tasks = new HashSet<>();
 
     // Konstruktory
@@ -92,7 +92,15 @@ public class User {
 
     public Set<Task> getTasks() { return tasks; }
     public void setTasks(Set<Task> tasks) { this.tasks = tasks; }
-
+    public void clearAllRelations() {
+        // Wyczyść relacje Many-to-Many
+        if (this.tasks != null) {
+            this.tasks.clear();
+        }
+        if (this.teams != null) {
+            this.teams.clear();
+        }
+    }
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

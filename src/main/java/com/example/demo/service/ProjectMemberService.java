@@ -1,10 +1,9 @@
-// src/main/java/com/example/demo/service/ProjectMemberService.java - NAPRAWIONY
+// src/main/java/com/example/demo/service/ProjectMemberService.java
 package com.example.demo.service;
 
 import com.example.demo.model.*;
 import com.example.demo.repository.ProjectMemberRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,180 +15,154 @@ import java.util.stream.Collectors;
 public class ProjectMemberService {
 
     @Autowired
-    private ProjectMemberRepository memberRepository;
+    private ProjectMemberRepository projectMemberRepository;
 
     @Autowired
-    private ApplicationEventPublisher eventPublisher;
+    private MessageService messageService;
 
-    // Dodaj członka do projektu
+    // Dodaj użytkownika do projektu
+    @Transactional
     public ProjectMember addMemberToProject(Project project, User user, ProjectRole role) {
-        if (memberRepository.existsByProjectAndUser(project, user)) {
-            return memberRepository.findByProjectAndUser(project, user).orElse(null);
+        // Sprawdź czy już nie jest członkiem
+        Optional<ProjectMember> existingMember = projectMemberRepository.findByProjectAndUser(project, user);
+        if (existingMember.isPresent()) {
+            throw new RuntimeException("Użytkownik jest już członkiem tego projektu");
         }
 
-        ProjectMember member = new ProjectMember(project, user, role);
-        ProjectMember saved = memberRepository.save(member);
+        ProjectMember member = new ProjectMember();
+        member.setProject(project);
+        member.setUser(user);
+        member.setRole(role);
 
-        try {
-            // Wiadomość systemowa w czacie
-            String roleText = getRoleDisplayName(role);
-            String systemMessage = "👋 " + user.getUsername() + " dołączył do projektu jako " + roleText;
-            eventPublisher.publishEvent(new SystemMessageEvent(project, systemMessage));
+        ProjectMember saved = projectMemberRepository.save(member);
 
-            // Powiadomienie dla dodanego użytkownika
-            eventPublisher.publishEvent(new NotificationEvent(
-                    user,
-                    "🎉 Dodano Cię do projektu",
-                    "Zostałeś dodany do projektu \"" + project.getName() + "\" jako " + roleText,
-                    NotificationType.PROJECT_MEMBER_ADDED,
-                    project.getId(),
-                    "/projects/" + project.getId()
-            ));
-
-        } catch (Exception e) {
-            System.err.println("Błąd wysyłania eventów: " + e.getMessage());
-        }
+        // Wyślij wiadomość systemową
+        String systemMessage = "👤 " + user.getUsername() + " dołączył do projektu jako " + getRoleDisplayName(role);
+        messageService.sendSystemMessage(project, systemMessage);
 
         return saved;
     }
 
+    // Usuń użytkownika z projektu
+    @Transactional
     public void removeMemberFromProject(Project project, User user) {
-        Optional<ProjectMember> member = memberRepository.findByProjectAndUser(project, user);
-        if (member.isPresent()) {
-            try {
-                String systemMessage = "👋 " + user.getUsername() + " opuścił projekt";
-                eventPublisher.publishEvent(new SystemMessageEvent(project, systemMessage));
-            } catch (Exception e) {
-                System.err.println("Błąd wysyłania eventu: " + e.getMessage());
-            }
-            memberRepository.delete(member.get());
+        Optional<ProjectMember> memberOpt = projectMemberRepository.findByProjectAndUser(project, user);
+        if (memberOpt.isPresent()) {
+            projectMemberRepository.delete(memberOpt.get());
+
+            String systemMessage = "👤 " + user.getUsername() + " opuścił projekt";
+            messageService.sendSystemMessage(project, systemMessage);
         }
     }
 
-    // NAPRAWIONA METODA - Usuń użytkownika ze wszystkich projektów (dla super admina)
+    // Usuń użytkownika ze wszystkich projektów - NAPRAWIONE
     @Transactional
     public void removeUserFromAllProjects(User user) {
         try {
-            List<ProjectMember> userMemberships = memberRepository.findByUser(user);
+            List<ProjectMember> userMemberships = projectMemberRepository.findByUser(user);
 
-            if (!userMemberships.isEmpty()) {
-                System.out.println("Usuwam użytkownika " + user.getUsername() + " z " + userMemberships.size() + " projektów");
+            System.out.println("Usuwanie użytkownika " + user.getUsername() + " z " + userMemberships.size() + " projektów");
 
-                // BEZPIECZNE usuwanie - najpierw usuń członkostwa, POTEM wyślij wiadomości
-                for (ProjectMember membership : userMemberships) {
-                    try {
-                        memberRepository.delete(membership);
-                        System.out.println("✅ Usunięto członkostwo w projekcie: " + membership.getProject().getName());
-                    } catch (Exception e) {
-                        System.err.println("❌ Błąd usuwania członkostwa: " + e.getMessage());
-                    }
-                }
-
-                // DOPIERO TERAZ wyślij wiadomości systemowe (po usunięciu członkostw)
-                for (ProjectMember membership : userMemberships) {
-                    try {
-                        Project project = membership.getProject();
-                        if (project != null && project.getId() != null) {
-                            String systemMessage = "🔴 " + user.getUsername() + " został usunięty z projektu przez administratora systemu";
-                            // Nie blokuj całej transakcji jeśli nie uda się wysłać wiadomości
-                            try {
-                                eventPublisher.publishEvent(new SystemMessageEvent(project, systemMessage));
-                            } catch (Exception msgError) {
-                                System.err.println("⚠️  Nie udało się wysłać wiadomości systemowej dla projektu " + project.getName() + ": " + msgError.getMessage());
-                                // Kontynuuj mimo błędu
-                            }
-                        }
-                    } catch (Exception e) {
-                        System.err.println("❌ Błąd podczas przetwarzania projektu: " + e.getMessage());
-                    }
-                }
-
-                System.out.println("✅ Pomyślnie usunięto użytkownika ze wszystkich projektów");
-            }
-        } catch (Exception e) {
-            System.err.println("❌ Błąd podczas usuwania użytkownika z projektów: " + e.getMessage());
-            e.printStackTrace();
-            // Nie rzucaj wyjątku - pozwól na kontynuację
-        }
-    }
-
-    public void changeUserRole(Project project, User user, ProjectRole newRole, User changedBy) {
-        Optional<ProjectMember> memberOpt = memberRepository.findByProjectAndUser(project, user);
-
-        if (memberOpt.isPresent()) {
-            ProjectMember member = memberOpt.get();
-            ProjectRole oldRole = member.getRole();
-
-            if (project.getCreatedBy().equals(user) && newRole != ProjectRole.ADMIN) {
-                throw new RuntimeException("Nie można zmienić roli twórcy projektu");
-            }
-
-            member.setRole(newRole);
-            memberRepository.save(member);
-
-            if (!oldRole.equals(newRole)) {
+            for (ProjectMember membership : userMemberships) {
                 try {
-                    String oldRoleText = getRoleDisplayName(oldRole);
-                    String newRoleText = getRoleDisplayName(newRole);
-                    String systemMessage = "🔧 " + changedBy.getUsername() + " zmienił rolę użytkownika " +
-                            user.getUsername() + " z " + oldRoleText + " na " + newRoleText;
-                    eventPublisher.publishEvent(new SystemMessageEvent(project, systemMessage));
+                    Project project = membership.getProject();
+
+                    // Usuń członkostwo
+                    projectMemberRepository.delete(membership);
+
+                    // Wyślij wiadomość systemową (jeśli się nie uda, kontynuuj)
+                    String systemMessage = "👤 Użytkownik " + user.getUsername() + " został usunięty z projektu";
+                    messageService.sendSystemMessage(project, systemMessage);
+
                 } catch (Exception e) {
-                    System.err.println("Błąd wysyłania eventu: " + e.getMessage());
+                    System.err.println("❌ Błąd podczas usuwania z projektu: " + e.getMessage());
+                    // Kontynuuj z następnym projektem
                 }
             }
+
+            System.out.println("✅ Pomyślnie usunięto użytkownika ze wszystkich projektów");
+
+        } catch (Exception e) {
+            System.err.println("❌ Błąd usuwania użytkownika z projektów: " + e.getMessage());
+            throw new RuntimeException("Nie udało się usunąć użytkownika z projektów: " + e.getMessage());
         }
     }
 
-    public List<ProjectMember> getProjectMembers(Project project) {
-        return memberRepository.findByProject(project);
-    }
-
+    // Pobierz projekty użytkownika
     public List<ProjectMember> getUserProjects(User user) {
         try {
-            List<ProjectMember> memberships = memberRepository.findByUser(user);
+            List<ProjectMember> memberships = projectMemberRepository.findByUser(user);
 
-            // NAPRAWKA - Filtruj tylko istniejące projekty
+            // Filtruj tylko istniejące projekty
             return memberships.stream()
                     .filter(member -> {
                         try {
-                            // Sprawdź czy projekt jeszcze istnieje
                             return member.getProject() != null && member.getProject().getId() != null;
                         } catch (Exception e) {
-                            System.err.println("Uszkodzona relacja członkostwa dla użytkownika " + user.getUsername() + ": " + e.getMessage());
-
-                            // Usuń uszkodzoną relację
-                            try {
-                                memberRepository.delete(member);
-                            } catch (Exception deleteEx) {
-                                System.err.println("Nie udało się usunąć uszkodzonej relacji: " + deleteEx.getMessage());
-                            }
-
+                            System.err.println("Uszkodzona relacja członkostwa: " + e.getMessage());
                             return false;
                         }
                     })
                     .collect(Collectors.toList());
 
         } catch (Exception e) {
-            System.err.println("Błąd pobierania projektów użytkownika " + user.getUsername() + ": " + e.getMessage());
-            return List.of(); // Zwróć pustą listę w przypadku błędu
+            System.err.println("Błąd pobierania projektów użytkownika: " + e.getMessage());
+            return List.of();
         }
     }
 
-    public Optional<ProjectMember> getProjectMember(Project project, User user) {
-        return memberRepository.findByProjectAndUser(project, user);
+    // Pobierz członków projektu
+    public List<ProjectMember> getProjectMembers(Project project) {
+        return projectMemberRepository.findByProject(project);
     }
 
+    // Pobierz konkretne członkostwo
+    public Optional<ProjectMember> getProjectMember(Project project, User user) {
+        return projectMemberRepository.findByProjectAndUser(project, user);
+    }
+
+    // Zmień rolę użytkownika w projekcie
+    @Transactional
+    public void changeUserRole(Project project, User user, ProjectRole newRole) {
+        Optional<ProjectMember> memberOpt = projectMemberRepository.findByProjectAndUser(project, user);
+        if (memberOpt.isPresent()) {
+            ProjectMember member = memberOpt.get();
+            ProjectRole oldRole = member.getRole();
+
+            // Sprawdź czy to nie twórca projektu
+            if (project.getCreatedBy().equals(user) && newRole != ProjectRole.ADMIN) {
+                throw new RuntimeException("Nie można zmienić roli twórcy projektu");
+            }
+
+            member.setRole(newRole);
+            projectMemberRepository.save(member);
+
+            String systemMessage = "🔄 Rola użytkownika " + user.getUsername() +
+                    " została zmieniona z " + getRoleDisplayName(oldRole) +
+                    " na " + getRoleDisplayName(newRole);
+            messageService.sendSystemMessage(project, systemMessage);
+        }
+    }
+
+    // Sprawdź czy użytkownik jest członkiem projektu
+    public boolean isUserMemberOfProject(Project project, User user) {
+        return projectMemberRepository.findByProjectAndUser(project, user).isPresent();
+    }
+
+    // Sprawdź czy użytkownik jest adminem projektu - NAPRAWIONE
     public boolean isProjectAdmin(Project project, User user) {
-        return memberRepository.findByProjectAndUser(project, user)
+        return projectMemberRepository.findByProjectAndUser(project, user)
                 .map(member -> member.getRole() == ProjectRole.ADMIN)
                 .orElse(false);
     }
 
-    public boolean isProjectMember(Project project, User user) {
-        return memberRepository.existsByProjectAndUser(project, user);
+    // Sprawdź czy użytkownik ma konkretną rolę w projekcie
+    public boolean hasUserRoleInProject(Project project, User user, ProjectRole role) {
+        Optional<ProjectMember> memberOpt = projectMemberRepository.findByProjectAndUser(project, user);
+        return memberOpt.isPresent() && memberOpt.get().getRole() == role;
     }
 
+    // Metoda pomocnicza dla nazw ról
     private String getRoleDisplayName(ProjectRole role) {
         switch (role) {
             case ADMIN: return "Administrator";
@@ -197,44 +170,5 @@ public class ProjectMemberService {
             case VIEWER: return "Obserwator";
             default: return role.toString();
         }
-    }
-
-    // Event classes
-    public static class SystemMessageEvent {
-        private final Project project;
-        private final String message;
-
-        public SystemMessageEvent(Project project, String message) {
-            this.project = project;
-            this.message = message;
-        }
-
-        public Project getProject() { return project; }
-        public String getMessage() { return message; }
-    }
-
-    public static class NotificationEvent {
-        private final User user;
-        private final String title;
-        private final String message;
-        private final NotificationType type;
-        private final Long relatedId;
-        private final String actionUrl;
-
-        public NotificationEvent(User user, String title, String message, NotificationType type, Long relatedId, String actionUrl) {
-            this.user = user;
-            this.title = title;
-            this.message = message;
-            this.type = type;
-            this.relatedId = relatedId;
-            this.actionUrl = actionUrl;
-        }
-
-        public User getUser() { return user; }
-        public String getTitle() { return title; }
-        public String getMessage() { return message; }
-        public NotificationType getType() { return type; }
-        public Long getRelatedId() { return relatedId; }
-        public String getActionUrl() { return actionUrl; }
     }
 }

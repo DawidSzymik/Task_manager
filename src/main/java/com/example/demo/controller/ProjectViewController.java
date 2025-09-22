@@ -153,7 +153,9 @@ public class ProjectViewController {
             throw new RuntimeException("Brak uprawnień admina");
         }
 
-        memberService.changeUserRole(project, targetUser, newRole, currentUser);
+        // POPRAWKA: Użyj metody z 3 parametrami (bez 4. parametru changedBy)
+        memberService.changeUserRole(project, targetUser, newRole);
+
         return "redirect:/projects/" + projectId;
     }
 
