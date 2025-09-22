@@ -45,11 +45,14 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(auth -> auth
                         .antMatchers("/registration", "/login", "/kontakt").permitAll()
-                        .antMatchers("/css/**", "/js/**", "/images/**").permitAll()  // ✅ Pliki statyczne dostępne publicznie
-                        .antMatchers("/files/**").permitAll() // <-- dodaj to, jeśli trzeba
+                        .antMatchers("/css/**", "/js/**", "/images/**").permitAll()
+                        .antMatchers("/files/**").permitAll()
                         .antMatchers("/teams/**").authenticated()
                         .antMatchers("/projects/**").authenticated()
-                        .antMatchers("/proposals/**").authenticated() // DODAJ TO
+                        .antMatchers("/proposals/**").authenticated()
+                        .antMatchers("/tasks/**").authenticated()
+                        .antMatchers("/status-requests/**").authenticated()
+                        .antMatchers("/notifications/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
@@ -61,12 +64,14 @@ public class SecurityConfig {
                         .logoutSuccessUrl("/login?logout")
                         .permitAll()
                 )
-                .csrf().ignoringAntMatchers("/teams/**", "/projects/**", "/proposals/**", "/tasks/**"); // DODAJ /tasks/**
+                .csrf().ignoringAntMatchers(
+                        "/teams/**",
+                        "/projects/**",
+                        "/proposals/**",
+                        "/tasks/**",
+                        "/status-requests/**",
+                        "/notifications/**"
+                );
         return http.build();
     }
-
-
-
-
-
 }

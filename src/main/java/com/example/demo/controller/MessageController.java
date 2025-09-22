@@ -1,0 +1,216 @@
+// src/main/java/com/example/demo/controller/MessageController.java
+package com.example.demo.controller;
+
+import com.example.demo.model.*;
+import com.example.demo.service.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+@Controller
+@RequestMapping("/projects/{projectId}/chat")
+public class MessageController {
+
+    @Autowired
+    private MessageService messageService;
+
+    @Autowired
+    private ProjectService projectService;
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private ProjectMemberService memberService;
+
+    // Widok czatu dla projektu
+    @GetMapping
+    public String viewProjectChat(@PathVariable Long projectId, Model model,
+                                  @AuthenticationPrincipal UserDetails userDetails) {
+        User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
+        Project project = projectService.getProjectById(projectId).orElseThrow();
+
+        // Sprawdź dostęp do projektu
+        Optional<ProjectMember> memberOpt = memberService.getProjectMember(project, currentUser);
+        if (memberOpt.isEmpty()) {
+            throw new RuntimeException("Brak dostępu do projektu");
+        }
+
+        ProjectRole userRole = memberOpt.get().getRole();
+        List<Message> messages = messageService.getRecentMessages(project, 100); // Ostatnie 100 wiadomości
+        List<ProjectMember> projectMembers = memberService.getProjectMembers(project);
+
+        // Sprawdź czy użytkownik może wysyłać wiadomości
+        boolean canSendMessages = messageService.canSendMessages(project, currentUser);
+
+        model.addAttribute("project", project);
+        model.addAttribute("messages", messages);
+        model.addAttribute("currentUser", currentUser);
+        model.addAttribute("userRole", userRole);
+        model.addAttribute("canSendMessages", canSendMessages);
+        model.addAttribute("projectMembers", projectMembers);
+
+        return "project-chat";
+    }
+
+    // Wysłanie wiadomości (AJAX)
+    @PostMapping("/send")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> sendMessage(@PathVariable Long projectId,
+                                                           @RequestParam String content,
+                                                           @AuthenticationPrincipal UserDetails userDetails) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
+            Project project = projectService.getProjectById(projectId).orElseThrow();
+
+            if (content == null || content.trim().isEmpty()) {
+                response.put("success", false);
+                response.put("error", "Wiadomość nie może być pusta");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            if (content.length() > 1000) {
+                response.put("success", false);
+                response.put("error", "Wiadomość jest za długa (max 1000 znaków)");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            Message message = messageService.sendMessage(project, currentUser, content.trim());
+
+            response.put("success", true);
+            response.put("messageId", message.getId());
+            response.put("content", message.getContent());
+            response.put("author", message.getAuthor().getUsername());
+            response.put("timestamp", message.getFormattedTime());
+            response.put("canEdit", true);
+            response.put("canDelete", true);
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    // Pobranie nowych wiadomości (AJAX - dla auto-refresh)
+    @GetMapping("/messages/since")
+    @ResponseBody
+    public ResponseEntity<List<Message>> getMessagesSince(@PathVariable Long projectId,
+                                                          @RequestParam String timestamp,
+                                                          @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
+            Project project = projectService.getProjectById(projectId).orElseThrow();
+
+            // Sprawdź dostęp
+            if (!memberService.isProjectMember(project, currentUser)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            LocalDateTime since = LocalDateTime.parse(timestamp);
+            List<Message> newMessages = messageService.getMessagesAfter(project, since);
+
+            return ResponseEntity.ok(newMessages);
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    // Edycja wiadomości (AJAX)
+    @PutMapping("/messages/{messageId}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> editMessage(@PathVariable Long projectId,
+                                                           @PathVariable Long messageId,
+                                                           @RequestParam String content,
+                                                           @AuthenticationPrincipal UserDetails userDetails) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
+
+            if (content == null || content.trim().isEmpty()) {
+                response.put("success", false);
+                response.put("error", "Wiadomość nie może być pusta");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            Message message = messageService.editMessage(messageId, currentUser, content.trim());
+
+            response.put("success", true);
+            response.put("content", message.getContent());
+            response.put("edited", message.isEdited());
+            response.put("editedAt", message.getEditedAt());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    // Usuwanie wiadomości (AJAX)
+    @DeleteMapping("/messages/{messageId}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> deleteMessage(@PathVariable Long projectId,
+                                                             @PathVariable Long messageId,
+                                                             @AuthenticationPrincipal UserDetails userDetails) {
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
+            Project project = projectService.getProjectById(projectId).orElseThrow();
+
+            messageService.deleteMessage(messageId, currentUser, project);
+
+            response.put("success", true);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
+    // Wyszukiwanie w wiadomościach
+    @GetMapping("/search")
+    public String searchMessages(@PathVariable Long projectId,
+                                 @RequestParam(required = false) String q,
+                                 Model model,
+                                 @AuthenticationPrincipal UserDetails userDetails) {
+        User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
+        Project project = projectService.getProjectById(projectId).orElseThrow();
+
+        // Sprawdź dostęp
+        if (!memberService.isProjectMember(project, currentUser)) {
+            throw new RuntimeException("Brak dostępu do projektu");
+        }
+
+        List<Message> searchResults = messageService.searchMessages(project, q);
+
+        model.addAttribute("project", project);
+        model.addAttribute("searchQuery", q);
+        model.addAttribute("searchResults", searchResults);
+        model.addAttribute("currentUser", currentUser);
+
+        return "project-chat-search";
+    }
+}

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="'Wyszukiwanie w czacie - ' + ${project.name}">Wyszukiwanie</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #343434;
+            color: #FFFFFF;
+            padding-top: 120px;
+        }
+
+        .menu-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100px;
+            background-color: #2c2f33;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+            z-index: 9999;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+
+        .logo img {
+            height: 60px;
+        }
+
+        .menu-links {
+            display: flex;
+            gap: 30px;
+        }
+
+        .menu-links a {
+            color: #FFFFFF;
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: 500;
+            padding: 10px 20px;
+            background-color: #444849;
+            border-radius: 10px;
+            transition: background 0.3s;
+        }
+
+        .menu-links a:hover {
+            background-color: #00C896;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        .search-header {
+            background-color: #2c2f33;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .search-header h1 {
+            color: #00C896;
+            margin: 0 0 20px 0;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 15px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 12px 20px;
+            background-color: #444849;
+            border: 2px solid transparent;
+            border-radius: 25px;
+            color: white;
+            font-size: 16px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #00C896;
+        }
+
+        .search-input::placeholder {
+            color: #aaa;
+        }
+
+        .search-button {
+            background-color: #00C896;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .search-button:hover {
+            background-color: #00b183;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 0 10px;
+        }
+
+        .results-count {
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        .back-to-chat {
+            background-color: #444849;
+            color: white;
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .back-to-chat:hover {
+            background-color: #555;
+        }
+
+        .search-result {
+            background-color: #2c2f33;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #00C896;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .result-author {
+            font-weight: bold;
+            color: #00C896;
+        }
+
+        .result-timestamp {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .result-content {
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .highlight {
+            background-color: #ffc107;
+            color: #000;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+
+        .no-results {
+            text-align: center;
+            color: #888;
+            font-style: italic;
+            padding: 50px 20px;
+            background-color: #2c2f33;
+            border-radius: 10px;
+        }
+
+        .search-tips {
+            background-color: #2c2f33;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+
+        .search-tips h3 {
+            color: #00C896;
+            margin-top: 0;
+        }
+
+        .search-tips ul {
+            color: #ccc;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+
+<div class="menu-bar">
+    <div class="logo">
+        <img src="/images/logo.png" alt="Logo" />
+    </div>
+    <nav class="menu-links">
+        <a href="/tasks/dashboard">Dashboard</a>
+        <a href="/teams">Zespoły</a>
+        <a href="/projects">Projekty</a>
+        <a th:href="@{/projects/{id}(id=${project.id})}">← Projekt</a>
+    </nav>
+</div>
+
+<div class="container">
+    <div class="search-header">
+        <h1>🔍 Wyszukiwanie w czacie</h1>
+        <p th:text="'Projekt: ' + ${project.name}" style="color: #ccc; margin: 10px 0;">Projekt</p>
+
+        <form class="search-form" th:action="@{/projects/{id}/chat/search(id=${project.id})}" method="get">
+            <input type="text" name="q" th:value="${searchQuery}" class="search-input"
+                   placeholder="Wpisz szukane słowo lub frazę..." autofocus="autofocus" />
+            <button type="submit" class="search-button">Szukaj</button>
+        </form>
+    </div>
+
+    <!-- Wyniki wyszukiwania -->
+    <div th:if="${searchQuery != null and !searchQuery.isEmpty()}">
+        <div class="results-header">
+            <div class="results-count">
+                Znaleziono <span th:text="${searchResults.size()}">0</span> wyników dla: "<span th:text="${searchQuery}">zapytanie</span>"
+            </div>
+            <a th:href="@{/projects/{id}/chat(id=${project.id})}" class="back-to-chat">
+                ← Powrót do czatu
+            </a>
+        </div>
+
+        <!-- Lista wyników -->
+        <div th:if="${not #lists.isEmpty(searchResults)}">
+            <div th:each="message : ${searchResults}" class="search-result">
+                <div class="result-header">
+                    <span class="result-author"
+                          th:text="${message.author != null ? message.author.username : 'System'}">Autor</span>
+                    <span class="result-timestamp" th:text="${message.formattedTime}">Czas</span>
+                </div>
+                <div class="result-content" th:text="${message.content}">
+                    Treść wiadomości
+                </div>
+            </div>
+        </div>
+
+        <!-- Brak wyników -->
+        <div th:if="${#lists.isEmpty(searchResults)}" class="no-results">
+            <strong>Brak wyników</strong><br />
+            Nie znaleziono wiadomości zawierających "<span th:text="${searchQuery}">szukane</span>"<br />
+            <small>Spróbuj użyć innych słów kluczowych</small>
+        </div>
+    </div>
+
+    <!-- Wskazówki wyszukiwania -->
+    <div class="search-tips">
+        <h3>💡 Wskazówki wyszukiwania:</h3>
+        <ul>
+            <li>Wyszukiwanie nie uwzględnia wielkości liter</li>
+            <li>Możesz szukać fragmentów słów lub całych fraz</li>
+            <li>Wyniki są sortowane od najnowszych do najstarszych</li>
+            <li>Wyszukiwanie obejmuje tylko treść wiadomości</li>
+        </ul>
+    </div>
+</div>
+
+</body>
+</html>
