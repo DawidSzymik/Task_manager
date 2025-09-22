@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/controller/WelcomeController.java - ZMIENIONY
+// src/main/java/com/example/demo/controller/WelcomeController.java - ROZSZERZONY
 package com.example.demo.controller;
 
 import com.example.demo.model.ProjectMember;
@@ -37,7 +37,7 @@ public class WelcomeController {
 
         Set<Team> teams = user.getTeams();
 
-        // ZMIANA: Pobierz projekty przez ProjectMemberService
+        // Pobierz projekty przez ProjectMemberService
         List<ProjectMember> userMemberships = memberService.getUserProjects(user);
         List<String> projectNames = userMemberships.stream()
                 .map(member -> member.getProject().getName())
@@ -48,7 +48,10 @@ public class WelcomeController {
 
         model.addAttribute("username", user.getUsername());
         model.addAttribute("teams", teams);
-        model.addAttribute("projects", projectNames); // Lista nazw projektów
+        model.addAttribute("projects", projectNames);
+
+        // NOWE - Dodaj informacje o użytkowniku dla template'a
+        model.addAttribute("currentUser", user);
 
         return "welcome";
     }

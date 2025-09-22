@@ -1,3 +1,4 @@
+// src/main/java/com/example/demo/config/SecurityConfig.java - ROZSZERZONY
 package com.example.demo.config;
 
 import com.example.demo.service.CustomUserDetailsService;
@@ -47,6 +48,10 @@ public class SecurityConfig {
                         .antMatchers("/registration", "/login", "/kontakt").permitAll()
                         .antMatchers("/css/**", "/js/**", "/images/**").permitAll()
                         .antMatchers("/files/**").permitAll()
+
+                        // NOWE - Dostęp do panelu administratora tylko dla super adminów
+                        .antMatchers("/admin/**").hasAuthority("SUPER_ADMIN")
+
                         .antMatchers("/teams/**").authenticated()
                         .antMatchers("/projects/**").authenticated()
                         .antMatchers("/proposals/**").authenticated()
@@ -58,6 +63,15 @@ public class SecurityConfig {
                 .formLogin(form -> form
                         .loginPage("/login")
                         .defaultSuccessUrl("/tasks/dashboard", true)
+                        .successHandler((request, response, authentication) -> {
+                            // NOWE - Custom success handler
+                            System.out.println("Użytkownik zalogował się: " + authentication.getName());
+
+                            // Możesz tutaj dodać logikę aktualizacji lastLogin
+                            // userService.updateLastLogin(authentication.getName());
+
+                            response.sendRedirect("/tasks/dashboard");
+                        })
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
@@ -70,7 +84,8 @@ public class SecurityConfig {
                         "/proposals/**",
                         "/tasks/**",
                         "/status-requests/**",
-                        "/notifications/**"
+                        "/notifications/**",
+                        "/admin/**"  // NOWE - Wyłącz CSRF dla panelu admina
                 );
         return http.build();
     }

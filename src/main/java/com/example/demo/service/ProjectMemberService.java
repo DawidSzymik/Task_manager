@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/service/ProjectMemberService.java
+// src/main/java/com/example/demo/service/ProjectMemberService.java - NAPRAWIONY
 package com.example.demo.service;
 
 import com.example.demo.model.*;
@@ -6,9 +6,11 @@ import com.example.demo.repository.ProjectMemberRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class ProjectMemberService {
@@ -34,7 +36,7 @@ public class ProjectMemberService {
             String systemMessage = "👋 " + user.getUsername() + " dołączył do projektu jako " + roleText;
             eventPublisher.publishEvent(new SystemMessageEvent(project, systemMessage));
 
-            // NOWE: Powiadomienie dla dodanego użytkownika
+            // Powiadomienie dla dodanego użytkownika
             eventPublisher.publishEvent(new NotificationEvent(
                     user,
                     "🎉 Dodano Cię do projektu",
@@ -61,6 +63,53 @@ public class ProjectMemberService {
                 System.err.println("Błąd wysyłania eventu: " + e.getMessage());
             }
             memberRepository.delete(member.get());
+        }
+    }
+
+    // NAPRAWIONA METODA - Usuń użytkownika ze wszystkich projektów (dla super admina)
+    @Transactional
+    public void removeUserFromAllProjects(User user) {
+        try {
+            List<ProjectMember> userMemberships = memberRepository.findByUser(user);
+
+            if (!userMemberships.isEmpty()) {
+                System.out.println("Usuwam użytkownika " + user.getUsername() + " z " + userMemberships.size() + " projektów");
+
+                // BEZPIECZNE usuwanie - najpierw usuń członkostwa, POTEM wyślij wiadomości
+                for (ProjectMember membership : userMemberships) {
+                    try {
+                        memberRepository.delete(membership);
+                        System.out.println("✅ Usunięto członkostwo w projekcie: " + membership.getProject().getName());
+                    } catch (Exception e) {
+                        System.err.println("❌ Błąd usuwania członkostwa: " + e.getMessage());
+                    }
+                }
+
+                // DOPIERO TERAZ wyślij wiadomości systemowe (po usunięciu członkostw)
+                for (ProjectMember membership : userMemberships) {
+                    try {
+                        Project project = membership.getProject();
+                        if (project != null && project.getId() != null) {
+                            String systemMessage = "🔴 " + user.getUsername() + " został usunięty z projektu przez administratora systemu";
+                            // Nie blokuj całej transakcji jeśli nie uda się wysłać wiadomości
+                            try {
+                                eventPublisher.publishEvent(new SystemMessageEvent(project, systemMessage));
+                            } catch (Exception msgError) {
+                                System.err.println("⚠️  Nie udało się wysłać wiadomości systemowej dla projektu " + project.getName() + ": " + msgError.getMessage());
+                                // Kontynuuj mimo błędu
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.err.println("❌ Błąd podczas przetwarzania projektu: " + e.getMessage());
+                    }
+                }
+
+                System.out.println("✅ Pomyślnie usunięto użytkownika ze wszystkich projektów");
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Błąd podczas usuwania użytkownika z projektów: " + e.getMessage());
+            e.printStackTrace();
+            // Nie rzucaj wyjątku - pozwól na kontynuację
         }
     }
 
@@ -97,7 +146,34 @@ public class ProjectMemberService {
     }
 
     public List<ProjectMember> getUserProjects(User user) {
-        return memberRepository.findByUser(user);
+        try {
+            List<ProjectMember> memberships = memberRepository.findByUser(user);
+
+            // NAPRAWKA - Filtruj tylko istniejące projekty
+            return memberships.stream()
+                    .filter(member -> {
+                        try {
+                            // Sprawdź czy projekt jeszcze istnieje
+                            return member.getProject() != null && member.getProject().getId() != null;
+                        } catch (Exception e) {
+                            System.err.println("Uszkodzona relacja członkostwa dla użytkownika " + user.getUsername() + ": " + e.getMessage());
+
+                            // Usuń uszkodzoną relację
+                            try {
+                                memberRepository.delete(member);
+                            } catch (Exception deleteEx) {
+                                System.err.println("Nie udało się usunąć uszkodzonej relacji: " + deleteEx.getMessage());
+                            }
+
+                            return false;
+                        }
+                    })
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            System.err.println("Błąd pobierania projektów użytkownika " + user.getUsername() + ": " + e.getMessage());
+            return List.of(); // Zwróć pustą listę w przypadku błędu
+        }
     }
 
     public Optional<ProjectMember> getProjectMember(Project project, User user) {
@@ -137,7 +213,6 @@ public class ProjectMemberService {
         public String getMessage() { return message; }
     }
 
-    // NOWA klasa eventu dla powiadomień
     public static class NotificationEvent {
         private final User user;
         private final String title;

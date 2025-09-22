@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administratora - Task Manager</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #FFFFFF;
+            padding-top: 120px;
+        }
+
+        .menu-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100px;
+            background-color: #0d1117;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            box-shadow: 0 2px 10px rgba(255, 0, 0, 0.3);
+            z-index: 9999;
+            border-bottom: 3px solid #ff0000;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo img {
+            height: 60px;
+        }
+
+        .admin-badge {
+            background: linear-gradient(45deg, #ff0000, #ff4444);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+        }
+
+        .menu-links {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .menu-links a {
+            color: #FFFFFF;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 500;
+            padding: 10px 20px;
+            background-color: #333;
+            border-radius: 10px;
+            transition: all 0.3s;
+            border: 1px solid transparent;
+        }
+
+        .menu-links a:hover {
+            background-color: #ff0000;
+            border-color: #ff4444;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
+        }
+
+        .admin-header {
+            text-align: center;
+            margin: 40px 0;
+            padding: 30px;
+            background: linear-gradient(135deg, #0d1117, #1a1a1a);
+            border: 2px solid #ff0000;
+            border-radius: 15px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .admin-header h1 {
+            color: #ff0000;
+            font-size: 36px;
+            margin: 0;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+        }
+
+        .admin-header p {
+            color: #ccc;
+            margin: 10px 0 0 0;
+            font-size: 16px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid #333;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: #ff0000;
+            box-shadow: 0 10px 25px rgba(255, 0, 0, 0.2);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 0, 0, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .stat-card:hover::before {
+            left: 100%;
+        }
+
+        .stat-number {
+            font-size: 48px;
+            font-weight: bold;
+            color: #ff0000;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.3);
+        }
+
+        .stat-label {
+            font-size: 16px;
+            color: #ccc;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .admin-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 60px auto;
+            padding: 0 20px;
+        }
+
+        .action-card {
+            background: linear-gradient(135deg, #2d2d2d, #1a1a1a);
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #444;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .action-card:hover {
+            border-color: #ff0000;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(255, 0, 0, 0.15);
+        }
+
+        .action-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            opacity: 0.8;
+        }
+
+        .action-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 15px;
+        }
+
+        .action-description {
+            color: #ccc;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .action-btn {
+            background: linear-gradient(45deg, #ff0000, #cc0000);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .action-btn:hover {
+            background: linear-gradient(45deg, #cc0000, #990000);
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(255, 0, 0, 0.4);
+        }
+
+        .recent-activity {
+            max-width: 800px;
+            margin: 60px auto;
+            padding: 0 20px;
+        }
+
+        .activity-header {
+            text-align: center;
+            color: #ff0000;
+            font-size: 24px;
+            margin-bottom: 30px;
+            font-weight: bold;
+        }
+
+        .activity-item {
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            border-left: 4px solid #ff0000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .activity-user {
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .activity-date {
+            color: #888;
+            font-size: 14px;
+        }
+
+        .warning-notice {
+            background: linear-gradient(135deg, #ff0000, #cc0000);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 40px auto;
+            max-width: 800px;
+            text-align: center;
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin: 40px auto;
+            color: #ff0000;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<div class="menu-bar">
+    <div class="logo">
+        <img src="/images/logo.png" alt="Logo">
+        <div class="admin-badge">🔥 SUPER ADMIN 🔥</div>
+    </div>
+    <nav class="menu-links">
+        <a href="/admin">Panel Admina</a>
+        <a href="/admin/users">Użytkownicy</a>
+        <a href="/admin/projects">Projekty</a>
+        <a href="/admin/teams">Zespoły</a>
+        <a href="/tasks/dashboard">Dashboard</a>
+        <a href="/welcome">Profil</a>
+    </nav>
+</div>
+
+<div class="admin-header">
+    <h1>⚡ PANEL SUPER ADMINISTRATORA ⚡</h1>
+    <p>Pełne uprawnienia systemowe | Zarządzanie całą platformą</p>
+</div>
+
+<div class="warning-notice">
+    ⚠️ UWAGA: Jesteś zalogowany jako Super Administrator. Masz pełne uprawnienia do wszystkich funkcji systemu.
+    Używaj tych uprawnień odpowiedzialnie! ⚠️
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-number" th:text="${totalUsers}">0</div>
+        <div class="stat-label">Użytkowników</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" th:text="${activeUsers}">0</div>
+        <div class="stat-label">Aktywnych</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" th:text="${totalProjects}">0</div>
+        <div class="stat-label">Projektów</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" th:text="${totalTeams}">0</div>
+        <div class="stat-label">Zespołów</div>
+    </div>
+</div>
+
+<div class="admin-actions">
+    <div class="action-card">
+        <div class="action-icon">👥</div>
+        <div class="action-title">Zarządzanie Użytkownikami</div>
+        <div class="action-description">
+            Twórz, edytuj i usuwaj konta użytkowników. Zarządzaj rolami i uprawnieniami systemowymi.
+        </div>
+        <a href="/admin/users" class="action-btn">Zarządzaj</a>
+    </div>
+
+    <div class="action-card">
+        <div class="action-icon">📋</div>
+        <div class="action-title">Zarządzanie Projektami</div>
+        <div class="action-description">
+            Przeglądaj wszystkie projekty w systemie. Usuwaj projekty i zarządzaj członkami.
+        </div>
+        <a href="/admin/projects" class="action-btn">Zarządzaj</a>
+    </div>
+
+    <div class="action-card">
+        <div class="action-icon">🏢</div>
+        <div class="action-title">Zarządzanie Zespołami</div>
+        <div class="action-description">
+            Kontroluj wszystkie zespoły w systemie. Dodawaj i usuwaj zespoły organizacyjne.
+        </div>
+        <a href="/admin/teams" class="action-btn">Zarządzaj</a>
+    </div>
+
+    <div class="action-card">
+        <div class="action-icon">📊</div>
+        <div class="action-title">Logi Systemowe</div>
+        <div class="action-description">
+            Przeglądaj historię aktywności systemu i użytkowników. Monitoruj bezpieczeństwo.
+        </div>
+        <a href="/admin/logs" class="action-btn">Przeglądaj</a>
+    </div>
+
+    <div class="action-card">
+        <div class="action-icon">⚙️</div>
+        <div class="action-title">Ustawienia Systemu</div>
+        <div class="action-description">
+            Konfiguruj globalne ustawienia platformy i parametry systemowe.
+        </div>
+        <a href="/admin/settings" class="action-btn">Konfiguruj</a>
+    </div>
+
+    <div class="action-card">
+        <div class="action-icon">🔔</div>
+        <div class="action-title">System Powiadomień</div>
+        <div class="action-description">
+            Zarządzaj globalnymi powiadomieniami i komunikatami systemowymi.
+        </div>
+        <a href="/notifications" class="action-btn">Powiadomienia</a>
+    </div>
+</div>
+
+<div class="recent-activity">
+    <div class="activity-header">🕒 Ostatnio Utworzeni Użytkownicy</div>
+    <div th:if="${not #lists.isEmpty(recentUsers)}">
+        <div th:each="user : ${recentUsers}" class="activity-item">
+            <div>
+                <span class="activity-user" th:text="${user.username}">Username</span>
+                <span th:if="${user.systemRole.name() == 'SUPER_ADMIN'}" style="color: #ff0000; font-weight: bold;"> (SUPER ADMIN)</span>
+                <span th:unless="${user.systemRole.name() == 'SUPER_ADMIN'}" style="color: #ccc;"> (USER)</span>
+            </div>
+            <div class="activity-date" th:text="${#temporals.format(user.createdAt, 'yyyy-MM-dd HH:mm')}">Data</div>
+        </div>
+    </div>
+    <div th:if="${#lists.isEmpty(recentUsers)}" style="text-align: center; color: #888; padding: 20px;">
+        Brak ostatnich użytkowników
+    </div>
+</div>
+
+<a href="/welcome" class="back-link">← Powrót do normalnego panelu użytkownika</a>

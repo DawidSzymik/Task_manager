@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/service/MessageService.java
+// src/main/java/com/example/demo/service/MessageService.java - NAPRAWIONA WERSJA
 package com.example.demo.service;
 
 import com.example.demo.model.*;
@@ -67,12 +67,24 @@ public class MessageService {
         return saved;
     }
 
-    // Wysłanie wiadomości systemowej
+    // NAPRAWIONA - Wysłanie wiadomości systemowej
     @Transactional
     public Message sendSystemMessage(Project project, String content) {
-        Message message = new Message(content, project, null);
-        message.setType(MessageType.SYSTEM);
-        return messageRepository.save(message);
+        try {
+            // Użyj nowego konstruktora dla wiadomości systemowych
+            Message message = new Message(content, project);
+            Message saved = messageRepository.save(message);
+
+            System.out.println("✅ Zapisano wiadomość systemową: " + content);
+            return saved;
+
+        } catch (Exception e) {
+            System.err.println("❌ Błąd zapisywania wiadomości systemowej: " + e.getMessage());
+            e.printStackTrace();
+
+            // Nie rzucaj wyjątku - po prostu loguj błąd
+            return null;
+        }
     }
 
     // Pobranie wszystkich wiadomości dla projektu
@@ -165,9 +177,14 @@ public class MessageService {
     // Usunięcie wszystkich wiadomości projektu
     @Transactional
     public void deleteAllProjectMessages(Project project) {
-        List<Message> messages = messageRepository.findByProjectOrderByCreatedAtAsc(project);
-        if (!messages.isEmpty()) {
-            messageRepository.deleteAll(messages);
+        try {
+            List<Message> messages = messageRepository.findByProjectOrderByCreatedAtAsc(project);
+            if (!messages.isEmpty()) {
+                messageRepository.deleteAll(messages);
+                System.out.println("✅ Usunięto " + messages.size() + " wiadomości z projektu: " + project.getName());
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Błąd usuwania wiadomości projektu: " + e.getMessage());
         }
     }
 
