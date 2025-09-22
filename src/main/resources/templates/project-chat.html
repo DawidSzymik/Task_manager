@@ -80,20 +80,6 @@
             font-size: 24px;
         }
 
-        .online-indicator {
-            width: 12px;
-            height: 12px;
-            background-color: #28a745;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-
         .chat-info {
             display: flex;
             align-items: center;
@@ -144,10 +130,6 @@
             gap: 12px;
             padding: 12px 0;
             position: relative;
-        }
-
-        .message:hover .message-actions {
-            opacity: 1;
         }
 
         .message-avatar {
@@ -216,43 +198,6 @@
             background-color: rgba(255, 193, 7, 0.1);
             border-left: 3px solid #ffc107;
             font-style: italic;
-        }
-
-        .message-actions {
-            position: absolute;
-            top: 8px;
-            right: 10px;
-            display: flex;
-            gap: 5px;
-            opacity: 0;
-            transition: opacity 0.3s;
-            background-color: rgba(52, 52, 52, 0.9);
-            padding: 5px;
-            border-radius: 8px;
-        }
-
-        .message-action-btn {
-            background: none;
-            border: none;
-            color: #ccc;
-            cursor: pointer;
-            padding: 5px 8px;
-            border-radius: 5px;
-            font-size: 12px;
-            transition: all 0.3s;
-        }
-
-        .message-action-btn:hover {
-            background-color: #444849;
-            color: white;
-        }
-
-        .message-action-btn.edit:hover {
-            color: #ffc107;
-        }
-
-        .message-action-btn.delete:hover {
-            color: #ff4757;
         }
 
         .input-container {
@@ -345,126 +290,6 @@
         .messages-container::-webkit-scrollbar-thumb:hover {
             background: #555;
         }
-
-        /* Modal dla edycji */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 10000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-        }
-
-        .modal-content {
-            background-color: #2c2f33;
-            margin: 15% auto;
-            padding: 30px;
-            border-radius: 10px;
-            width: 500px;
-            max-width: 90%;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .modal-title {
-            color: #00C896;
-            margin: 0;
-        }
-
-        .close-btn {
-            background: none;
-            border: none;
-            color: #ccc;
-            font-size: 24px;
-            cursor: pointer;
-        }
-
-        .close-btn:hover {
-            color: white;
-        }
-
-        .modal-textarea {
-            width: 100%;
-            min-height: 100px;
-            padding: 12px;
-            background-color: #444849;
-            border: 2px solid transparent;
-            border-radius: 8px;
-            color: white;
-            font-size: 14px;
-            font-family: inherit;
-            resize: vertical;
-            margin-bottom: 20px;
-        }
-
-        .modal-textarea:focus {
-            outline: none;
-            border-color: #00C896;
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-
-        .modal-btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .modal-btn.save {
-            background-color: #00C896;
-            color: white;
-        }
-
-        .modal-btn.save:hover {
-            background-color: #00b183;
-        }
-
-        .modal-btn.cancel {
-            background-color: #666;
-            color: white;
-        }
-
-        .modal-btn.cancel:hover {
-            background-color: #777;
-        }
-
-        .typing-indicator {
-            padding: 10px 20px;
-            color: #888;
-            font-style: italic;
-            font-size: 13px;
-        }
-
-        .auto-refresh-status {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background-color: #444849;
-            color: white;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 12px;
-            z-index: 1000;
-        }
-
-        .auto-refresh-status.active {
-            background-color: #28a745;
-        }
     </style>
 </head>
 <body>
@@ -486,7 +311,6 @@
 <div class="chat-header">
     <div class="chat-title">
         <h1 th:text="'Chat - ' + ${project.name}">Chat projektu</h1>
-        <div class="online-indicator" title="Połączony"></div>
     </div>
     <div class="chat-info">
         <div class="member-count" th:text="${projectMembers.size()} + ' członków'">0 członków</div>
@@ -508,39 +332,22 @@
 
         <!-- Lista wiadomości -->
         <div th:each="message : ${messages}"
-             th:class="'message' + (${message.type == T(com.example.demo.model.MessageType).SYSTEM} ? ' message-system' : '')"
+             th:class="'message' + (${message.type != null and message.type.name() == 'SYSTEM'} ? ' message-system' : '')"
              th:id="'message-' + ${message.id}">
 
             <!-- Avatar -->
             <div class="message-avatar"
-                 th:text="${message.author != null ? message.author.username.substring(0,1).toUpperCase() : 'S'}">U</div>
+                 th:text="${message.author != null ? #strings.substring(message.author.username,0,1).toUpperCase() : 'S'}">U</div>
 
             <!-- Zawartość wiadomości -->
             <div class="message-content">
                 <div class="message-header">
                     <span class="message-author"
                           th:text="${message.author != null ? message.author.username : 'System'}">Autor</span>
-                    <span class="message-timestamp" th:text="${message.formattedTime}">Czas</span>
+                    <span class="message-timestamp" th:text="${#temporals.format(message.createdAt, 'yyyy-MM-dd HH:mm')}">Czas</span>
                     <span th:if="${message.edited}" class="message-edited">(edytowano)</span>
                 </div>
                 <div class="message-text" th:text="${message.content}">Treść wiadomości</div>
-            </div>
-
-            <!-- Akcje na wiadomości (tylko dla własnych lub adminów) -->
-            <div class="message-actions"
-                 th:if="${message.author != null and (message.author.username == currentUser.username or userRole == T(com.example.demo.model.ProjectRole).ADMIN)}">
-
-                <button class="message-action-btn edit"
-                        th:if="${message.author.username == currentUser.username}"
-                        th:onclick="'editMessage(' + ${message.id} + ', \'' + ${message.content} + '\')'">
-                    ✏️
-                </button>
-
-                <button class="message-action-btn delete"
-                        th:onclick="'deleteMessage(' + ${message.id} + ')'"
-                        th:title="${message.author.username == currentUser.username ? 'Usuń swoją wiadomość' : 'Usuń wiadomość (admin)'}">
-                    🗑️
-                </button>
             </div>
         </div>
     </div>
@@ -564,46 +371,13 @@
     </div>
 </div>
 
-<!-- Modal edycji wiadomości -->
-<div id="editModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 class="modal-title">Edytuj wiadomość</h3>
-            <button class="close-btn" onclick="closeEditModal()">&times;</button>
-        </div>
-        <textarea id="editTextarea" class="modal-textarea"></textarea>
-        <div class="modal-actions">
-            <button class="modal-btn save" onclick="saveEdit()">Zapisz</button>
-            <button class="modal-btn cancel" onclick="closeEditModal()">Anuluj</button>
-        </div>
-    </div>
-</div>
-
-<!-- Status auto-refresh -->
-<div id="autoRefreshStatus" class="auto-refresh-status">
-    Auto-odświeżanie: aktywne
-</div>
-
 <script th:inline="javascript">
     // Zmienne globalne
     let projectId = /*[[${project.id}]]*/ 0;
-    let currentEditMessageId = null;
-    let lastMessageTimestamp = null;
-    let autoRefreshInterval = null;
 
     // Inicjalizacja po załadowaniu strony
     document.addEventListener('DOMContentLoaded', function() {
         scrollToBottom();
-        updateLastTimestamp();
-        startAutoRefresh();
-
-        // Auto-resize dla textarea
-        const messageInput = document.getElementById('messageInput');
-        if (messageInput) {
-            messageInput.addEventListener('input', function() {
-                autoResize(this);
-            });
-        }
     });
 
     // Auto-resize textarea
@@ -644,8 +418,8 @@
                 if (data.success) {
                     input.value = '';
                     autoResize(input);
-                    addMessageToChat(data);
-                    scrollToBottom();
+                    // Proste odświeżenie strony na razie
+                    window.location.reload();
                 } else {
                     alert('Błąd: ' + data.error);
                 }
@@ -659,202 +433,6 @@
                 sendBtn.textContent = 'Wyślij';
                 input.focus();
             });
-    }
-
-    // Dodanie wiadomości do czatu
-    function addMessageToChat(messageData) {
-        const container = document.getElementById('messagesContainer');
-        const noMessages = container.querySelector('.no-messages');
-        if (noMessages) {
-            noMessages.remove();
-        }
-
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message';
-        messageDiv.id = `message-${messageData.messageId}`;
-
-        messageDiv.innerHTML = `
-            <div class="message-avatar">${messageData.author.charAt(0).toUpperCase()}</div>
-            <div class="message-content">
-                <div class="message-header">
-                    <span class="message-author">${messageData.author}</span>
-                    <span class="message-timestamp">${messageData.timestamp}</span>
-                </div>
-                <div class="message-text">${escapeHtml(messageData.content)}</div>
-            </div>
-            ${messageData.canEdit || messageData.canDelete ? `
-            <div class="message-actions">
-                ${messageData.canEdit ? `<button class="message-action-btn edit" onclick="editMessage(${messageData.messageId}, '${escapeForJs(messageData.content)}')">✏️</button>` : ''}
-                ${messageData.canDelete ? `<button class="message-action-btn delete" onclick="deleteMessage(${messageData.messageId})">🗑️</button>` : ''}
-            </div>` : ''}
-        `;
-
-        container.appendChild(messageDiv);
-        updateLastTimestamp();
-    }
-
-    // Edycja wiadomości
-    function editMessage(messageId, currentContent) {
-        currentEditMessageId = messageId;
-        document.getElementById('editTextarea').value = currentContent;
-        document.getElementById('editModal').style.display = 'block';
-        document.getElementById('editTextarea').focus();
-    }
-
-    // Zapisanie edycji
-    function saveEdit() {
-        const newContent = document.getElementById('editTextarea').value.trim();
-        if (!newContent) {
-            alert('Wiadomość nie może być pusta');
-            return;
-        }
-
-        fetch(`/projects/${projectId}/chat/messages/${currentEditMessageId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `content=${encodeURIComponent(newContent)}`
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Zaktualizuj wiadomość w DOM
-                    const messageElement = document.querySelector(`#message-${currentEditMessageId} .message-text`);
-                    const headerElement = document.querySelector(`#message-${currentEditMessageId} .message-header`);
-
-                    messageElement.textContent = data.content;
-
-                    // Dodaj znacznik edycji
-                    if (!headerElement.querySelector('.message-edited')) {
-                        const editedSpan = document.createElement('span');
-                        editedSpan.className = 'message-edited';
-                        editedSpan.textContent = '(edytowano)';
-                        headerElement.appendChild(editedSpan);
-                    }
-
-                    closeEditModal();
-                } else {
-                    alert('Błąd: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Błąd edycji:', error);
-                alert('Błąd połączenia');
-            });
-    }
-
-    // Zamknięcie modala edycji
-    function closeEditModal() {
-        document.getElementById('editModal').style.display = 'none';
-        currentEditMessageId = null;
-    }
-
-    // Usuwanie wiadomości
-    function deleteMessage(messageId) {
-        if (!confirm('Czy na pewno chcesz usunąć tę wiadomość?')) {
-            return;
-        }
-
-        fetch(`/projects/${projectId}/chat/messages/${messageId}`, {
-            method: 'DELETE'
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById(`message-${messageId}`).remove();
-                } else {
-                    alert('Błąd: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Błąd usuwania:', error);
-                alert('Błąd połączenia');
-            });
-    }
-
-    // Auto-refresh nowych wiadomości
-    function startAutoRefresh() {
-        autoRefreshInterval = setInterval(() => {
-            if (lastMessageTimestamp) {
-                fetch(`/projects/${projectId}/chat/messages/since?timestamp=${lastMessageTimestamp}`)
-                    .then(response => response.json())
-                    .then(messages => {
-                        if (messages && messages.length > 0) {
-                            messages.forEach(message => {
-                                // Sprawdź czy wiadomość już nie istnieje
-                                if (!document.getElementById(`message-${message.id}`)) {
-                                    addMessageFromServer(message);
-                                }
-                            });
-                            updateLastTimestamp();
-                            scrollToBottom();
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Błąd auto-refresh:', error);
-                        updateAutoRefreshStatus(false);
-                    });
-            }
-        }, 3000); // Co 3 sekundy
-
-        updateAutoRefreshStatus(true);
-    }
-
-    // Dodanie wiadomości otrzymanej z serwera
-    function addMessageFromServer(message) {
-        const container = document.getElementById('messagesContainer');
-        const messageDiv = document.createElement('div');
-
-        const isSystem = message.type === 'SYSTEM';
-        const isOwn = message.author && message.author.username === /*[[${currentUser.username}]]*/ '';
-        const isAdmin = /*[[${userRole == T(com.example.demo.model.ProjectRole).ADMIN}]]*/ false;
-
-        messageDiv.className = 'message' + (isSystem ? ' message-system' : '');
-        messageDiv.id = `message-${message.id}`;
-
-        const authorName = message.author ? message.author.username : 'System';
-        const avatarText = message.author ? authorName.charAt(0).toUpperCase() : 'S';
-
-        messageDiv.innerHTML = `
-            <div class="message-avatar">${avatarText}</div>
-            <div class="message-content">
-                <div class="message-header">
-                    <span class="message-author">${authorName}</span>
-                    <span class="message-timestamp">${message.formattedTime}</span>
-                    ${message.edited ? '<span class="message-edited">(edytowano)</span>' : ''}
-                </div>
-                <div class="message-text">${escapeHtml(message.content)}</div>
-            </div>
-            ${(!isSystem && (isOwn || isAdmin)) ? `
-            <div class="message-actions">
-                ${isOwn ? `<button class="message-action-btn edit" onclick="editMessage(${message.id}, '${escapeForJs(message.content)}')">✏️</button>` : ''}
-                <button class="message-action-btn delete" onclick="deleteMessage(${message.id})">🗑️</button>
-            </div>` : ''}
-        `;
-
-        container.appendChild(messageDiv);
-    }
-
-    // Aktualizacja statusu auto-refresh
-    function updateAutoRefreshStatus(active) {
-        const status = document.getElementById('autoRefreshStatus');
-        if (active) {
-            status.textContent = 'Auto-odświeżanie: aktywne';
-            status.className = 'auto-refresh-status active';
-        } else {
-            status.textContent = 'Auto-odświeżanie: błąd';
-            status.className = 'auto-refresh-status';
-        }
-    }
-
-    // Aktualizacja timestampu ostatniej wiadomości
-    function updateLastTimestamp() {
-        const messages = document.querySelectorAll('.message:not(.message-system)');
-        if (messages.length > 0) {
-            // Użyj aktualnego czasu jako timestamp
-            lastMessageTimestamp = new Date().toISOString().slice(0, 19);
-        }
     }
 
     // Przewinięcie na dół
@@ -872,27 +450,7 @@
             }
         }
     }
-
-    // Funkcje pomocnicze
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    function escapeForJs(text) {
-        return text.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
-    }
-
-    // Zamknięcie modala po kliknięciu poza nim
-    window.onclick = function(event) {
-        const modal = document.getElementById('editModal');
-        if (event.target === modal) {
-            closeEditModal();
-        }
-    }
 </script>
 
 </body>
 </html>
-
