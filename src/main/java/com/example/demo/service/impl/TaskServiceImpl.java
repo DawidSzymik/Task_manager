@@ -3,12 +3,11 @@ package com.example.demo.service.impl;
 
 import com.example.demo.model.Task;
 import com.example.demo.model.Project;
+import com.example.demo.model.User;
 import com.example.demo.repository.TaskRepository;
 import com.example.demo.service.TaskService;
 import com.example.demo.service.CommentService;
 import com.example.demo.service.FileService;
-import com.example.demo.service.StatusChangeRequestService;
-import com.example.demo.service.TaskProposalService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,18 +21,11 @@ public class TaskServiceImpl implements TaskService {
     @Autowired
     private TaskRepository taskRepository;
 
-    @Autowired
+    @Autowired(required = false)
     private CommentService commentService;
 
-    @Autowired
+    @Autowired(required = false)
     private FileService fileService;
-
-    // Te zależności pozostają (required = false, żeby uniknąć błędów)
-    @Autowired(required = false)
-    private StatusChangeRequestService statusChangeRequestService;
-
-    @Autowired(required = false)
-    private TaskProposalService taskProposalService;
 
     @Override
     public Task saveTask(Task task) {
@@ -41,61 +33,8 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
-    public List<Task> getTasksByProject(Project project) {
-        return taskRepository.findByProject(project);
-    }
-
-    @Override
-    public List<Task> getAllTasks() {
-        return taskRepository.findAll();
-    }
-
-    @Override
     public Optional<Task> getTaskById(Long id) {
         return taskRepository.findById(id);
-    }
-
-    @Override
-    @Transactional
-    public void deleteTask(Long id) {
-        Task task = taskRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Zadanie nie istnieje"));
-
-        String taskTitle = task.getTitle();
-
-        try {
-            System.out.println("Rozpoczynam usuwanie zadania: " + taskTitle + " (ID: " + id + ")");
-
-            // 1. Usuń wszystkie status change requests (NAJWAŻNIEJSZE!)
-            if (statusChangeRequestService != null) {
-                statusChangeRequestService.deleteRequestsForTask(id);
-            } else {
-                System.out.println("StatusChangeRequestService nie jest dostępny");
-            }
-
-            // 2. Usuń wszystkie task proposals związane z tym zadaniem
-            if (taskProposalService != null) {
-                taskProposalService.deleteProposalsForTask(id);
-            } else {
-                System.out.println("TaskProposalService nie jest dostępny");
-            }
-
-            // 3. Usuń wszystkie komentarze
-            commentService.deleteCommentsForTask(id);
-
-            // 4. Usuń wszystkie pliki
-            fileService.deleteFilesForTask(id);
-
-            // 5. Usuń zadanie (relacje Many-to-Many z użytkownikami zostaną automatycznie usunięte)
-            taskRepository.deleteById(id);
-
-            System.out.println("Pomyślnie usunięto zadanie: " + taskTitle + " wraz z wszystkimi powiązanymi danymi");
-
-        } catch (Exception e) {
-            System.err.println("Błąd podczas usuwania zadania: " + taskTitle);
-            e.printStackTrace();
-            throw new RuntimeException("Błąd podczas usuwania zadania: " + e.getMessage(), e);
-        }
     }
 
     @Override
@@ -105,24 +44,94 @@ public class TaskServiceImpl implements TaskService {
     }
 
     @Override
+    public List<Task> getAllTasks() {
+        return taskRepository.findAll();
+    }
+
+    @Override
+    public List<Task> getTasksByProject(Project project) {
+        return taskRepository.findByProject(project);
+    }
+
+    @Override
     public List<Task> findAllByProject(Project project) {
         return taskRepository.findByProject(project);
     }
 
-    // Usuwanie wszystkich zadań projektu (wywoływane przy usuwaniu projektu)
+    @Override
+    public List<Task> findByAssignedTo(User user) {
+        return taskRepository.findByAssignedTo(user);
+    }
+
+    @Override
+    @Transactional
+    public void unassignUserFromAllTasks(User user) {
+        try {
+            List<Task> userTasks = taskRepository.findByAssignedTo(user);
+
+            System.out.println("Odpisywanie użytkownika " + user.getUsername() + " od " + userTasks.size() + " zadań");
+
+            for (Task task : userTasks) {
+                task.setAssignedTo(null);
+                taskRepository.save(task);
+            }
+
+            System.out.println("✅ Pomyślnie odpisano użytkownika od wszystkich zadań");
+
+        } catch (Exception e) {
+            System.err.println("❌ Błąd odpisywania użytkownika od zadań: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void deleteTask(Long id) {
+        try {
+            Task task = taskRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Zadanie nie istnieje"));
+
+            String taskTitle = task.getTitle();
+            System.out.println("Rozpoczynam usuwanie zadania: " + taskTitle + " (ID: " + id + ")");
+
+            // 1. Usuń komentarze (jeśli serwis istnieje)
+            if (commentService != null) {
+                commentService.deleteCommentsForTask(id);
+            }
+
+            // 2. Usuń pliki (jeśli serwis istnieje)
+            if (fileService != null) {
+                fileService.deleteFilesForTask(id);
+            }
+
+            // 3. Usuń zadanie
+            taskRepository.deleteById(id);
+
+            System.out.println("✅ Pomyślnie usunięto zadanie: " + taskTitle);
+
+        } catch (Exception e) {
+            System.err.println("❌ Błąd podczas usuwania zadania " + id + ": " + e.getMessage());
+            throw new RuntimeException("Błąd podczas usuwania zadania: " + e.getMessage());
+        }
+    }
+
+    @Override
     @Transactional
     public void deleteAllTasksForProject(Long projectId) {
-        Project project = new Project();
-        project.setId(projectId);
+        try {
+            Project project = new Project();
+            project.setId(projectId);
 
-        List<Task> tasks = taskRepository.findByProject(project);
+            List<Task> tasks = taskRepository.findByProject(project);
+            System.out.println("Usuwam " + tasks.size() + " zadań dla projektu ID: " + projectId);
 
-        System.out.println("Usuwam " + tasks.size() + " zadań dla projektu ID: " + projectId);
+            for (Task task : tasks) {
+                deleteTask(task.getId());
+            }
 
-        for (Task task : tasks) {
-            deleteTask(task.getId());
+            System.out.println("✅ Usunięto wszystkie zadania dla projektu ID: " + projectId);
+
+        } catch (Exception e) {
+            System.err.println("❌ Błąd usuwania zadań projektu " + projectId + ": " + e.getMessage());
         }
-
-        System.out.println("Usunięto wszystkie zadania dla projektu ID: " + projectId);
     }
 }

@@ -1,8 +1,9 @@
-// src/main/java/com/example/demo/model/Message.java - NAPRAWIONA WERSJA
+// src/main/java/com/example/demo/model/Message.java
 package com.example.demo.model;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Entity
 @Table(name = "messages")
@@ -19,7 +20,7 @@ public class Message {
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
 
-    // NAPRAWKA - author może być null dla wiadomości systemowych
+    // WAŻNE: author może być null dla wiadomości systemowych
     @ManyToOne
     @JoinColumn(name = "author_id", nullable = true)
     private User author;
@@ -38,17 +39,19 @@ public class Message {
     // Konstruktory
     public Message() {}
 
+    // Konstruktor dla zwykłych wiadomości
     public Message(String content, Project project, User author) {
         this.content = content;
         this.project = project;
         this.author = author;
+        this.type = MessageType.TEXT;
     }
 
-    // NOWY - Konstruktor dla wiadomości systemowych
+    // Konstruktor dla wiadomości systemowych
     public Message(String content, Project project) {
         this.content = content;
         this.project = project;
-        this.author = null; // Wiadomości systemowe nie mają autora
+        this.author = null; // Wiadomości systemowe bez autora
         this.type = MessageType.SYSTEM;
     }
 
@@ -84,30 +87,30 @@ public class Message {
     public void setType(MessageType type) { this.type = type; }
 
     // Metody pomocnicze
-    public boolean canBeEditedBy(User user) {
-        return this.author != null && this.author.equals(user);
+    public String getFormattedTime() {
+        return createdAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
     }
 
-    public boolean canBeDeletedBy(User user, ProjectRole userRole) {
-        return (this.author != null && this.author.equals(user)) || userRole == ProjectRole.ADMIN;
+    public String getAuthorName() {
+        if (author == null) {
+            return "System";
+        }
+        return author.getUsername();
     }
 
     public boolean isSystemMessage() {
-        return this.type == MessageType.SYSTEM || this.author == null;
+        return author == null || type == MessageType.SYSTEM;
     }
 
-    // Formatowanie czasu dla widoku
-    public String getFormattedTime() {
-        java.time.format.DateTimeFormatter formatter =
-                java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-        return createdAt.format(formatter);
+    public boolean canBeEditedBy(User user) {
+        if (isSystemMessage()) return false;
+        if (author == null) return false;
+        return author.equals(user);
     }
 
-    // Nazwa autora (dla wiadomości systemowych zwraca "System")
-    public String getAuthorDisplayName() {
-        if (this.author == null || this.type == MessageType.SYSTEM) {
-            return "System";
-        }
-        return this.author.getUsername();
+    public boolean canBeDeletedBy(User user) {
+        if (isSystemMessage()) return false;
+        if (author == null) return false;
+        return author.equals(user);
     }
 }

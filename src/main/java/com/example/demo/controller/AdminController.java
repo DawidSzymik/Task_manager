@@ -9,27 +9,36 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Controller
 @RequestMapping("/admin")
 public class AdminController {
 
-    @Autowired private UserService userService;
-    @Autowired private ProjectService projectService;
-    @Autowired private TeamService teamService;
-    @Autowired private ProjectMemberService memberService;
-    @Autowired private TaskService taskService;
-    @Autowired private NotificationService notificationService;
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private ProjectService projectService;
+
+    @Autowired
+    private TeamService teamService;
+
+    @Autowired
+    private ProjectMemberService projectMemberService;
+
+    @Autowired
+    private TaskService taskService;
 
     // Sprawdzenie uprawnień super admina
     private void checkSuperAdminAccess(UserDetails userDetails) {
         User currentUser = userService.getUserByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
 
-        if (!currentUser.isSuperAdmin()) {
+        if (currentUser.getSystemRole() != SystemRole.SUPER_ADMIN) {
             throw new RuntimeException("Brak uprawnień administratora systemu");
         }
     }
@@ -43,26 +52,10 @@ public class AdminController {
         List<Project> allProjects = projectService.getAllProjects();
         List<Team> allTeams = teamService.getAllTeams();
 
-        // Statystyki
-        long totalUsers = allUsers.size();
-        long activeUsers = allUsers.stream().filter(User::isActive).count();
-        long totalProjects = allProjects.size();
-        long totalTeams = allTeams.size();
-
-        // Ostatnie aktywności
-        List<User> recentUsers = allUsers.stream()
-                .sorted((u1, u2) -> u2.getCreatedAt().compareTo(u1.getCreatedAt()))
-                .limit(5)
-                .collect(Collectors.toList());
-
-        model.addAttribute("totalUsers", totalUsers);
-        model.addAttribute("activeUsers", activeUsers);
-        model.addAttribute("totalProjects", totalProjects);
-        model.addAttribute("totalTeams", totalTeams);
-        model.addAttribute("recentUsers", recentUsers);
+        model.addAttribute("totalUsers", allUsers.size());
+        model.addAttribute("totalProjects", allProjects.size());
+        model.addAttribute("totalTeams", allTeams.size());
         model.addAttribute("allUsers", allUsers);
-        model.addAttribute("allProjects", allProjects);
-        model.addAttribute("allTeams", allTeams);
 
         return "admin-dashboard";
     }
@@ -85,44 +78,56 @@ public class AdminController {
                              @RequestParam(required = false) String email,
                              @RequestParam(required = false) String fullName,
                              @RequestParam SystemRole systemRole,
+                             RedirectAttributes redirectAttributes,
                              @AuthenticationPrincipal UserDetails userDetails) {
-        checkSuperAdminAccess(userDetails);
+        try {
+            checkSuperAdminAccess(userDetails);
 
-        User user = userService.createUserByAdmin(username, password, email, fullName, systemRole);
+            User user = userService.createUserByAdmin(username, password, email, fullName, systemRole);
 
-        System.out.println("Super Admin utworzył użytkownika: " + username + " z rolą: " + systemRole);
+            redirectAttributes.addFlashAttribute("success", "Pomyślnie utworzono użytkownika: " + username);
 
-        return "redirect:/admin/users";
-    }
-
-    // Edycja użytkownika
-    @PostMapping("/users/{userId}/edit")
-    public String editUser(@PathVariable Long userId,
-                           @RequestParam(required = false) String email,
-                           @RequestParam(required = false) String fullName,
-                           @RequestParam SystemRole systemRole,
-                           @RequestParam boolean isActive,
-                           @AuthenticationPrincipal UserDetails userDetails) {
-        checkSuperAdminAccess(userDetails);
-
-        userService.updateUserByAdmin(userId, email, fullName, systemRole, isActive);
-
-        return "redirect:/admin/users";
-    }
-
-    // Usuwanie użytkownika
-    @PostMapping("/users/{userId}/delete")
-    public String deleteUser(@PathVariable Long userId,
-                             @AuthenticationPrincipal UserDetails userDetails) {
-        checkSuperAdminAccess(userDetails);
-
-        User currentAdmin = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
-
-        if (currentAdmin.getId().equals(userId)) {
-            throw new RuntimeException("Nie możesz usunąć swojego własnego konta");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "Błąd tworzenia użytkownika: " + e.getMessage());
         }
 
-        userService.deleteUserByAdmin(userId);
+        return "redirect:/admin/users";
+    }
+
+    // Usuwanie użytkownika - NAPRAWIONE
+    @PostMapping("/users/{id}/delete")
+    public String deleteUser(@PathVariable Long id,
+                             RedirectAttributes redirectAttributes,
+                             @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            checkSuperAdminAccess(userDetails);
+
+            Optional<User> userOpt = userService.getUserById(id);
+
+            if (userOpt.isEmpty()) {
+                redirectAttributes.addFlashAttribute("error", "Użytkownik nie został znaleziony");
+                return "redirect:/admin/users";
+            }
+
+            User userToDelete = userOpt.get();
+
+            // Sprawdź czy to nie Super Admin
+            if (userToDelete.getSystemRole() == SystemRole.SUPER_ADMIN) {
+                redirectAttributes.addFlashAttribute("error", "Nie można usunąć Super Administratora");
+                return "redirect:/admin/users";
+            }
+
+            String username = userToDelete.getUsername();
+
+            // Usuń użytkownika
+            userService.deleteUserByAdmin(id);
+
+            redirectAttributes.addFlashAttribute("success", "Pomyślnie usunięto użytkownika: " + username);
+
+        } catch (Exception e) {
+            System.err.println("Błąd podczas usuwania użytkownika " + id + ": " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "Wystąpił błąd podczas usuwania użytkownika");
+        }
 
         return "redirect:/admin/users";
     }
@@ -133,28 +138,9 @@ public class AdminController {
         checkSuperAdminAccess(userDetails);
 
         List<Project> projects = projectService.getAllProjects();
-
-        // Dodaj informacje o członkach dla każdego projektu
-        for (Project project : projects) {
-            List<ProjectMember> members = memberService.getProjectMembers(project);
-            project.setMembers(new java.util.HashSet<>(members));
-        }
-
         model.addAttribute("projects", projects);
 
         return "admin-projects";
-    }
-
-    // Usuwanie projektu
-    @PostMapping("/projects/{projectId}/delete")
-    public String deleteProject(@PathVariable Long projectId,
-                                @AuthenticationPrincipal UserDetails userDetails) {
-        checkSuperAdminAccess(userDetails);
-
-        // Usuń projekt wraz z wszystkimi powiązanymi danymi
-        projectService.deleteProjectByAdmin(projectId);
-
-        return "redirect:/admin/projects";
     }
 
     // Zarządzanie zespołami
@@ -166,38 +152,5 @@ public class AdminController {
         model.addAttribute("teams", teams);
 
         return "admin-teams";
-    }
-
-    // Usuwanie zespołu
-    @PostMapping("/teams/{teamId}/delete")
-    public String deleteTeam(@PathVariable Long teamId,
-                             @AuthenticationPrincipal UserDetails userDetails) {
-        checkSuperAdminAccess(userDetails);
-
-        teamService.deleteTeamByAdmin(teamId);
-
-        return "redirect:/admin/teams";
-    }
-
-    // System logs / aktywności
-    @GetMapping("/logs")
-    public String viewSystemLogs(Model model, @AuthenticationPrincipal UserDetails userDetails) {
-        checkSuperAdminAccess(userDetails);
-
-        // Tu można dodać system logowania aktywności
-        model.addAttribute("message", "System logowania będzie dodany w przyszłości");
-
-        return "admin-logs";
-    }
-
-    // Ustawienia systemowe
-    @GetMapping("/settings")
-    public String systemSettings(Model model, @AuthenticationPrincipal UserDetails userDetails) {
-        checkSuperAdminAccess(userDetails);
-
-        // Tu można dodać różne ustawienia systemowe
-        model.addAttribute("message", "Ustawienia systemowe będą dodane w przyszłości");
-
-        return "admin-settings";
     }
 }

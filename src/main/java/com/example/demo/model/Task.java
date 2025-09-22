@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/model/Task.java - ZMIENIONY
+// src/main/java/com/example/demo/model/Task.java
 package com.example.demo.model;
 
 import javax.persistence.*;
@@ -26,11 +26,17 @@ public class Task {
     @DateTimeFormat(pattern = "yyyy-MM-dd'T'HH:mm")
     private LocalDateTime deadline;
 
-    // ZMIANA: Task należy do Project zamiast Team
+    // Task należy do Project
     @ManyToOne
     @JoinColumn(name = "project_id")
     private Project project;
 
+    // DODANE - Pojedynczy przypisany użytkownik (dla TaskService.unassignUserFromAllTasks)
+    @ManyToOne
+    @JoinColumn(name = "assigned_to")
+    private User assignedTo;
+
+    // Wielu przypisanych użytkowników (dla bardziej zaawansowanych funkcji)
     @ManyToMany
     @JoinTable(
             name = "task_users",
@@ -38,6 +44,15 @@ public class Task {
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
     private Set<User> assignedUsers = new HashSet<>();
+
+    // Konstruktory
+    public Task() {}
+
+    public Task(String title, String description, Project project) {
+        this.title = title;
+        this.description = description;
+        this.project = project;
+    }
 
     // Gettery i settery
     public Long getId() { return id; }
@@ -61,11 +76,39 @@ public class Task {
     public Project getProject() { return project; }
     public void setProject(Project project) { this.project = project; }
 
+    // DODANE - getter i setter dla assignedTo
+    public User getAssignedTo() { return assignedTo; }
+    public void setAssignedTo(User assignedTo) { this.assignedTo = assignedTo; }
+
     public Set<User> getAssignedUsers() { return assignedUsers; }
     public void setAssignedUsers(Set<User> assignedUsers) { this.assignedUsers = assignedUsers; }
 
+    // Metody pomocnicze
     public boolean isAssignedToUser(String username) {
+        if (assignedTo != null && assignedTo.getUsername().equals(username)) {
+            return true;
+        }
         return assignedUsers != null && assignedUsers.stream()
                 .anyMatch(u -> u.getUsername().equals(username));
+    }
+
+    public void addAssignedUser(User user) {
+        if (assignedUsers == null) {
+            assignedUsers = new HashSet<>();
+        }
+        assignedUsers.add(user);
+        // Opcjonalnie ustaw też assignedTo na pierwszego użytkownika
+        if (assignedTo == null) {
+            assignedTo = user;
+        }
+    }
+
+    public void removeAssignedUser(User user) {
+        if (assignedUsers != null) {
+            assignedUsers.remove(user);
+        }
+        if (assignedTo != null && assignedTo.equals(user)) {
+            assignedTo = null;
+        }
     }
 }
