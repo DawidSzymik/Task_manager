@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/model/Comment.java - ZMIENIONY
+// src/main/java/com/example/demo/model/Comment.java - ZMIENIONY ajdnsjadjasn
 package com.example.demo.model;
 
 import javax.persistence.*;
