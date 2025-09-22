@@ -489,6 +489,7 @@
 <div class="quick-actions">
     <h3>Akcje w projekcie</h3>
     <a th:href="@{/tasks/project/{id}(id=${project.id})}" class="quick-action-btn">📋 Lista zadań</a>
+    <a th:href="@{/projects/{id}/chat(id=${project.id})}" class="quick-action-btn">💬 Chat projektu</a>
     <a th:if="${isAdmin}" th:href="@{/tasks/create/{id}(id=${project.id})}" class="quick-action-btn">➕ Dodaj zadanie</a>
     <a th:if="${userRole == T(com.example.demo.model.ProjectRole).MEMBER}" th:href="@{/proposals/create/{id}(id=${project.id})}" class="quick-action-btn">💡 Zaproponuj zadanie</a>
 </div>

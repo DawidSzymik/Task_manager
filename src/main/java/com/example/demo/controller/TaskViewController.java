@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/controller/TaskViewController.java - POPRAWIONY
+// src/main/java/com/example/demo/controller/TaskViewController.java - DODANIE DOSTĘPNYCH UŻYTKOWNIKÓW
 package com.example.demo.controller;
 
 import com.example.demo.model.*;
@@ -15,6 +15,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/tasks")
@@ -45,6 +47,32 @@ public class TaskViewController {
         List<Comment> comments = commentService.getCommentsForTask(id);
         List<UploadedFile> files = fileService.getFilesForTask(id);
 
+        // DODAJ DOSTĘPNYCH UŻYTKOWNIKÓW DO PRZYPISANIA (tylko dla adminów)
+        List<User> availableUsersToAssign = null;
+        Set<Long> assignedUserIds = null;
+
+        if (userRole == ProjectRole.ADMIN) {
+            // Pobierz wszystkich członków projektu (Admin i Member, nie Viewer)
+            List<ProjectMember> projectMembers = memberService.getProjectMembers(project);
+            List<User> allProjectUsers = projectMembers.stream()
+                    .filter(member -> member.getRole() != ProjectRole.VIEWER)
+                    .map(ProjectMember::getUser)
+                    .collect(Collectors.toList());
+
+            // Pobierz ID już przypisanych użytkowników
+            assignedUserIds = task.getAssignedUsers().stream()
+                    .map(User::getId)
+                    .collect(Collectors.toSet());
+
+            // Filtruj użytkowników, którzy jeszcze nie są przypisani
+            availableUsersToAssign = allProjectUsers.stream()
+                    .filter(user -> !task.getAssignedUsers().contains(user))
+                    .collect(Collectors.toList());
+
+            System.out.println("Dostępnych użytkowników do przypisania: " + availableUsersToAssign.size());
+            System.out.println("Przypisanych użytkowników: " + task.getAssignedUsers().size());
+        }
+
         model.addAttribute("task", task);
         model.addAttribute("project", project);
         model.addAttribute("projectTasks", projectTasks);
@@ -53,6 +81,10 @@ public class TaskViewController {
         model.addAttribute("currentUsername", userDetails.getUsername());
         model.addAttribute("userRole", userRole);
         model.addAttribute("isAdmin", userRole == ProjectRole.ADMIN);
+
+        // NOWE ATRYBUTY dla zarządzania użytkownikami
+        model.addAttribute("availableUsersToAssign", availableUsersToAssign);
+        model.addAttribute("assignedUserIds", assignedUserIds);
 
         return "task-view";
     }

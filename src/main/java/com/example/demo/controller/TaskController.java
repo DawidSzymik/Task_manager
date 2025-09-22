@@ -1,9 +1,9 @@
-// src/main/java/com/example/demo/controller/TaskController.java - DODANIE USUWANIA
 package com.example.demo.controller;
 
 import com.example.demo.model.*;
 import com.example.demo.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
@@ -33,7 +33,8 @@ public class TaskController {
     @Autowired
     private ProjectMemberService memberService;
 
-    // ... pozostałe metody bez zmian ...
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @GetMapping("/create/{projectId}")
     public String createTaskForm(@PathVariable Long projectId, Model model,
@@ -108,6 +109,99 @@ public class TaskController {
 
         taskService.saveTask(task);
         return "redirect:/tasks/project/" + projectId;
+    }
+
+    // NOWA METODA - Dodawanie użytkownika do zadania
+    @PostMapping("/assign/{taskId}")
+    public String assignUserToTask(@PathVariable Long taskId,
+                                   @RequestParam Long userId,
+                                   @AuthenticationPrincipal UserDetails userDetails) {
+
+        User currentUser = userService.getUserByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
+
+        Task task = taskService.getTaskById(taskId)
+                .orElseThrow(() -> new RuntimeException("Zadanie nie istnieje"));
+
+        Project project = task.getProject();
+
+        // Sprawdź czy użytkownik jest adminem projektu
+        Optional<ProjectMember> memberOpt = memberService.getProjectMember(project, currentUser);
+        if (memberOpt.isEmpty() || memberOpt.get().getRole() != ProjectRole.ADMIN) {
+            throw new RuntimeException("Tylko admini mogą przypisywać użytkowników do zadań");
+        }
+
+        User userToAssign = userService.getUserById(userId)
+                .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
+
+        // Sprawdź czy użytkownik do przypisania jest członkiem projektu i nie jest viewerem
+        Optional<ProjectMember> targetMemberOpt = memberService.getProjectMember(project, userToAssign);
+        if (targetMemberOpt.isEmpty() || targetMemberOpt.get().getRole() == ProjectRole.VIEWER) {
+            throw new RuntimeException("Można przypisać tylko członków projektu (nie viewerów)");
+        }
+
+        // Dodaj użytkownika do zadania jeśli jeszcze nie jest przypisany
+        Set<User> assignedUsers = task.getAssignedUsers();
+        if (!assignedUsers.contains(userToAssign)) {
+            assignedUsers.add(userToAssign);
+            task.setAssignedUsers(assignedUsers);
+            taskService.saveTask(task);
+
+            System.out.println("Admin " + currentUser.getUsername() + " przypisał użytkownika "
+                    + userToAssign.getUsername() + " do zadania: " + task.getTitle());
+
+            // NOWE: Wyślij powiadomienie do przypisanego użytkownika
+            try {
+                eventPublisher.publishEvent(new NotificationEvent(
+                        userToAssign,
+                        "📋 Przypisano Cię do zadania",
+                        "Zostałeś przypisany do zadania \"" + task.getTitle() + "\" w projekcie \"" + project.getName() + "\"",
+                        NotificationType.TASK_ASSIGNED,
+                        task.getId(),
+                        "/tasks/view/" + task.getId()
+                ));
+            } catch (Exception e) {
+                System.err.println("Błąd wysyłania powiadomienia o przypisaniu: " + e.getMessage());
+            }
+        }
+
+        return "redirect:/tasks/view/" + taskId;
+    }
+
+    // NOWA METODA - Usuwanie użytkownika z zadania
+    @PostMapping("/unassign/{taskId}")
+    public String unassignUserFromTask(@PathVariable Long taskId,
+                                       @RequestParam Long userId,
+                                       @AuthenticationPrincipal UserDetails userDetails) {
+
+        User currentUser = userService.getUserByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
+
+        Task task = taskService.getTaskById(taskId)
+                .orElseThrow(() -> new RuntimeException("Zadanie nie istnieje"));
+
+        Project project = task.getProject();
+
+        // Sprawdź czy użytkownik jest adminem projektu
+        Optional<ProjectMember> memberOpt = memberService.getProjectMember(project, currentUser);
+        if (memberOpt.isEmpty() || memberOpt.get().getRole() != ProjectRole.ADMIN) {
+            throw new RuntimeException("Tylko admini mogą odpisywać użytkowników z zadań");
+        }
+
+        User userToUnassign = userService.getUserById(userId)
+                .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
+
+        // Usuń użytkownika z zadania
+        Set<User> assignedUsers = task.getAssignedUsers();
+        if (assignedUsers.remove(userToUnassign)) {
+            task.setAssignedUsers(assignedUsers);
+            taskService.saveTask(task);
+
+            System.out.println("Admin " + currentUser.getUsername() + " odpisał użytkownika "
+                    + userToUnassign.getUsername() + " z zadania: " + task.getTitle());
+        }
+
+        return "redirect:/tasks/view/" + taskId;
     }
 
     // NOWA METODA - USUWANIE ZADANIA
@@ -267,5 +361,31 @@ public class TaskController {
         model.addAttribute("userProjects", userProjects);
 
         return "dashboard";
+    }
+
+    // Event class dla powiadomień
+    public static class NotificationEvent {
+        private final User user;
+        private final String title;
+        private final String message;
+        private final NotificationType type;
+        private final Long relatedId;
+        private final String actionUrl;
+
+        public NotificationEvent(User user, String title, String message, NotificationType type, Long relatedId, String actionUrl) {
+            this.user = user;
+            this.title = title;
+            this.message = message;
+            this.type = type;
+            this.relatedId = relatedId;
+            this.actionUrl = actionUrl;
+        }
+
+        public User getUser() { return user; }
+        public String getTitle() { return title; }
+        public String getMessage() { return message; }
+        public NotificationType getType() { return type; }
+        public Long getRelatedId() { return relatedId; }
+        public String getActionUrl() { return actionUrl; }
     }
 }
