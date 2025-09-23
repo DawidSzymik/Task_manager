@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/model/User.java - ROZSZERZONY O ROLĘ SYSTEMOWĄ
+// src/main/java/com/example/demo/model/User.java - POPRAWIONY
 package com.example.demo.model;
 
 import javax.persistence.*;
@@ -19,11 +19,9 @@ public class User {
 
     private String password;
 
-    // NOWE - ROLA SYSTEMOWA
     @Enumerated(EnumType.STRING)
     private SystemRole systemRole = SystemRole.USER;
 
-    // NOWE - DANE DODATKOWE
     private String email;
     private String fullName;
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -48,6 +46,16 @@ public class User {
         this.username = username;
         this.password = password;
         this.systemRole = systemRole;
+    }
+
+    // NOWA METODA - Wyczyść wszystkie relacje przed usunięciem
+    public void clearAllRelations() {
+        if (tasks != null) {
+            tasks.clear();
+        }
+        if (teams != null) {
+            teams.clear();
+        }
     }
 
     // Metody pomocnicze
@@ -92,15 +100,7 @@ public class User {
 
     public Set<Task> getTasks() { return tasks; }
     public void setTasks(Set<Task> tasks) { this.tasks = tasks; }
-    public void clearAllRelations() {
-        // Wyczyść relacje Many-to-Many
-        if (this.tasks != null) {
-            this.tasks.clear();
-        }
-        if (this.teams != null) {
-            this.teams.clear();
-        }
-    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

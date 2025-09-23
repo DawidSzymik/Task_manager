@@ -1,30 +1,69 @@
 // src/main/java/com/example/demo/service/TaskService.java
 package com.example.demo.service;
 
-import com.example.demo.model.Task;
 import com.example.demo.model.Project;
-import com.example.demo.model.User;
+import com.example.demo.model.Task;
+import com.example.demo.repository.CommentRepository;
+import com.example.demo.repository.TaskRepository;
+import com.example.demo.repository.UploadedFileRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface TaskService {
+@Service
+public class TaskService {
 
-    // Podstawowe operacje CRUD
-    Task saveTask(Task task);
-    Optional<Task> getTaskById(Long id);
-    Task findById(Long id); // Wrapper który rzuca wyjątek jeśli nie znajdzie
-    List<Task> getAllTasks();
-    void deleteTask(Long id);
+    @Autowired
+    private TaskRepository taskRepository;
 
-    // Operacje na projektach
-    List<Task> getTasksByProject(Project project);
-    List<Task> findAllByProject(Project project);
+    @Autowired
+    private CommentRepository commentRepository;
 
-    // Operacje na użytkownikach - DODANE
-    List<Task> findByAssignedTo(User user);
-    void unassignUserFromAllTasks(User user);
+    @Autowired
+    private UploadedFileRepository uploadedFileRepository;
 
-    // Operacje masowe
-    void deleteAllTasksForProject(Long projectId);
+    public Task findById(Long taskId) {
+        return taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Zadanie nie istnieje"));
+    }
+
+    public Optional<Task> getTaskById(Long taskId) {
+        return taskRepository.findById(taskId);
+    }
+
+    public List<Task> getTasksByProject(Project project) {
+        return taskRepository.findByProject(project);
+    }
+
+    public void saveTask(Task task) {
+        taskRepository.save(task);
+    }
+
+    @Transactional
+    public void deleteTask(Long taskId) {
+        Task task = findById(taskId);
+
+        // Usuń komentarze
+        commentRepository.deleteByTask(task);
+
+        // Usuń pliki
+        uploadedFileRepository.deleteByTask(task);
+
+        // Usuń zadanie
+        taskRepository.delete(task);
+    }
+
+    // POPRAW TĘ METODĘ - zmień parametr
+    @Transactional
+    public void deleteCommentsForTask(Task task) {
+        commentRepository.deleteByTask(task);
+    }
+
+    // DODAJ TĘ METODĘ
+    public List<Task> findAllByProject(Project project) {
+        return taskRepository.findByProject(project);
+    }
 }
