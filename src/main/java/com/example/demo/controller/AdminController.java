@@ -1,8 +1,13 @@
 // src/main/java/com/example/demo/controller/AdminController.java
 package com.example.demo.controller;
 
-import com.example.demo.model.*;
-import com.example.demo.service.*;
+import com.example.demo.model.SystemRole;
+import com.example.demo.model.User;
+import com.example.demo.model.Project;
+import com.example.demo.model.Team;
+import com.example.demo.service.UserService;
+import com.example.demo.service.ProjectService;
+import com.example.demo.service.TeamService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -27,35 +32,27 @@ public class AdminController {
     @Autowired
     private TeamService teamService;
 
-    @Autowired
-    private ProjectMemberService projectMemberService;
-
-    @Autowired
-    private TaskService taskService;
-
     // Sprawdzenie uprawnień super admina
     private void checkSuperAdminAccess(UserDetails userDetails) {
-        User currentUser = userService.getUserByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
-
-        if (currentUser.getSystemRole() != SystemRole.SUPER_ADMIN) {
-            throw new RuntimeException("Brak uprawnień administratora systemu");
+        if (!userService.isSuperAdmin(userDetails.getUsername())) {
+            throw new RuntimeException("Brak uprawnień administratora");
         }
     }
 
-    // Panel administratora
+    // Panel główny administratora
     @GetMapping
-    public String adminDashboard(Model model, @AuthenticationPrincipal UserDetails userDetails) {
+    public String adminPanel(Model model, @AuthenticationPrincipal UserDetails userDetails) {
         checkSuperAdminAccess(userDetails);
 
-        List<User> allUsers = userService.getAllUsers();
-        List<Project> allProjects = projectService.getAllProjects();
-        List<Team> allTeams = teamService.getAllTeams();
+        long totalUsers = userService.getTotalUserCount();
+        long activeUsers = userService.getActiveUserCount();
+        long totalProjects = projectService.getAllProjects().size();
+        long totalTeams = teamService.getAllTeams().size();
 
-        model.addAttribute("totalUsers", allUsers.size());
-        model.addAttribute("totalProjects", allProjects.size());
-        model.addAttribute("totalTeams", allTeams.size());
-        model.addAttribute("allUsers", allUsers);
+        model.addAttribute("totalUsers", totalUsers);
+        model.addAttribute("activeUsers", activeUsers);
+        model.addAttribute("totalProjects", totalProjects);
+        model.addAttribute("totalTeams", totalTeams);
 
         return "admin-dashboard";
     }
@@ -94,7 +91,7 @@ public class AdminController {
         return "redirect:/admin/users";
     }
 
-    // Usuwanie użytkownika - NAPRAWIONE
+    // NAPRAWIONA METODA USUWANIA UŻYTKOWNIKA
     @PostMapping("/users/{id}/delete")
     public String deleteUser(@PathVariable Long id,
                              RedirectAttributes redirectAttributes,
@@ -119,14 +116,37 @@ public class AdminController {
 
             String username = userToDelete.getUsername();
 
-            // Usuń użytkownika
+            // Usuń użytkownika - NOWA NAPRAWIONA METODA
             userService.deleteUserByAdmin(id);
 
             redirectAttributes.addFlashAttribute("success", "Pomyślnie usunięto użytkownika: " + username);
 
         } catch (Exception e) {
-            System.err.println("Błąd podczas usuwania użytkownika " + id + ": " + e.getMessage());
-            redirectAttributes.addFlashAttribute("error", "Wystąpił błąd podczas usuwania użytkownika");
+            System.err.println("❌ Błąd podczas usuwania użytkownika " + id + ": " + e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "Błąd podczas usuwania użytkownika: " + e.getMessage());
+        }
+
+        return "redirect:/admin/users";
+    }
+
+    // Edycja użytkownika
+    @PostMapping("/users/{id}/update")
+    public String updateUser(@PathVariable Long id,
+                             @RequestParam(required = false) String email,
+                             @RequestParam(required = false) String fullName,
+                             @RequestParam SystemRole systemRole,
+                             @RequestParam boolean isActive,
+                             RedirectAttributes redirectAttributes,
+                             @AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            checkSuperAdminAccess(userDetails);
+
+            User user = userService.updateUserByAdmin(id, email, fullName, systemRole, isActive);
+
+            redirectAttributes.addFlashAttribute("success", "Pomyślnie zaktualizowano użytkownika: " + user.getUsername());
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", "Błąd aktualizacji użytkownika: " + e.getMessage());
         }
 
         return "redirect:/admin/users";
