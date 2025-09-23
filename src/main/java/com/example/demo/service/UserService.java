@@ -4,9 +4,12 @@ package com.example.demo.service;
 import com.example.demo.model.SystemRole;
 import com.example.demo.model.Task;
 import com.example.demo.model.User;
+import com.example.demo.model.ProjectMember;
+import com.example.demo.repository.TaskRepository;
 import com.example.demo.repository.UserRepository;
+import com.example.demo.repository.ProjectMemberRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,37 +24,39 @@ public class UserService {
     private UserRepository userRepository;
 
     @Autowired
-    private BCryptPasswordEncoder passwordEncoder;
+    private PasswordEncoder passwordEncoder;
 
-    // WAŻNE: Te serwisy mogą nie istnieć na początku, dlatego required = false
-    @Autowired(required = false)
-    private ProjectMemberService projectMemberService;
+    @Autowired
+    private TaskRepository taskRepository;
 
-    @Autowired(required = false)
-    private TeamMemberService teamMemberService;
+    @Autowired
+    private ProjectMemberRepository projectMemberRepository;
 
-    @Autowired(required = false)
-    private TaskService taskService;
-
-    // Pobranie użytkownika po ID
-    public Optional<User> getUserById(Long id) {
-        return userRepository.findById(id);
-    }
-
-    // Pobranie użytkownika po nazwie użytkownika
+    // Podstawowe operacje na użytkownikach
     public Optional<User> getUserByUsername(String username) {
         return userRepository.findByUsername(username);
     }
 
-    // Pobranie wszystkich użytkowników
+    public Optional<User> getUserById(Long id) {
+        return userRepository.findById(id);
+    }
+
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
 
+    public User saveUser(User user) {
+        return userRepository.save(user);
+    }
+
+    public boolean userExists(String username) {
+        return userRepository.existsByUsername(username);
+    }
+
     // Rejestracja nowego użytkownika (normalna rejestracja)
+    @Transactional
     public User registerNewUser(String username, String password) {
-        Optional<User> existingUser = userRepository.findByUsername(username);
-        if (existingUser.isPresent()) {
+        if (userExists(username)) {
             throw new RuntimeException("Użytkownik już istnieje!");
         }
 
@@ -66,10 +71,10 @@ public class UserService {
     }
 
     // Tworzenie użytkownika przez super admina
+    @Transactional
     public User createUserByAdmin(String username, String password, String email, String fullName, SystemRole systemRole) {
-        Optional<User> existingUser = userRepository.findByUsername(username);
-        if (existingUser.isPresent()) {
-            throw new RuntimeException("Użytkownik o tej nazwie już istnieje!");
+        if (userExists(username)) {
+            throw new RuntimeException("Użytkownik o tej nazwie już istnieje");
         }
 
         User user = new User();
@@ -97,68 +102,50 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    // Usuwanie użytkownika przez super admina - NAPRAWIONE
-    // W UserService.java zastąp metodę deleteUserByAdmin:
-
+    // KOMPLETNIE NAPRAWIONA METODA USUWANIA UŻYTKOWNIKA
     @Transactional
     public void deleteUserByAdmin(Long userId) {
         try {
             Optional<User> userOpt = userRepository.findById(userId);
             if (userOpt.isEmpty()) {
-                throw new RuntimeException("Użytkownik nie został znalezony");
+                throw new RuntimeException("Użytkownik nie został znaleziony");
             }
 
             User userToDelete = userOpt.get();
             String username = userToDelete.getUsername();
 
-            System.out.println("Rozpoczęcie usuwania użytkownika: " + username + " (ID: " + userId + ")");
+            System.out.println("🗑️ Rozpoczęcie usuwania użytkownika: " + username + " (ID: " + userId + ")");
 
-            // 1. NAJPIERW: Manualne usunięcie z tabeli task_users
-            System.out.println("Ręczne usuwanie z tabeli task_users...");
-
-            // Pobierz wszystkie zadania przypisane do użytkownika
-            if (taskService != null) {
-                List<Task> userTasks = taskService.findByAssignedTo(userToDelete);
-                for (Task task : userTasks) {
-                    // Usuń użytkownika z zadania
-                    task.getAssignedUsers().remove(userToDelete);
-                    task.setAssignedTo(null);
-                    taskService.saveTask(task);
-                }
-                System.out.println("Odpisano użytkownika od " + userTasks.size() + " zadań");
+            // 1. KLUCZOWE: Usuń z projektów (project_members)
+            System.out.println("🏢 Usuwanie z projektów...");
+            List<ProjectMember> projectMemberships = projectMemberRepository.findByUser(userToDelete);
+            for (ProjectMember membership : projectMemberships) {
+                projectMemberRepository.delete(membership);
             }
+            System.out.println("✅ Usunięto z " + projectMemberships.size() + " projektów");
 
-            // 2. Wyczyść relacje po stronie użytkownika
-            System.out.println("Czyszczenie relacji użytkownika...");
-
-            // Refresh użytkownika żeby mieć najnowsze dane
-            userToDelete = userRepository.findById(userId).orElseThrow();
-
-            // Wyczyść wszystkie kolekcje
-            if (userToDelete.getTasks() != null) {
-                userToDelete.getTasks().clear();
+            // 2. Usuń z relacji Many-to-Many (task_users)
+            System.out.println("📋 Usuwanie z zadań (Many-to-Many)...");
+            List<Task> userTasks = taskRepository.findByAssignedUsersContaining(userToDelete);
+            for (Task task : userTasks) {
+                task.getAssignedUsers().remove(userToDelete);
+                taskRepository.save(task);
             }
-            if (userToDelete.getTeams() != null) {
-                userToDelete.getTeams().clear();
-            }
+            System.out.println("✅ Usunięto z " + userTasks.size() + " zadań (assignedUsers)");
 
-            // Zapisz i wymusz flush
+            // 3. Usuń z relacji pojedynczych (assigned_to)
+            List<Task> assignedTasks = taskRepository.findByAssignedTo(userToDelete);
+            for (Task task : assignedTasks) {
+                task.setAssignedTo(null);
+                taskRepository.save(task);
+            }
+            System.out.println("✅ Usunięto z " + assignedTasks.size() + " zadań (assignedTo)");
+
+            // 4. Wyczyść kolekcje po stronie użytkownika
+            userToDelete.clearAllRelations();
             userRepository.saveAndFlush(userToDelete);
 
-            // 3. Usuń z projektów (to może też tworzyć wiadomości systemowe)
-            if (projectMemberService != null) {
-                projectMemberService.removeUserFromAllProjects(userToDelete);
-            }
-
-            // 4. Usuń z zespołów
-            if (teamMemberService != null) {
-                teamMemberService.removeUserFromAllTeams(userToDelete);
-            }
-
-            // 5. Ponowny flush przed usunięciem
-            userRepository.flush();
-
-            // 6. Ostateczne usunięcie użytkownika
+            // 5. Teraz można bezpiecznie usunąć użytkownika
             userRepository.delete(userToDelete);
             userRepository.flush();
 
@@ -167,7 +154,7 @@ public class UserService {
         } catch (Exception e) {
             System.err.println("❌ Błąd podczas usuwania użytkownika " + userId + ": " + e.getMessage());
             e.printStackTrace();
-            throw new RuntimeException("Nie udało się usunąć użytkownika: " + e.getMessage());
+            throw new RuntimeException("Nie udało się usunąć użytkownika: " + e.getMessage(), e);
         }
     }
 
@@ -188,12 +175,12 @@ public class UserService {
                 .orElse(false);
     }
 
-    // Pobranie aktywnych użytkowników - POPRAWIONE
+    // Pobranie aktywnych użytkowników
     public List<User> getActiveUsers() {
         return userRepository.findByIsActiveTrue();
     }
 
-    // Pobranie nieaktywnych użytkowników - POPRAWIONE
+    // Pobranie nieaktywnych użytkowników
     public List<User> getInactiveUsers() {
         return userRepository.findByIsActiveFalse();
     }
@@ -213,7 +200,7 @@ public class UserService {
         userRepository.save(user);
     }
 
-    // Aktywa/dezaktywacja użytkownika
+    // Aktywacja/dezaktywacja użytkownika
     @Transactional
     public void toggleUserActive(Long userId) {
         User user = userRepository.findById(userId)
@@ -240,7 +227,7 @@ public class UserService {
         return userRepository.count();
     }
 
-    // Liczba aktywnych użytkowników - POPRAWIONE
+    // Liczba aktywnych użytkowników
     public long getActiveUserCount() {
         return userRepository.countByIsActiveTrue();
     }
