@@ -108,7 +108,6 @@ public class AdminController {
 
             User userToDelete = userOpt.get();
 
-            // Sprawdź czy to nie Super Admin
             if (userToDelete.getSystemRole() == SystemRole.SUPER_ADMIN) {
                 redirectAttributes.addFlashAttribute("error", "Nie można usunąć Super Administratora");
                 return "redirect:/admin/users";
@@ -116,19 +115,19 @@ public class AdminController {
 
             String username = userToDelete.getUsername();
 
-            // Usuń użytkownika - NOWA NAPRAWIONA METODA
+            // UŻYWA NOWEJ NAPRAWIONEJ METODY
             userService.deleteUserByAdmin(id);
 
-            redirectAttributes.addFlashAttribute("success", "Pomyślnie usunięto użytkownika: " + username);
+            redirectAttributes.addFlashAttribute("success", "Pomyślnie usunięto użytkownika: " + username + " wraz z wszystkimi powiązanymi danymi");
 
         } catch (Exception e) {
             System.err.println("❌ Błąd podczas usuwania użytkownika " + id + ": " + e.getMessage());
+            e.printStackTrace();
             redirectAttributes.addFlashAttribute("error", "Błąd podczas usuwania użytkownika: " + e.getMessage());
         }
 
         return "redirect:/admin/users";
     }
-
     // Edycja użytkownika
     @PostMapping("/users/{id}/update")
     public String updateUser(@PathVariable Long id,

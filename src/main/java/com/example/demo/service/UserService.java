@@ -1,13 +1,8 @@
-// src/main/java/com/example/demo/service/UserService.java
+// src/main/java/com/example/demo/service/UserService.java - KOMPLETNA POPRAWKA
 package com.example.demo.service;
 
-import com.example.demo.model.SystemRole;
-import com.example.demo.model.Task;
-import com.example.demo.model.User;
-import com.example.demo.model.ProjectMember;
-import com.example.demo.repository.TaskRepository;
-import com.example.demo.repository.UserRepository;
-import com.example.demo.repository.ProjectMemberRepository;
+import com.example.demo.model.*;
+import com.example.demo.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,15 +19,162 @@ public class UserService {
     private UserRepository userRepository;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
+    private ProjectMemberRepository projectMemberRepository;
+
+    @Autowired
+    private ProjectRepository projectRepository;
 
     @Autowired
     private TaskRepository taskRepository;
 
     @Autowired
-    private ProjectMemberRepository projectMemberRepository;
+    private CommentRepository commentRepository;
 
-    // Podstawowe operacje na użytkownikach
+    @Autowired
+    private UploadedFileRepository uploadedFileRepository;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
+
+    @Autowired
+    private TeamRepository teamRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    // KOMPLETNIE NAPRAWIONA METODA USUWANIA UŻYTKOWNIKA
+    @Transactional
+    public void deleteUserByAdmin(Long userId) {
+        try {
+            Optional<User> userOpt = userRepository.findById(userId);
+            if (userOpt.isEmpty()) {
+                throw new RuntimeException("Użytkownik nie został znaleziony");
+            }
+
+            User userToDelete = userOpt.get();
+            String username = userToDelete.getUsername();
+
+            System.out.println("🗑️ Rozpoczęcie usuwania użytkownika: " + username + " (ID: " + userId + ")");
+
+            // 1. ZNAJDŹ PROJEKTY UTWORZONE PRZEZ TEGO UŻYTKOWNIKA
+            System.out.println("🔍 Szukanie projektów utworzonych przez użytkownika...");
+            List<Project> createdProjects = projectRepository.findByCreatedBy(userToDelete);
+            System.out.println("📋 Znaleziono " + createdProjects.size() + " projektów utworzonych przez użytkownika");
+
+            // 2. DLA KAŻDEGO PROJEKTU - PRZYPISZ NOWEGO ADMINA LUB USUŃ PROJEKT
+            for (Project project : createdProjects) {
+                System.out.println("🏢 Przetwarzanie projektu: " + project.getName());
+
+                // Znajdź innych adminów w projekcie
+                List<ProjectMember> projectAdmins = projectMemberRepository.findByProjectAndRole(project, ProjectRole.ADMIN);
+                List<ProjectMember> otherAdmins = projectAdmins.stream()
+                        .filter(admin -> !admin.getUser().equals(userToDelete))
+                        .toList();
+
+                if (!otherAdmins.isEmpty()) {
+                    // Jeśli są inni adminowie - przypisz pierwszego jako nowego twórcę
+                    User newCreator = otherAdmins.get(0).getUser();
+                    project.setCreatedBy(newCreator);
+                    projectRepository.save(project);
+                    System.out.println("✅ Przypisano nowego twórcę projektu: " + newCreator.getUsername());
+                } else {
+                    // Jeśli nie ma innych adminów - usuń cały projekt
+                    System.out.println("🗑️ Usuwanie projektu bez innych adminów: " + project.getName());
+
+                    // Usuń wszystkie zadania z projektu (wraz z komentarzami i plikami)
+                    List<Task> projectTasks = taskRepository.findByProject(project);
+                    for (Task task : projectTasks) {
+                        // Usuń komentarze do zadania
+                        commentRepository.deleteByTask(task);
+                        // Usuń pliki zadania
+                        uploadedFileRepository.deleteByTask(task);
+                        // Wyczyść relacje many-to-many
+                        task.getAssignedUsers().clear();
+                        taskRepository.save(task);
+                        taskRepository.delete(task);
+                    }
+
+                    // Usuń wszystkich członków projektu
+                    projectMemberRepository.deleteByProject(project);
+
+                    // Usuń projekt
+                    projectRepository.delete(project);
+                    System.out.println("✅ Usunięto projekt: " + project.getName());
+                }
+            }
+
+            // 3. USUŃ UŻYTKOWNIKA Z PROJEKTÓW (project_members)
+            System.out.println("🏢 Usuwanie z członkostw projektów...");
+            List<ProjectMember> projectMemberships = projectMemberRepository.findByUser(userToDelete);
+            projectMemberRepository.deleteAll(projectMemberships);
+            System.out.println("✅ Usunięto z " + projectMemberships.size() + " projektów");
+
+            // 4. USUŃ Z ZADAŃ (assigned_to)
+            System.out.println("📋 Usuwanie z przypisań zadań...");
+            List<Task> assignedTasks = taskRepository.findByAssignedTo(userToDelete);
+            for (Task task : assignedTasks) {
+                task.setAssignedTo(null);
+                taskRepository.save(task);
+            }
+            System.out.println("✅ Usunięto z " + assignedTasks.size() + " zadań (assignedTo)");
+
+            // 5. USUŃ Z ZADAŃ (many-to-many assigned_users)
+            System.out.println("👥 Usuwanie z relacji many-to-many zadań...");
+            List<Task> allTasks = taskRepository.findAll();
+            int removedFromTasks = 0;
+            for (Task task : allTasks) {
+                if (task.getAssignedUsers().remove(userToDelete)) {
+                    taskRepository.save(task);
+                    removedFromTasks++;
+                }
+            }
+            System.out.println("✅ Usunięto z " + removedFromTasks + " zadań (many-to-many)");
+
+            // 6. USUŃ KOMENTARZE NAPISANE PRZEZ UŻYTKOWNIKA
+            System.out.println("💬 Usuwanie komentarzy...");
+            List<Comment> userComments = commentRepository.findByAuthor(userToDelete);
+            commentRepository.deleteAll(userComments);
+            System.out.println("✅ Usunięto " + userComments.size() + " komentarzy");
+
+            // 7. USUŃ PLIKI PRZESŁANE PRZEZ UŻYTKOWNIKA
+            System.out.println("📁 Usuwanie przesłanych plików...");
+            List<UploadedFile> userFiles = uploadedFileRepository.findByUploadedBy(userToDelete);
+            uploadedFileRepository.deleteAll(userFiles);
+            System.out.println("✅ Usunięto " + userFiles.size() + " plików");
+
+            // 8. USUŃ POWIADOMIENIA
+            System.out.println("🔔 Usuwanie powiadomień...");
+            List<Notification> userNotifications = notificationRepository.findByUser(userToDelete);
+            notificationRepository.deleteAll(userNotifications);
+            System.out.println("✅ Usunięto " + userNotifications.size() + " powiadomień");
+
+            // 9. USUŃ Z ZESPOŁÓW
+            System.out.println("👥 Usuwanie z zespołów...");
+            List<Team> userTeams = teamRepository.findByUsersContaining(userToDelete);
+            for (Team team : userTeams) {
+                team.getUsers().remove(userToDelete);
+                teamRepository.save(team);
+            }
+            System.out.println("✅ Usunięto z " + userTeams.size() + " zespołów");
+
+            // 10. WYCZYŚĆ RELACJE PO STRONIE UŻYTKOWNIKA
+            userToDelete.clearAllRelations();
+            userRepository.saveAndFlush(userToDelete);
+
+            // 11. TERAZ MOŻNA BEZPIECZNIE USUNĄĆ UŻYTKOWNIKA
+            userRepository.delete(userToDelete);
+            userRepository.flush();
+
+            System.out.println("✅ Pomyślnie usunięto użytkownika: " + username);
+
+        } catch (Exception e) {
+            System.err.println("❌ Błąd podczas usuwania użytkownika " + userId + ": " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Nie udało się usunąć użytkownika: " + e.getMessage(), e);
+        }
+    }
+
+    // Pozostałe metody bez zmian
     public Optional<User> getUserByUsername(String username) {
         return userRepository.findByUsername(username);
     }
@@ -45,19 +187,14 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    public User saveUser(User user) {
-        return userRepository.save(user);
-    }
-
     public boolean userExists(String username) {
-        return userRepository.existsByUsername(username);
+        return userRepository.findByUsername(username).isPresent();
     }
 
-    // Rejestracja nowego użytkownika (normalna rejestracja)
     @Transactional
-    public User registerNewUser(String username, String password) {
+    public User createUser(String username, String password) {
         if (userExists(username)) {
-            throw new RuntimeException("Użytkownik już istnieje!");
+            throw new RuntimeException("Użytkownik o tej nazwie już istnieje");
         }
 
         User user = new User();
@@ -70,7 +207,6 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    // Tworzenie użytkownika przez super admina
     @Transactional
     public User createUserByAdmin(String username, String password, String email, String fullName, SystemRole systemRole) {
         if (userExists(username)) {
@@ -89,7 +225,6 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    // Aktualizacja użytkownika przez super admina
     public User updateUserByAdmin(Long userId, String email, String fullName, SystemRole systemRole, boolean isActive) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
@@ -102,63 +237,6 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    // KOMPLETNIE NAPRAWIONA METODA USUWANIA UŻYTKOWNIKA
-    @Transactional
-    public void deleteUserByAdmin(Long userId) {
-        try {
-            Optional<User> userOpt = userRepository.findById(userId);
-            if (userOpt.isEmpty()) {
-                throw new RuntimeException("Użytkownik nie został znaleziony");
-            }
-
-            User userToDelete = userOpt.get();
-            String username = userToDelete.getUsername();
-
-            System.out.println("🗑️ Rozpoczęcie usuwania użytkownika: " + username + " (ID: " + userId + ")");
-
-            // 1. KLUCZOWE: Usuń z projektów (project_members)
-            System.out.println("🏢 Usuwanie z projektów...");
-            List<ProjectMember> projectMemberships = projectMemberRepository.findByUser(userToDelete);
-            for (ProjectMember membership : projectMemberships) {
-                projectMemberRepository.delete(membership);
-            }
-            System.out.println("✅ Usunięto z " + projectMemberships.size() + " projektów");
-
-            // 2. Usuń z relacji Many-to-Many (task_users)
-            System.out.println("📋 Usuwanie z zadań (Many-to-Many)...");
-            List<Task> userTasks = taskRepository.findByAssignedUsersContaining(userToDelete);
-            for (Task task : userTasks) {
-                task.getAssignedUsers().remove(userToDelete);
-                taskRepository.save(task);
-            }
-            System.out.println("✅ Usunięto z " + userTasks.size() + " zadań (assignedUsers)");
-
-            // 3. Usuń z relacji pojedynczych (assigned_to)
-            List<Task> assignedTasks = taskRepository.findByAssignedTo(userToDelete);
-            for (Task task : assignedTasks) {
-                task.setAssignedTo(null);
-                taskRepository.save(task);
-            }
-            System.out.println("✅ Usunięto z " + assignedTasks.size() + " zadań (assignedTo)");
-
-            // 4. Wyczyść kolekcje po stronie użytkownika
-            userToDelete.clearAllRelations();
-            userRepository.saveAndFlush(userToDelete);
-
-            // 5. Teraz można bezpiecznie usunąć użytkownika
-            userRepository.delete(userToDelete);
-            userRepository.flush();
-
-            System.out.println("✅ Pomyślnie usunięto użytkownika: " + username);
-
-        } catch (Exception e) {
-            System.err.println("❌ Błąd podczas usuwania użytkownika " + userId + ": " + e.getMessage());
-            e.printStackTrace();
-            throw new RuntimeException("Nie udało się usunąć użytkownika: " + e.getMessage(), e);
-        }
-    }
-
-    // Aktualizacja czasu ostatniego logowania
     public void updateLastLogin(String username) {
         Optional<User> userOpt = userRepository.findByUsername(username);
         if (userOpt.isPresent()) {
@@ -168,29 +246,24 @@ public class UserService {
         }
     }
 
-    // Sprawdzenie czy użytkownik jest super adminem
     public boolean isSuperAdmin(String username) {
         return getUserByUsername(username)
                 .map(user -> user.getSystemRole() == SystemRole.SUPER_ADMIN)
                 .orElse(false);
     }
 
-    // Pobranie aktywnych użytkowników
     public List<User> getActiveUsers() {
         return userRepository.findByIsActiveTrue();
     }
 
-    // Pobranie nieaktywnych użytkowników
     public List<User> getInactiveUsers() {
         return userRepository.findByIsActiveFalse();
     }
 
-    // Pobranie wszystkich super adminów
     public List<User> getAllSuperAdmins() {
         return userRepository.findBySystemRole(SystemRole.SUPER_ADMIN);
     }
 
-    // Zmiana hasła użytkownika
     @Transactional
     public void changePassword(String username, String newPassword) {
         User user = userRepository.findByUsername(username)
@@ -200,7 +273,6 @@ public class UserService {
         userRepository.save(user);
     }
 
-    // Aktywacja/dezaktywacja użytkownika
     @Transactional
     public void toggleUserActive(Long userId) {
         User user = userRepository.findById(userId)
@@ -210,7 +282,6 @@ public class UserService {
         userRepository.save(user);
     }
 
-    // Sprawdź czy użytkownik może być usunięty
     public boolean canUserBeDeleted(Long userId) {
         Optional<User> userOpt = userRepository.findById(userId);
         if (userOpt.isEmpty()) {
@@ -218,17 +289,28 @@ public class UserService {
         }
 
         User user = userOpt.get();
-        // Super Admin nie może być usunięty
         return user.getSystemRole() != SystemRole.SUPER_ADMIN;
     }
 
-    // Liczba wszystkich użytkowników
     public long getTotalUserCount() {
         return userRepository.count();
     }
 
-    // Liczba aktywnych użytkowników
     public long getActiveUserCount() {
         return userRepository.countByIsActiveTrue();
+    }
+    public User registerNewUser(String username, String password) {
+        if (userExists(username)) {
+            throw new RuntimeException("Użytkownik o tej nazwie już istnieje");
+        }
+
+        User user = new User();
+        user.setUsername(username);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setSystemRole(SystemRole.USER);
+        user.setActive(true);
+        user.setCreatedAt(LocalDateTime.now());
+
+        return userRepository.save(user);
     }
 }

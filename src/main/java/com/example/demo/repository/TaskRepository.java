@@ -17,8 +17,7 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     // Znajdź zadania według projektu
     List<Task> findByProject(Project project);
 
-    // Znajdź zadania przypisane do użytkownika (pojedyncze przypisanie)
-    List<Task> findByAssignedTo(User user);
+    List<Task> findByAssignedTo(User assignedTo);
 
     // NOWA METODA - znajdź zadania gdzie użytkownik jest w kolekcji assignedUsers (Many-to-Many)
     @Query("SELECT t FROM Task t JOIN t.assignedUsers u WHERE u = :user")
