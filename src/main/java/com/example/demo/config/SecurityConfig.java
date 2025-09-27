@@ -48,6 +48,7 @@ public class SecurityConfig {
                         .antMatchers("/registration", "/login", "/kontakt").permitAll()
                         .antMatchers("/css/**", "/js/**", "/images/**").permitAll()
                         .antMatchers("/files/**").permitAll()
+                        .antMatchers("/api/**").permitAll() // Pozwól na API bez autoryzacji
 
                         // NOWE - Dostęp do panelu administratora tylko dla super adminów
                         .antMatchers("/admin/**").hasAuthority("SUPER_ADMIN")
@@ -85,7 +86,8 @@ public class SecurityConfig {
                         "/tasks/**",
                         "/status-requests/**",
                         "/notifications/**",
-                        "/admin/**"  // NOWE - Wyłącz CSRF dla panelu admina
+                        "/admin/**",
+                        "/api/**"// NOWE - Wyłącz CSRF dla panelu admina
                 );
         return http.build();
     }

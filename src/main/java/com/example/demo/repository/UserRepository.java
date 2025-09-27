@@ -21,4 +21,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findBySystemRole(SystemRole systemRole);
     long countByIsActiveTrue();
     boolean existsByUsername(String username);
+    long countBySystemRole(SystemRole systemRole);
 }
