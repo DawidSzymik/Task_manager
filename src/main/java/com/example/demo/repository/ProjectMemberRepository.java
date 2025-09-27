@@ -5,6 +5,9 @@ import com.example.demo.model.ProjectMember;
 import com.example.demo.model.ProjectRole;
 import com.example.demo.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -16,9 +19,12 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
     List<ProjectMember> findByUser(User user);
     List<ProjectMember> findByProject(Project project);
     Optional<ProjectMember> findByProjectAndUser(Project project, User user);
-
-    // DODAJ TE METODY
     List<ProjectMember> findByProjectAndRole(Project project, ProjectRole role);
-    void deleteByProject(Project project);
+
+    // NOWE METODY dla usuwania projektów
+    @Modifying
+    @Query("DELETE FROM ProjectMember pm WHERE pm.project = :project")
+    void deleteByProject(@Param("project") Project project);
+
     void deleteByUser(User user);
 }

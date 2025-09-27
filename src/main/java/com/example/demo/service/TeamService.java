@@ -47,6 +47,20 @@ public class TeamService {
         }
         return null;
     }
+    public boolean existsByName(String name) {
+        Team team = teamRepository.findByName(name);
+        return team != null;
+    }
+
+    public Team createTeam(String name, String description) {
+        Team team = new Team();
+        team.setName(name);
+        // Jeśli Team ma pole description, ustaw je:
+        // team.setDescription(description);
+
+        return teamRepository.save(team);
+    }
+
 
     // NOWA METODA - Usuwanie zespołu przez super admina
     @Transactional
