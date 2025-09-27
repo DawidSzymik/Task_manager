@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -181,6 +182,31 @@ public class UserService {
     public long getActiveUsersCount() {
         return userRepository.countByIsActiveTrue();
     }
+    // Dodaj te metody do istniejącego UserService
+
+    public boolean existsByUsername(String username) {
+        return userRepository.existsByUsername(username);
+    }
+
+    public List<User> getActiveUsers() {
+        return userRepository.findByIsActiveTrue();
+    }
+
+
+    public List<User> searchUsers(String search) {
+        // Proste wyszukiwanie - możesz to rozszerzyć
+        return userRepository.findAll().stream()
+                .filter(user ->
+                        user.getUsername().toLowerCase().contains(search.toLowerCase()) ||
+                                (user.getEmail() != null && user.getEmail().toLowerCase().contains(search.toLowerCase())) ||
+                                (user.getFullName() != null && user.getFullName().toLowerCase().contains(search.toLowerCase()))
+                )
+                .collect(Collectors.toList());
+    }
+
+    public long countBySuperAdminRole() {
+        return userRepository.countBySystemRole(SystemRole.SUPER_ADMIN);
+    }
     // Pozostałe metody bez zmian
     public Optional<User> getUserByUsername(String username) {
         return userRepository.findByUsername(username);
@@ -257,10 +283,6 @@ public class UserService {
         return getUserByUsername(username)
                 .map(user -> user.getSystemRole() == SystemRole.SUPER_ADMIN)
                 .orElse(false);
-    }
-
-    public List<User> getActiveUsers() {
-        return userRepository.findByIsActiveTrue();
     }
 
     public List<User> getInactiveUsers() {
