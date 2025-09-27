@@ -37,8 +37,9 @@ public class NotificationService {
         return notificationRepository.findByUserAndIsReadOrderByCreatedAtDesc(user, false);
     }
 
-    public int getUnreadCount(User user) {
-        return notificationRepository.countUnreadByUser(user);
+    // ZMIENIONA METODA - zwraca long zamiast int
+    public long getUnreadCount(User user) {
+        return (long) notificationRepository.countUnreadByUser(user);
     }
 
     public void markAsRead(Long notificationId) {

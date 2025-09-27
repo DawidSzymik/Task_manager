@@ -173,7 +173,14 @@ public class UserService {
             throw new RuntimeException("Nie udało się usunąć użytkownika: " + e.getMessage(), e);
         }
     }
+    // DODANE BRAKUJĄCE METODY
+    public long getTotalUsersCount() {
+        return userRepository.count();
+    }
 
+    public long getActiveUsersCount() {
+        return userRepository.countByIsActiveTrue();
+    }
     // Pozostałe metody bez zmian
     public Optional<User> getUserByUsername(String username) {
         return userRepository.findByUsername(username);

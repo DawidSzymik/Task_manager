@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/controller/NotificationController.java - ROZSZERZONY
+// src/main/java/com/example/demo/controller/NotificationController.java
 package com.example.demo.controller;
 
 import com.example.demo.model.Notification;
@@ -30,7 +30,7 @@ public class NotificationController {
         User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
 
         List<Notification> notifications = notificationService.getUserNotifications(currentUser);
-        int unreadCount = notificationService.getUnreadCount(currentUser);
+        long unreadCount = notificationService.getUnreadCount(currentUser);
 
         model.addAttribute("notifications", notifications);
         model.addAttribute("unreadCount", unreadCount);
@@ -64,7 +64,7 @@ public class NotificationController {
     // API endpoint dla liczby nieprzeczytanych (AJAX)
     @GetMapping("/unread-count")
     @ResponseBody
-    public int getUnreadCount(@AuthenticationPrincipal UserDetails userDetails) {
+    public long getUnreadCount(@AuthenticationPrincipal UserDetails userDetails) {
         User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
         return notificationService.getUnreadCount(currentUser);
     }

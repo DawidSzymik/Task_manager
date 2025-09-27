@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/controller/BaseController.java - NOWY
+// src/main/java/com/example/demo/controller/BaseController.java
 package com.example.demo.controller;
 
 import com.example.demo.model.User;
@@ -20,19 +20,19 @@ public class BaseController {
     private UserService userService;
 
     @ModelAttribute("unreadNotificationCount")
-    public Integer getUnreadNotificationCount(@AuthenticationPrincipal UserDetails userDetails) {
+    public Long getUnreadNotificationCount(@AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {
-            return 0;
+            return 0L;
         }
 
         try {
             User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElse(null);
             if (currentUser == null) {
-                return 0;
+                return 0L;
             }
             return notificationService.getUnreadCount(currentUser);
         } catch (Exception e) {
-            return 0;
+            return 0L;
         }
     }
 }

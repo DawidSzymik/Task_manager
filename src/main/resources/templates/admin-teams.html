@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="pl" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zarządzanie Zespołami - Panel Administratora</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+        }
+
+        .menu-bar {
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #ff0000;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo img {
+            height: 40px;
+            width: auto;
+        }
+
+        .admin-badge {
+            background: linear-gradient(45deg, #ff0000, #cc0000);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+        }
+
+        .menu-links {
+            display: flex;
+            gap: 30px;
+        }
+
+        .menu-links a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: bold;
+            padding: 10px 20px;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .menu-links a:hover {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff0000;
+        }
+
+        .menu-links a.active {
+            background: #ff0000;
+            color: white;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .page-header h1 {
+            color: #ff0000;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+        }
+
+        .teams-container {
+            background: linear-gradient(135deg, #2d2d2d, #1a1a1a);
+            border-radius: 15px;
+            padding: 30px;
+            border: 2px solid #ff0000;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.1);
+        }
+
+        .container-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .container-header h2 {
+            color: #fff;
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+
+        .teams-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .team-card {
+            background: linear-gradient(135deg, #333, #222);
+            border-radius: 10px;
+            padding: 25px;
+            border: 1px solid #555;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+        }
+
+        .team-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(255, 0, 0, 0.2);
+            border-color: #ff0000;
+        }
+
+        .team-name {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #ff0000;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .team-members {
+            margin-bottom: 15px;
+        }
+
+        .members-title {
+            font-size: 1em;
+            color: #ccc;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .members-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .member-tag {
+            background: linear-gradient(45deg, #555, #333);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            border: 1px solid #777;
+        }
+
+        .team-stats {
+            background: #222;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 12px;
+            color: #aaa;
+            text-align: center;
+        }
+
+        .team-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+
+        .btn-view {
+            background: linear-gradient(45deg, #28a745, #218838);
+            color: white;
+        }
+
+        .btn-view:hover {
+            background: linear-gradient(45deg, #218838, #1e7e34);
+            transform: scale(1.05);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #dc3545, #c82333);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(45deg, #c82333, #a71e2a);
+            transform: scale(1.05);
+        }
+
+        .no-teams {
+            text-align: center;
+            color: #888;
+            font-style: italic;
+            padding: 50px;
+            font-size: 1.2em;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin: 40px 0;
+            color: #ff0000;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .warning-box {
+            background: rgba(255, 255, 0, 0.1);
+            border: 2px solid #ffff00;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+            color: #ffff00;
+        }
+
+        .create-team-section {
+            background: linear-gradient(135deg, #2d2d2d, #1a1a1a);
+            border-radius: 15px;
+            padding: 30px;
+            border: 2px solid #00ff00;
+            margin-bottom: 30px;
+        }
+
+        .create-team-section h3 {
+            color: #00ff00;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #ccc;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #555;
+            border-radius: 5px;
+            background: #333;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .form-group input:focus, .form-group textarea:focus {
+            border-color: #00ff00;
+            outline: none;
+            box-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+        }
+
+        .btn-create {
+            background: linear-gradient(45deg, #00ff00, #00cc00);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+
+        .btn-create:hover {
+            background: linear-gradient(45deg, #00cc00, #009900);
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body>
+
+<div class="menu-bar">
+    <div class="logo">
+        <img src="/images/logo.png" alt="Logo">
+        <div class="admin-badge">SUPER ADMIN</div>
+    </div>
+    <nav class="menu-links">
+        <a href="/admin">Panel Admina</a>
+        <a href="/admin/users">Użytkownicy</a>
+        <a href="/admin/projects">Projekty</a>
+        <a href="/admin/teams" class="active">Zespoły</a>
+        <a href="/welcome">Profil</a>
+    </nav>
+</div>
+
+<div class="container">
+    <div class="page-header">
+        <h1>🏢 Zarządzanie Zespołami</h1>
+    </div>
+
+    <!-- Sekcja tworzenia nowego zespołu -->
+    <div class="create-team-section">
+        <h3>➕ Utwórz Nowy Zespół</h3>
+        <form th:action="@{/admin/teams/create}" method="post">
+            <div class="form-group">
+                <label for="teamName">Nazwa zespołu:</label>
+                <input type="text" id="teamName" name="name" required
+                       placeholder="Wpisz nazwę zespołu..." maxlength="50">
+            </div>
+            <div class="form-group">
+                <label for="teamDescription">Opis zespołu (opcjonalnie):</label>
+                <textarea id="teamDescription" name="description" rows="3"
+                          placeholder="Krótki opis zespołu..."></textarea>
+            </div>
+            <button type="submit" class="btn-create">Utwórz Zespół</button>
+        </form>
+    </div>
+
+    <div class="warning-box">
+        ⚠️ <strong>UWAGA:</strong> Usuwanie zespołów spowoduje usunięcie wszystkich powiązań z użytkownikami!
+    </div>
+
+    <div class="teams-container">
+        <div class="container-header">
+            <h2>🏢 Wszystkie Zespoły w Systemie (Łącznie: <span th:text="${teams != null ? teams.size() : 0}">0</span>)</h2>
+        </div>
+
+        <div th:if="${teams != null and not #lists.isEmpty(teams)}" class="teams-grid">
+            <div th:each="team : ${teams}" class="team-card">
+                <div class="team-name" th:text="${team.name}">Nazwa zespołu</div>
+
+                <div class="team-stats">
+                    📊 Członków: <span th:text="${team.users != null ? team.users.size() : 0}">0</span>
+                </div>
+
+                <div th:if="${team.users != null and not #lists.isEmpty(team.users)}" class="team-members">
+                    <div class="members-title">👥 Członkowie zespołu:</div>
+                    <div class="members-list">
+                        <span th:each="user, iterStat : ${team.users}"
+                              class="member-tag" th:text="${user.username}">Username</span>
+                    </div>
+                </div>
+
+                <div th:if="${team.users == null or #lists.isEmpty(team.users)}" class="team-members">
+                    <div class="members-title">👥 Członkowie zespołu:</div>
+                    <div style="color: #888; font-style: italic; text-align: center;">Brak członków</div>
+                </div>
+
+                <div class="team-actions">
+                    <a th:href="@{/teams/{id}(id=${team.id})}" class="btn btn-view">👁️ Zobacz zespół</a>
+                    <form th:action="@{/admin/teams/{id}/delete(id=${team.id})}" method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-danger"
+                                onclick="return confirm('⚠️ OSTRZEŻENIE!\n\nCzy na pewno chcesz usunąć zespół:\n\'' + this.closest('.team-card').querySelector('.team-name').textContent + '\'?\n\nTa operacja:\n• Usunie zespół z systemu\n• Usunie wszystkich członków z zespołu\n• Nie można tego cofnąć!\n\nKliknij OK aby kontynuować.')">
+                            🗑️ USUŃ ZESPÓŁ
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${teams == null or #lists.isEmpty(teams)}" class="no-teams">
+            Brak zespołów w systemie
+        </div>
+    </div>
+
+    <a href="/admin" class="back-link">← Powrót do panelu administratora</a>
+</div>
+
+</body>
+</html>
