@@ -2,6 +2,7 @@
 package com.example.demo.service;
 
 import com.example.demo.model.Project;
+import com.example.demo.model.ProjectMember;
 import com.example.demo.model.Task;
 import com.example.demo.model.User;
 import com.example.demo.repository.*;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class ProjectService {
@@ -67,7 +69,34 @@ public class ProjectService {
         project.setCreatedAt(LocalDateTime.now());
         return projectRepository.save(project);
     }
+// Dodaj te metody do src/main/java/com/example/demo/service/ProjectService.java
 
+    // BRAKUJĄCA METODA - Projekty użytkownika
+    public List<Project> getProjectsByUser(User user) {
+        // Znajdź wszystkie projekty gdzie użytkownik jest członkiem
+        List<ProjectMember> memberships = projectMemberRepository.findByUser(user);
+        return memberships.stream()
+                .map(ProjectMember::getProject)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    // BRAKUJĄCA METODA - Aktualizacja projektu
+    public Project updateProject(Long projectId, String name, String description) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new RuntimeException("Projekt o ID " + projectId + " nie istnieje"));
+
+        project.setName(name);
+        project.setDescription(description);
+
+        return projectRepository.save(project);
+    }
+
+    // BRAKUJĄCA METODA - Usuwanie projektu (proste)
+    @Transactional
+    public void deleteProject(Long projectId) {
+        deleteProjectByAdmin(projectId); // Używa istniejącej rozszerzonej metody
+    }
     // NOWA METODA - Usuwanie projektu przez administratora
     @Transactional
     public void deleteProjectByAdmin(Long projectId) {

@@ -182,6 +182,9 @@ public class UserService {
     public long getActiveUsersCount() {
         return userRepository.countByIsActiveTrue();
     }
+    public User saveUser(User user) {
+        return userRepository.save(user);
+    }
     // Dodaj te metody do istniejącego UserService
 
     public boolean existsByUsername(String username) {
