@@ -44,6 +44,28 @@ public class Task {
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
     private Set<User> assignedUsers = new HashSet<>();
+// DODAJ TE POLA I METODY DO src/main/java/com/example/demo/model/Task.java
+
+    // 1. DODAJ BRAKUJĄCE POLA (po istniejących polach):
+    private String priority = "MEDIUM"; // LOW, MEDIUM, HIGH, URGENT
+    private LocalDateTime completedAt;
+
+    @ManyToOne
+    @JoinColumn(name = "created_by_id")
+    private User createdBy;
+
+// 2. DODAJ BRAKUJĄCE GETTERY I SETTERY (po istniejących):
+
+    public String getPriority() { return priority; }
+    public void setPriority(String priority) { this.priority = priority; }
+
+    public LocalDateTime getCompletedAt() { return completedAt; }
+    public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
+
+    public User getCreatedBy() { return createdBy; }
+    public void setCreatedBy(User createdBy) { this.createdBy = createdBy; }
+
+    // 3. POPRAW ISTNIEJĄCY GETTER assignedTo (jeśli jest problem):
 
     // Konstruktory
     public Task() {}

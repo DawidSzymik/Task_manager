@@ -3,6 +3,7 @@ package com.example.demo.service;
 
 import com.example.demo.model.Project;
 import com.example.demo.model.Task;
+import com.example.demo.model.User;
 import com.example.demo.repository.CommentRepository;
 import com.example.demo.repository.TaskRepository;
 import com.example.demo.repository.UploadedFileRepository;
@@ -37,9 +38,12 @@ public class TaskService {
     public List<Task> getTasksByProject(Project project) {
         return taskRepository.findByProject(project);
     }
+    public List<Task> getTasksByAssignedUser(User user) {
+        return taskRepository.findByAssignedUsersContaining(user);
+    }
 
-    public void saveTask(Task task) {
-        taskRepository.save(task);
+    public Task saveTask(Task task) {
+        return taskRepository.save(task);
     }
 
     @Transactional
