@@ -222,7 +222,10 @@ public class UserService {
     public List<User> getAllUsers() {
         return userRepository.findAll();
     }
-
+    public Optional<User> findByAuthor(String author) {
+        // Metoda do znalezienia użytkownika po nazwie autora
+        return userRepository.findByUsername(author);
+    }
     public boolean userExists(String username) {
         return userRepository.findByUsername(username).isPresent();
     }
