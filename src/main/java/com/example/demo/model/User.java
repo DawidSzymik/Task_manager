@@ -28,7 +28,7 @@ public class User {
     private LocalDateTime lastLogin;
     private boolean isActive = true;
 
-    @ManyToMany(mappedBy = "users", fetch = FetchType.EAGER)
+    @ManyToMany(mappedBy = "members", fetch = FetchType.EAGER)
     private Set<Team> teams = new HashSet<>();
 
     @ManyToMany(mappedBy = "assignedUsers", cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
