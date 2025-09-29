@@ -18,6 +18,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // POPRAWIONE NAZWY - pasują do pola 'isActive' w modelu User
     List<User> findByIsActiveTrue();
     List<User> findByIsActiveFalse();
+    List<User> findByUsernameContainingIgnoreCase(String username);
     List<User> findBySystemRole(SystemRole systemRole);
     long countByIsActiveTrue();
     boolean existsByUsername(String username);

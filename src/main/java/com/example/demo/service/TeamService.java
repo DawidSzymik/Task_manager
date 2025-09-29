@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/service/TeamService.java - DODANIE METODY DLA ADMINA
+// src/main/java/com/example/demo/service/TeamService.java
 package com.example.demo.service;
 
 import com.example.demo.model.Team;
@@ -9,9 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 @Service
 public class TeamService {
@@ -22,126 +23,140 @@ public class TeamService {
     @Autowired
     private UserRepository userRepository;
 
-    public Team createTeam(String name) {
-        Team team = new Team(name);
-        return teamRepository.save(team);
-    }
-
+    // Pobierz wszystkie zespoły
     public List<Team> getAllTeams() {
         return teamRepository.findAll();
     }
 
+    // Pobierz zespół po ID
     public Optional<Team> getTeamById(Long id) {
         return teamRepository.findById(id);
     }
 
-    public Team addUserToTeam(Long teamId, Long userId) {
-        Optional<Team> teamOpt = teamRepository.findById(teamId);
-        Optional<User> userOpt = userRepository.findById(userId);
+    // Pobierz zespoły użytkownika
+    public List<Team> getTeamsByUser(User user) {
+        return teamRepository.findByMembersContaining(user);
+    }
 
-        if (teamOpt.isPresent() && userOpt.isPresent()) {
-            Team team = teamOpt.get();
-            User user = userOpt.get();
-            team.addUser(user);
-            return teamRepository.save(team);
+    // Utwórz zespół - dla REST API (zwraca Team)
+    @Transactional
+    public Team createTeam(Team team, User creator) {
+        team.setCreatedAt(LocalDateTime.now());
+        team.setCreatedBy(creator);
+
+        if (team.getMembers() == null) {
+            team.setMembers(new ArrayList<>());
         }
-        return null;
-    }
-    public boolean existsByName(String name) {
-        Team team = teamRepository.findByName(name);
-        return team != null;
-    }
-
-    public Team createTeam(String name, String description) {
-        Team team = new Team();
-        team.setName(name);
-        // Jeśli Team ma pole description, ustaw je:
-        // team.setDescription(description);
+        if (!team.getMembers().contains(creator)) {
+            team.getMembers().add(creator);
+        }
 
         return teamRepository.save(team);
     }
 
+    // Utwórz zespół - dla starych kontrolerów MVC (VOID, String params)
+    @Transactional
+    public void createTeam(String name, String description, User creator) {
+        Team team = new Team();
+        team.setName(name);
+        team.setDescription(description);
+        team.setCreatedBy(creator);
+        team.setCreatedAt(LocalDateTime.now());
 
-    // NOWA METODA - Usuwanie zespołu przez super admina
+        if (team.getMembers() == null) {
+            team.setMembers(new ArrayList<>());
+        }
+        team.getMembers().add(creator);
+
+        teamRepository.save(team);
+    }
+
+    // Zaktualizuj zespół
+    @Transactional
+    public Team updateTeam(Team team) {
+        return teamRepository.save(team);
+    }
+
+    // Usuń zespół
+    @Transactional
+    public void deleteTeam(Long id) {
+        Team team = teamRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Team not found with id: " + id));
+        teamRepository.delete(team);
+    }
+
+    // Usuń zespół przez admina
     @Transactional
     public void deleteTeamByAdmin(Long teamId) {
+        deleteTeam(teamId);
+    }
+
+    // Pobierz członków zespołu
+    public List<User> getTeamMembers(Team team) {
+        if (team == null || team.getMembers() == null) {
+            return new ArrayList<>();
+        }
+        return new ArrayList<>(team.getMembers());
+    }
+
+    // Alias
+    public List<User> getUsers(Team team) {
+        return getTeamMembers(team);
+    }
+
+    // Dodaj użytkownika - zwraca Team (dla REST API)
+    @Transactional
+    public Team addUserToTeam(Team team, User user) {
+        if (!team.getMembers().contains(user)) {
+            team.getMembers().add(user);
+            return teamRepository.save(team);
+        }
+        return team;
+    }
+
+    // Dodaj użytkownika - Long, Long (dla starych kontrolerów MVC)
+    @Transactional
+    public void addUserToTeam(Long teamId, Long userId) {
         Team team = teamRepository.findById(teamId)
-                .orElseThrow(() -> new RuntimeException("Zespół nie istnieje"));
+                .orElseThrow(() -> new RuntimeException("Team not found"));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String teamName = team.getName();
-
-        try {
-            System.out.println("🔴 SUPER ADMIN usuwa zespół: " + teamName + " (ID: " + teamId + ")");
-
-            // 1. Usuń wszystkich użytkowników z zespołu (aktualizuj relacje)
-            Set<User> teamUsers = team.getUsers();
-            if (teamUsers != null && !teamUsers.isEmpty()) {
-                System.out.println("Usuwam " + teamUsers.size() + " użytkowników z zespołu");
-
-                // Skopiuj zestaw użytkowników do listy, żeby uniknąć ConcurrentModificationException
-                List<User> usersList = List.copyOf(teamUsers);
-
-                for (User user : usersList) {
-                    try {
-                        // Usuń zespół z użytkownika
-                        user.getTeams().remove(team);
-                        userRepository.save(user);
-
-                        // Usuń użytkownika z zespołu
-                        team.getUsers().remove(user);
-                    } catch (Exception e) {
-                        System.err.println("Błąd usuwania użytkownika " + user.getUsername() + " z zespołu: " + e.getMessage());
-                    }
-                }
-
-                // Zapisz zmiany w zespole
-                teamRepository.save(team);
-            }
-
-            // 2. Usuń sam zespół
-            teamRepository.deleteById(teamId);
-
-            System.out.println("✅ Pomyślnie usunięto zespół: " + teamName + " wraz z wszystkimi powiązanymi relacjami");
-
-        } catch (Exception e) {
-            System.err.println("❌ Błąd podczas usuwania zespołu: " + teamName);
-            e.printStackTrace();
-            throw new RuntimeException("Błąd podczas usuwania zespołu: " + e.getMessage(), e);
+        if (!team.getMembers().contains(user)) {
+            team.getMembers().add(user);
+            teamRepository.save(team);
         }
     }
 
-    // NOWA METODA - Usuń użytkownika ze wszystkich zespołów (dla super admina)
+    // Usuń użytkownika
     @Transactional
-    public void removeUserFromAllTeams(User user) {
-        try {
-            Set<Team> userTeams = user.getTeams();
+    public Team removeUserFromTeam(Team team, User user) {
+        team.getMembers().remove(user);
+        return teamRepository.save(team);
+    }
 
-            if (userTeams != null && !userTeams.isEmpty()) {
-                System.out.println("Usuwam użytkownika " + user.getUsername() + " z " + userTeams.size() + " zespołów");
+    // Sprawdź czy użytkownik jest członkiem
+    public boolean isUserInTeam(Team team, User user) {
+        return team.getMembers() != null && team.getMembers().contains(user);
+    }
 
-                // Skopiuj zespoły do listy
-                List<Team> teamsList = List.copyOf(userTeams);
+    // Policz członków
+    public int getMemberCount(Team team) {
+        return team.getMembers() != null ? team.getMembers().size() : 0;
+    }
 
-                for (Team team : teamsList) {
-                    try {
-                        // Usuń użytkownika z zespołu
-                        team.getUsers().remove(user);
-                        teamRepository.save(team);
+    // Zespoły utworzone przez użytkownika
+    public List<Team> getTeamsCreatedByUser(User user) {
+        return teamRepository.findByCreatedBy(user);
+    }
 
-                        // Usuń zespół z użytkownika
-                        user.getTeams().remove(team);
-                    } catch (Exception e) {
-                        System.err.println("Błąd usuwania użytkownika z zespołu " + team.getName() + ": " + e.getMessage());
-                    }
-                }
+    // Znajdź po nazwie
+    public Optional<Team> findTeamByName(String name) {
+        return teamRepository.findByName(name);
+    }
 
-                // Zapisz zmiany użytkownika
-                userRepository.save(user);
-                System.out.println("Pomyślnie usunięto użytkownika ze wszystkich zespołów");
-            }
-        } catch (Exception e) {
-            System.err.println("Błąd podczas usuwania użytkownika z zespołów: " + e.getMessage());
-            e.printStackTrace();
-        }
+    // Sprawdź czy istnieje
+    public boolean existsByName(String name) {
+        return teamRepository.existsByName(name);
     }
 }
