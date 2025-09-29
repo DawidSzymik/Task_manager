@@ -75,16 +75,16 @@ public class TaskMapper {
         TaskDto dto = toDto(task);
 
         try {
-            // Add comment count
-            int commentCount = commentService.getCommentsForTask(task.getId()).size();
-            dto.setCommentCount(commentCount);
+            // Policz komentarze - używaj getCommentCountByTask zamiast getCommentsForTask
+            long commentCount = commentService.getCommentCountByTask(task);
+            dto.setCommentCount((int) commentCount);
 
-            // Add file count
-            int fileCount = fileService.getFilesForTask(task.getId()).size();
-            dto.setFileCount(fileCount);
+            // Policz pliki
+            long fileCount = fileService.getFileCountByTask(task);
+            dto.setFileCount((int) fileCount);
 
         } catch (Exception e) {
-            // Fallback in case of service errors
+            // Handle error
             dto.setCommentCount(0);
             dto.setFileCount(0);
         }

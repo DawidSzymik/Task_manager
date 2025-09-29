@@ -1,3 +1,4 @@
+// src/main/java/com/example/demo/controller/FileController.java
 package com.example.demo.controller;
 
 import com.example.demo.model.UploadedFile;
@@ -16,7 +17,8 @@ public class FileController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ByteArrayResource> downloadFile(@PathVariable Long id) {
-        UploadedFile file = fileService.getFileById(id);
+        // POPRAWIONE: getFileById zwraca Optional<UploadedFile>
+        UploadedFile file = fileService.getFileById(id).orElse(null);
 
         if (file == null || file.getData() == null) {
             return ResponseEntity.notFound().build();

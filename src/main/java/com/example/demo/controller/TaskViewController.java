@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/controller/TaskViewController.java - DODANIE DOSTĘPNYCH UŻYTKOWNIKÓW
+// src/main/java/com/example/demo/controller/TaskViewController.java
 package com.example.demo.controller;
 
 import com.example.demo.model.*;
@@ -44,8 +44,10 @@ public class TaskViewController {
 
         ProjectRole userRole = memberOpt.get().getRole();
         List<Task> projectTasks = taskService.findAllByProject(project);
-        List<Comment> comments = commentService.getCommentsForTask(id);
-        List<UploadedFile> files = fileService.getFilesForTask(id);
+
+        // POPRAWIONE: używamy getCommentsByTask zamiast getCommentsForTask
+        List<Comment> comments = commentService.getCommentsByTask(task);
+        List<UploadedFile> files = fileService.getFilesByTask(task);
 
         // DODAJ DOSTĘPNYCH UŻYTKOWNIKÓW DO PRZYPISANIA (tylko dla adminów)
         List<User> availableUsersToAssign = null;
@@ -104,7 +106,9 @@ public class TaskViewController {
             throw new RuntimeException("Brak uprawnień do dodawania komentarzy");
         }
 
-        commentService.addCommentToTask(id, commentText, userDetails.getUsername());
+        // POPRAWIONE: używamy addCommentToTask z Task, String, User
+        commentService.addCommentToTask(task, commentText, currentUser);
+
         return "redirect:/tasks/view/" + id;
     }
 
@@ -124,20 +128,20 @@ public class TaskViewController {
         }
 
         System.out.println("Próba zapisu pliku: " + file.getOriginalFilename());
-        fileService.storeFileForTask(id, file, userDetails.getUsername());
+        fileService.storeFile(task, file, currentUser);
+
         return "redirect:/tasks/view/" + id;
     }
 
-    // METODY USUWANIA - BEZ ZMIAN
+    // METODY USUWANIA
     @PostMapping("/comments/delete/{commentId}")
     public String deleteComment(@PathVariable Long commentId,
                                 @AuthenticationPrincipal UserDetails userDetails) {
         User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
-        Comment comment = commentService.getCommentById(commentId);
 
-        if (comment == null) {
-            throw new RuntimeException("Komentarz nie istnieje");
-        }
+        // POPRAWIONE: getCommentById zwraca Optional
+        Comment comment = commentService.getCommentById(commentId)
+                .orElseThrow(() -> new RuntimeException("Komentarz nie istnieje"));
 
         Task task = comment.getTask();
         Project project = task.getProject();
@@ -159,11 +163,10 @@ public class TaskViewController {
     public String deleteFile(@PathVariable Long fileId,
                              @AuthenticationPrincipal UserDetails userDetails) {
         User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
-        UploadedFile file = fileService.getFileById(fileId);
 
-        if (file == null) {
-            throw new RuntimeException("Plik nie istnieje");
-        }
+        // POPRAWIONE: getFileById zwraca Optional
+        UploadedFile file = fileService.getFileById(fileId)
+                .orElseThrow(() -> new RuntimeException("Plik nie istnieje"));
 
         Task task = file.getTask();
         Project project = task.getProject();
@@ -183,7 +186,9 @@ public class TaskViewController {
 
     @GetMapping("/files/{id}")
     public ResponseEntity<ByteArrayResource> downloadFile(@PathVariable Long id) {
-        UploadedFile file = fileService.getFileById(id);
+        // POPRAWIONE: getFileById zwraca Optional
+        UploadedFile file = fileService.getFileById(id)
+                .orElse(null);
 
         if (file == null || file.getData() == null) {
             return ResponseEntity.notFound().build();
@@ -196,5 +201,54 @@ public class TaskViewController {
                 .contentType(MediaType.parseMediaType(file.getContentType()))
                 .contentLength(file.getData().length)
                 .body(resource);
+    }
+
+    // Dodatkowe metody dla zarządzania użytkownikami w zadaniu
+    @PostMapping("/{taskId}/assign-user")
+    public String assignUserToTask(@PathVariable Long taskId,
+                                   @RequestParam Long userId,
+                                   @AuthenticationPrincipal UserDetails userDetails) {
+        User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
+        Task task = taskService.findById(taskId);
+
+        // Sprawdź czy użytkownik jest adminem projektu
+        if (!memberService.isProjectAdmin(task.getProject(), currentUser)) {
+            throw new RuntimeException("Tylko administrator projektu może przypisywać użytkowników");
+        }
+
+        User userToAssign = userService.getUserById(userId)
+                .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
+
+        // Przypisz użytkownika
+        task.getAssignedUsers().add(userToAssign);
+        taskService.saveTask(task);
+
+        System.out.println("Przypisano użytkownika " + userToAssign.getUsername() + " do zadania " + task.getTitle());
+
+        return "redirect:/tasks/view/" + taskId;
+    }
+
+    @PostMapping("/{taskId}/unassign-user/{userId}")
+    public String unassignUserFromTask(@PathVariable Long taskId,
+                                       @PathVariable Long userId,
+                                       @AuthenticationPrincipal UserDetails userDetails) {
+        User currentUser = userService.getUserByUsername(userDetails.getUsername()).orElseThrow();
+        Task task = taskService.findById(taskId);
+
+        // Sprawdź czy użytkownik jest adminem projektu
+        if (!memberService.isProjectAdmin(task.getProject(), currentUser)) {
+            throw new RuntimeException("Tylko administrator projektu może odpisywać użytkowników");
+        }
+
+        User userToUnassign = userService.getUserById(userId)
+                .orElseThrow(() -> new RuntimeException("Użytkownik nie istnieje"));
+
+        // Odpisz użytkownika
+        task.getAssignedUsers().remove(userToUnassign);
+        taskService.saveTask(task);
+
+        System.out.println("Odpisano użytkownika " + userToUnassign.getUsername() + " z zadania " + task.getTitle());
+
+        return "redirect:/tasks/view/" + taskId;
     }
 }

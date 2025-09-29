@@ -1,139 +1,113 @@
-// src/main/java/com/example/demo/service/FileService.java - Z POWIADOMIENIAMI
+// src/main/java/com/example/demo/service/FileService.java
 package com.example.demo.service;
 
-import com.example.demo.model.*;
-import com.example.demo.repository.TaskRepository;
+import com.example.demo.model.Task;
+import com.example.demo.model.UploadedFile;
+import com.example.demo.model.User;
 import com.example.demo.repository.UploadedFileRepository;
-import com.example.demo.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 
 @Service
 public class FileService {
 
     @Autowired
-    private UploadedFileRepository fileRepo;
+    private UploadedFileRepository fileRepository;
 
     @Autowired
-    private TaskRepository taskRepo;
+    private TaskService taskService;
 
     @Autowired
-    private UserRepository userRepo;
+    private UserService userService;
 
-    @Autowired
-    private ApplicationEventPublisher eventPublisher;
+    // Pobierz plik po ID
+    public Optional<UploadedFile> getFileById(Long fileId) {
+        return fileRepository.findById(fileId);
+    }
 
-    // Zapisywanie pliku
-    public void storeFileForTask(Long taskId, MultipartFile file, String username) {
+    // Pobierz pliki dla zadania
+    public List<UploadedFile> getFilesByTask(Task task) {
+        return fileRepository.findByTask(task);
+    }
+
+    // Policz pliki dla zadania
+    public long getFileCountByTask(Task task) {
+        return fileRepository.countByTask(task);
+    }
+
+    // Zapisz plik dla zadania
+    @Transactional
+    public UploadedFile storeFile(Task task, MultipartFile file, User uploader) {
         try {
-            Task task = taskRepo.findById(taskId).orElseThrow();
-            User uploadedBy = userRepo.findByUsername(username).orElseThrow();
+            UploadedFile uploadedFile = new UploadedFile();
+            uploadedFile.setOriginalName(file.getOriginalFilename());
+            uploadedFile.setContentType(file.getContentType());
+            uploadedFile.setFileSize(file.getSize());
+            uploadedFile.setData(file.getBytes());
+            uploadedFile.setTask(task);
+            uploadedFile.setUploadedBy(uploader);
+            uploadedFile.setUploadedAt(LocalDateTime.now());
 
-            UploadedFile uf = new UploadedFile();
-            uf.setTask(task);
-            uf.setOriginalName(file.getOriginalFilename());
-            uf.setContentType(file.getContentType());
-            uf.setData(file.getBytes());
-            uf.setUploadedBy(uploadedBy);
-
-            UploadedFile saved = fileRepo.save(uf);
-            System.out.println("Zapisano plik w bazie danych: " + file.getOriginalFilename() + " przez: " + username);
-
-            // NOWE: Wyślij powiadomienia do wszystkich przypisanych użytkowników (oprócz autora)
-            try {
-                Set<User> assignedUsers = task.getAssignedUsers();
-                for (User assignedUser : assignedUsers) {
-                    if (!assignedUser.equals(uploadedBy)) { // Nie wysyłaj powiadomienia autorowi uploadu
-                        eventPublisher.publishEvent(new NotificationEvent(
-                                assignedUser,
-                                "📎 Nowy plik w zadaniu",
-                                uploadedBy.getUsername() + " dodał plik \"" + file.getOriginalFilename() +
-                                        "\" do zadania \"" + task.getTitle() + "\"",
-                                NotificationType.TASK_FILE_UPLOADED,
-                                task.getId(),
-                                "/tasks/view/" + task.getId()
-                        ));
-                    }
-                }
-            } catch (Exception e) {
-                System.err.println("Błąd wysyłania powiadomień o pliku: " + e.getMessage());
-            }
-
+            return fileRepository.save(uploadedFile);
         } catch (IOException e) {
-            throw new RuntimeException("Błąd zapisu pliku", e);
+            throw new RuntimeException("Failed to store file: " + e.getMessage(), e);
         }
     }
 
-    // Pobieranie plików dla zadania
-    public List<UploadedFile> getFilesForTask(Long taskId) {
-        return fileRepo.findByTaskId(taskId);
+    // Stara metoda dla kompatybilności wstecznej
+    @Transactional
+    public void storeFileForTask(Long taskId, MultipartFile file, String username) {
+        Task task = taskService.findById(taskId);
+        User uploader = userService.getUserByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
+
+        storeFile(task, file, uploader);
     }
 
-    // Pobieranie pliku po ID
-    public UploadedFile getFileById(Long id) {
-        return fileRepo.findById(id).orElse(null);
-    }
-
-    // Usuwanie pliku
+    // Usuń plik
+    @Transactional
     public void deleteFile(Long fileId) {
-        UploadedFile file = fileRepo.findById(fileId).orElse(null);
-        if (file != null) {
-            String fileName = file.getOriginalName();
-            String taskTitle = file.getTask().getTitle();
+        UploadedFile file = fileRepository.findById(fileId)
+                .orElseThrow(() -> new RuntimeException("File not found with id: " + fileId));
 
-            fileRepo.delete(file);
-            System.out.println("Usunięto plik: " + fileName + " z zadania: " + taskTitle);
-        } else {
-            throw new RuntimeException("Plik o ID " + fileId + " nie istnieje");
-        }
+        fileRepository.delete(file);
     }
 
-    // Usuwanie wszystkich plików dla zadania (wywoływane przy usuwaniu zadania)
-    public void deleteFilesForTask(Long taskId) {
-        List<UploadedFile> files = fileRepo.findByTaskId(taskId);
-        if (!files.isEmpty()) {
-            fileRepo.deleteAll(files);
-            System.out.println("Usunięto " + files.size() + " plików dla zadania ID: " + taskId);
-        }
+    // Usuń wszystkie pliki dla zadania
+    @Transactional
+    public void deleteByTask(Task task) {
+        fileRepository.deleteByTask(task);
     }
 
-    // Pobieranie rozmiaru pliku w bazie (do statystyk)
-    public long getTotalFileSizeForTask(Long taskId) {
-        List<UploadedFile> files = fileRepo.findByTaskId(taskId);
-        return files.stream()
-                .mapToLong(file -> file.getData() != null ? file.getData().length : 0)
+    // Pobierz pliki użytkownika
+    public List<UploadedFile> getFilesByUser(User user) {
+        return fileRepository.findByUploadedBy(user);
+    }
+
+    // Pobierz ostatnie pliki dla zadania z limitem
+    public List<UploadedFile> getRecentFilesByTask(Task task, int limit) {
+        return fileRepository.findByTaskOrderByUploadedAtDesc(task)
+                .stream()
+                .limit(limit)
+                .toList();
+    }
+
+    // Sprawdź czy plik istnieje
+    public boolean fileExists(Long fileId) {
+        return fileRepository.existsById(fileId);
+    }
+
+    // Pobierz całkowity rozmiar plików dla zadania
+    public long getTotalFileSizeByTask(Task task) {
+        return fileRepository.findByTask(task).stream()
+                .mapToLong(UploadedFile::getFileSize)
                 .sum();
-    }
-
-    // Event class dla powiadomień
-    public static class NotificationEvent {
-        private final User user;
-        private final String title;
-        private final String message;
-        private final NotificationType type;
-        private final Long relatedId;
-        private final String actionUrl;
-
-        public NotificationEvent(User user, String title, String message, NotificationType type, Long relatedId, String actionUrl) {
-            this.user = user;
-            this.title = title;
-            this.message = message;
-            this.type = type;
-            this.relatedId = relatedId;
-            this.actionUrl = actionUrl;
-        }
-
-        public User getUser() { return user; }
-        public String getTitle() { return title; }
-        public String getMessage() { return message; }
-        public NotificationType getType() { return type; }
-        public Long getRelatedId() { return relatedId; }
-        public String getActionUrl() { return actionUrl; }
     }
 }
