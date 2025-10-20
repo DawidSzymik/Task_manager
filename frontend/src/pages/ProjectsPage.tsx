@@ -45,10 +45,17 @@ const ProjectsPage: React.FC = () => {
         try {
             setCreating(true);
             setError(null);
-            await projectService.createProject(formData);
+
+            // Upewnij się, że description jest stringiem, nie undefined
+            const projectData: CreateProjectRequest = {
+                name: formData.name.trim(),
+                description: formData.description?.trim() || ''
+            };
+
+            await projectService.createProject(projectData);
             setShowCreateModal(false);
             setFormData({ name: '', description: '' });
-            loadProjects();
+            await loadProjects();
         } catch (error: any) {
             console.error('Failed to create project:', error);
             setError(error.message || 'Nie udało się utworzyć projektu');
@@ -64,7 +71,7 @@ const ProjectsPage: React.FC = () => {
 
         try {
             await projectService.deleteProject(projectId);
-            loadProjects();
+            await loadProjects();
         } catch (error: any) {
             console.error('Failed to delete project:', error);
             alert(error.message || 'Nie udało się usunąć projektu');
@@ -225,7 +232,7 @@ const ProjectsPage: React.FC = () => {
                                         Opis (opcjonalnie)
                                     </label>
                                     <textarea
-                                        value={formData.description}
+                                        value={formData.description || ''}
                                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                         className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
                                         placeholder="Krótki opis projektu..."

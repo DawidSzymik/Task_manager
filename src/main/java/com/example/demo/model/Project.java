@@ -1,6 +1,7 @@
-// src/main/java/com/example/demo/model/Project.java - POPRAWIONY
+// src/main/java/com/example/demo/model/Project.java
 package com.example.demo.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import javax.persistence.*;
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -10,6 +11,7 @@ import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "projects")
+@JsonIgnoreProperties({"members"}) // ✅ Ignoruj members przy serializacji JSON
 public class Project {
 
     @Id
@@ -30,7 +32,7 @@ public class Project {
     @JoinColumn(name = "created_by_id")
     private User createdBy;
 
-    // POPRAWKA: Używamy ProjectMember zamiast bezpośredniej relacji
+    // Używamy ProjectMember zamiast bezpośredniej relacji
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<ProjectMember> members = new HashSet<>();
 
@@ -41,8 +43,6 @@ public class Project {
         this.name = name;
         this.description = description;
         this.createdBy = createdBy;
-        // NIE DODAWAJ TUTAJ ProjectMember - to spowoduje błąd cykliczny
-        // Dodaj to przez ProjectMemberService po zapisaniu Project
     }
 
     // Metody pomocnicze
@@ -72,10 +72,6 @@ public class Project {
                 .collect(Collectors.toList());
     }
 
-    // USUŃ TE METODY - używaj ProjectMemberService
-    // public void addMember(User user, ProjectRole role) { ... }
-    // public void removeMember(User user) { ... }
-
     // Gettery i settery
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -98,14 +94,6 @@ public class Project {
     public Set<ProjectMember> getMembers() { return members; }
     public void setMembers(Set<ProjectMember> members) { this.members = members; }
 
-    // Kompatybilność z starym kodem
-    public Set<User> getAssignedUsers() {
-        return members.stream()
-                .map(ProjectMember::getUser)
-                .collect(Collectors.toSet());
-    }
-
-    // Helper metoda dla equals w ProjectMember
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

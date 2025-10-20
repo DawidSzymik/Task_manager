@@ -1,11 +1,13 @@
 // src/main/java/com/example/demo/model/ProjectMember.java
 package com.example.demo.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "project_members")
+@JsonIgnoreProperties({"project"}) // ✅ Ignoruj project przy serializacji JSON
 public class ProjectMember {
 
     @Id

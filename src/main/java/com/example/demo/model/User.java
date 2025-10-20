@@ -1,6 +1,7 @@
-// src/main/java/com/example/demo/model/User.java - POPRAWIONY
+// src/main/java/com/example/demo/model/User.java
 package com.example.demo.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import javax.persistence.*;
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -8,6 +9,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "users")
+@JsonIgnoreProperties({"password", "teams", "tasks"}) // ✅ Ignoruj te pola przy serializacji JSON
 public class User {
 
     @Id
@@ -48,7 +50,7 @@ public class User {
         this.systemRole = systemRole;
     }
 
-    // NOWA METODA - Wyczyść wszystkie relacje przed usunięciem
+    // Wyczyść wszystkie relacje przed usunięciem
     public void clearAllRelations() {
         if (tasks != null) {
             tasks.clear();

@@ -1,6 +1,7 @@
 // src/main/java/com/example/demo/model/Team.java
 package com.example.demo.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import javax.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -8,6 +9,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "teams")
+@JsonIgnoreProperties({"members", "createdBy"}) // ✅ Ignoruj te pola przy serializacji JSON
 public class Team {
 
     @Id

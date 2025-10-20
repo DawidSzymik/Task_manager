@@ -40,6 +40,15 @@ export interface AddMemberRequest {
     userId: number;
 }
 
+// Project Role Type
+export type ProjectRole = 'ADMIN' | 'MEMBER' | 'VIEWER';
+
+// Task Status Type
+export type TaskStatus = 'NEW' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+
+// Task Priority Type
+export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+
 // Project Types
 export interface Project {
     id: number;
@@ -56,15 +65,9 @@ export interface Project {
 export interface ProjectMember {
     id: number;
     user: User;
-    project: Project;
+    project?: Project;
     role: ProjectRole;
     joinedAt?: string;
-}
-
-export enum ProjectRole {
-    ADMIN = 'ADMIN',
-    MEMBER = 'MEMBER',
-    VIEWER = 'VIEWER'
 }
 
 export interface CreateProjectRequest {
@@ -82,16 +85,81 @@ export interface AddProjectMemberRequest {
     role: ProjectRole;
 }
 
-// Task Types (for future use)
+// Task Types
 export interface Task {
     id: number;
     title: string;
     description?: string;
-    status?: string;
-    priority?: string;
+    status: TaskStatus;
+    priority: TaskPriority;
     deadline?: string;
     createdAt?: string;
+    completedAt?: string;
     assignedTo?: User;
+    assignedUsers?: User[];
+    project?: Project;
+    createdBy?: User;
+    commentCount?: number;
+    fileCount?: number;
+    hasDeadlinePassed?: boolean;
+    daysUntilDeadline?: number;
+}
+
+export interface CreateTaskRequest {
+    title: string;
+    description?: string;
+    priority?: TaskPriority;
+    deadline?: string;
+    projectId: number;
+    assignedToId?: number;
+    assignedUserIds?: number[];
+}
+
+export interface UpdateTaskRequest {
+    title?: string;
+    description?: string;
+    status?: TaskStatus;
+    priority?: TaskPriority;
+    deadline?: string;
+    assignedToId?: number;
+}
+
+// Comment Types
+export interface Comment {
+    id: number;
+    text: string;
+    createdAt: string;
+    updatedAt?: string;
+    author: User;
+    taskId?: number;
+    taskTitle?: string;
+    canEdit?: boolean;
+    canDelete?: boolean;
+}
+
+export interface CreateCommentRequest {
+    text: string;
+}
+
+export interface UpdateCommentRequest {
+    text: string;
+}
+
+// File Types
+export interface UploadedFile {
+    id: number;
+    originalName: string;
+    contentType: string;
+    fileSize: number;
+    fileSizeFormatted?: string;
+    uploadedAt: string;
+    uploadedBy: User;
+    taskId?: number;
+    taskTitle?: string;
+    downloadUrl?: string;
+    isImage?: boolean;
+    isDocument?: boolean;
+    canDelete?: boolean;
 }
 
 // API Response Types

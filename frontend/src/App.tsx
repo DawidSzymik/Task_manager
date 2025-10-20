@@ -7,6 +7,10 @@ import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
 import TeamDetailsPage from "./pages/TeamDetailsPage.tsx";
 import TeamsPage from "./pages/TeamPage.tsx";
+import ProjectsPage from "./pages/ProjectsPage.tsx";
+import ProjectDetailsPage from "./pages/ProjectDetailsPage.tsx";
+import TasksPage from "./pages/TasksPage.tsx";
+import TaskDetailsPage from "./pages/TaskDetailsPage.tsx";
 
 function App() {
     return (
@@ -27,35 +31,45 @@ function App() {
                         }
                     />
 
-                    {/* Placeholder routes - będziemy je dodawać w kolejnych krokach */}
+                    {/* Projects Routes */}
                     <Route
                         path="/projects"
                         element={
                             <ProtectedRoute>
-                                <div className="min-h-screen bg-gray-800 flex items-center justify-center">
-                                    <div className="text-center">
-                                        <h1 className="text-3xl font-bold text-white mb-4">Projekty</h1>
-                                        <p className="text-gray-400">Strona w budowie - będzie dostępna wkrótce!</p>
-                                    </div>
-                                </div>
+                                <ProjectsPage />
                             </ProtectedRoute>
                         }
                     />
 
                     <Route
-                        path="/tasks"
+                        path="/projects/:id"
                         element={
                             <ProtectedRoute>
-                                <div className="min-h-screen bg-gray-800 flex items-center justify-center">
-                                    <div className="text-center">
-                                        <h1 className="text-3xl font-bold text-white mb-4">Zadania</h1>
-                                        <p className="text-gray-400">Strona w budowie - będzie dostępna wkrótce!</p>
-                                    </div>
-                                </div>
+                                <ProjectDetailsPage />
                             </ProtectedRoute>
                         }
                     />
 
+                    {/* Tasks Routes */}
+                    <Route
+                        path="/tasks"
+                        element={
+                            <ProtectedRoute>
+                                <TasksPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/tasks/:id"
+                        element={
+                            <ProtectedRoute>
+                                <TaskDetailsPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    {/* Teams Routes */}
                     <Route
                         path="/teams"
                         element={
