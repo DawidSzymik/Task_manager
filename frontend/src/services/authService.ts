@@ -1,6 +1,6 @@
 // src/services/authService.ts
 
-const API_BASE_URL = 'http://localhost:8080/api/v1/auth';
+const API_BASE_URL = '/api/v1/auth';
 
 // Types based on your backend
 export interface LoginRequest {
@@ -12,6 +12,7 @@ export interface RegisterRequest {
     username: string;
     email: string;
     password: string;
+    confirmPassword: string; // Backend requires this!
     fullName?: string;
 }
 
@@ -66,13 +67,12 @@ export const authService = {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                credentials: 'include', // Important for session cookies
+                credentials: 'include',
                 body: JSON.stringify(credentials),
             });
 
             const data = await handleResponse<AuthResponse>(response);
 
-            // Save user info to localStorage
             if (data.data?.user) {
                 localStorage.setItem('user', JSON.stringify(data.data.user));
                 localStorage.setItem('username', data.data.user.username);
@@ -102,7 +102,6 @@ export const authService = {
 
             const data = await handleResponse<AuthResponse>(response);
 
-            // Optionally save user info after registration
             if (data.data?.user) {
                 localStorage.setItem('user', JSON.stringify(data.data.user));
                 localStorage.setItem('username', data.data.user.username);
@@ -125,7 +124,6 @@ export const authService = {
         } catch (error) {
             console.error('Logout error:', error);
         } finally {
-            // Clear local storage regardless of API response
             localStorage.removeItem('user');
             localStorage.removeItem('username');
             localStorage.removeItem('sessionId');
@@ -166,7 +164,6 @@ export const authService = {
 
             const data = await handleResponse<{ success: boolean; data: UserDto }>(response);
 
-            // Update localStorage
             if (data.data) {
                 localStorage.setItem('user', JSON.stringify(data.data));
             }
