@@ -11,6 +11,9 @@ import ProjectsPage from "./pages/ProjectsPage.tsx";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage.tsx";
 import TasksPage from "./pages/TasksPage.tsx";
 import TaskDetailsPage from "./pages/TaskDetailsPage.tsx";
+import CalendarPage from "./pages/CalendarPage.tsx";
+import ReportsPage from "./pages/ReportsPage.tsx";
+import ProfilePage from "./pages/ProfilePage.tsx";
 
 function App() {
     return (
@@ -84,6 +87,36 @@ function App() {
                         element={
                             <ProtectedRoute>
                                 <TeamDetailsPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    {/* Calendar Route */}
+                    <Route
+                        path="/calendar"
+                        element={
+                            <ProtectedRoute>
+                                <CalendarPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    {/* Reports Route */}
+                    <Route
+                        path="/reports"
+                        element={
+                            <ProtectedRoute>
+                                <ReportsPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    {/* Profile Route */}
+                    <Route
+                        path="/profile"
+                        element={
+                            <ProtectedRoute>
+                                <ProfilePage />
                             </ProtectedRoute>
                         }
                     />

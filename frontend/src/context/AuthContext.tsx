@@ -1,5 +1,7 @@
+// src/context/AuthContext.tsx
 import { createContext, useContext, useState, useEffect } from 'react';
-import type { ReactNode } from 'react';import authService from '../services/authService';
+import type { ReactNode } from 'react';
+import authService from '../services/authService';
 import type { UserDto } from '../services/authService';
 
 interface AuthContextType {
@@ -23,10 +25,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     useEffect(() => {
         // Load user from localStorage on mount
-        const loadUser = () => {
+        const loadUser = async () => {
             const savedUser = authService.getCurrentUser();
             if (savedUser) {
                 setUser(savedUser);
+                console.log('✅ User data refreshed on mount:', savedUser.username);
             }
             setIsLoading(false);
         };
@@ -50,6 +53,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
             const freshUser = await authService.getProfile();
             setUser(freshUser);
+            console.log('✅ User data refreshed:', freshUser.username);
         } catch (error) {
             console.error('Failed to refresh user:', error);
             // If refresh fails, clear user

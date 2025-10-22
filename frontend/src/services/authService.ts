@@ -24,6 +24,7 @@ export interface UserDto {
     systemRole?: string;
     active?: boolean;
     lastLogin?: string;
+    createdAt?: string;  // ✅ DODANE
 }
 
 export interface AuthResponse {
@@ -58,7 +59,7 @@ const handleResponse = async <T>(response: Response): Promise<T> => {
 };
 
 // Auth Service
-export const authService = {
+const authService = {
     // Login
     login: async (credentials: LoginRequest): Promise<AuthResponse> => {
         try {
@@ -135,58 +136,56 @@ export const authService = {
         return !!localStorage.getItem('user');
     },
 
-    // Get current user
+    // Get current user from localStorage
     getCurrentUser: (): UserDto | null => {
         const userStr = localStorage.getItem('user');
         if (!userStr) return null;
+
         try {
             return JSON.parse(userStr);
-        } catch {
+        } catch (error) {
+            console.error('Failed to parse user from localStorage:', error);
             return null;
         }
     },
 
-    // Get username
-    getUsername: (): string | null => {
-        return localStorage.getItem('username');
-    },
-
-    // Get user profile from API
+    // Get user profile from server
     getProfile: async (): Promise<UserDto> => {
         try {
-            const response = await fetch(`${API_BASE_URL}/me`, {
+            const response = await fetch(`${API_BASE_URL}/profile`, {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
                 credentials: 'include',
             });
 
-            const data = await handleResponse<{ success: boolean; data: UserDto }>(response);
+            const data = await handleResponse<AuthResponse>(response);
 
-            if (data.data) {
-                localStorage.setItem('user', JSON.stringify(data.data));
+            if (!data.data?.user) {
+                throw new Error('No user data in response');
             }
 
-            return data.data;
+            // Update localStorage with fresh data
+            localStorage.setItem('user', JSON.stringify(data.data.user));
+            console.log('👤 Profile refreshed:', data.data.user.username);
+
+            return data.data.user;
         } catch (error) {
             console.error('Get profile error:', error);
             throw error;
         }
     },
 
-    // Check auth status
-    checkAuthStatus: async (): Promise<boolean> => {
+    // Check session validity
+    checkSession: async (): Promise<boolean> => {
         try {
-            const response = await fetch(`${API_BASE_URL}/status`, {
+            const response = await fetch(`${API_BASE_URL}/check-session`, {
                 method: 'GET',
                 credentials: 'include',
             });
 
             const data = await response.json();
-            return data.authenticated || false;
+            return data.success === true;
         } catch (error) {
-            console.error('Check auth status error:', error);
+            console.error('Session check error:', error);
             return false;
         }
     },
