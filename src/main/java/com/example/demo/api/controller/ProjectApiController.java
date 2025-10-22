@@ -22,7 +22,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/projects")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:5173"})
 public class ProjectApiController {
 
     private final ProjectService projectService;
@@ -40,15 +40,11 @@ public class ProjectApiController {
     // GET /api/v1/projects - Get all projects (filtered by user access)
     @GetMapping
     public ResponseEntity<Map<String, Object>> getAllProjects(
-            @RequestParam(value = "includeAll", defaultValue = "false") boolean includeAll) {
+            @RequestParam(value = "includeAll", defaultValue = "false") boolean includeAll,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            // TYMCZASOWO: używaj pierwszego użytkownika z bazy jako test (bez autoryzacji)
-            List<User> users = userService.getAllUsers();
-            if (users.isEmpty()) {
-                return createErrorResponse("No users found in database", HttpStatus.INTERNAL_SERVER_ERROR);
-            }
-            User currentUser = users.get(0);
+            User currentUser = getCurrentUser(userDetails);
 
             List<Project> projects;
 
@@ -68,31 +64,29 @@ public class ProjectApiController {
             response.put("success", true);
             response.put("message", "Projects retrieved successfully");
             response.put("data", projects);
-            response.put("testUser", currentUser.getUsername()); // DEBUG info
-            response.put("userRole", currentUser.getSystemRole()); // DEBUG info
 
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            e.printStackTrace(); // DEBUG - zobacz błąd w logach
+            e.printStackTrace();
             return createErrorResponse("Failed to retrieve projects: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
     // GET /api/v1/projects/{id} - Get project by ID
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getProjectById(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> getProjectById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            // TYMCZASOWO: użyj pierwszego użytkownika
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
             Project project = getProjectAndCheckAccess(id, currentUser);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Project retrieved successfully");
             response.put("data", project);
-            response.put("testUser", currentUser.getUsername());
 
             return ResponseEntity.ok(response);
 
@@ -108,10 +102,15 @@ public class ProjectApiController {
 
     // POST /api/v1/projects - Create new project
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createProject(@RequestBody Map<String, String> request) {
+    public ResponseEntity<Map<String, Object>> createProject(
+            @RequestBody Map<String, String> request,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User creator = getTestUser();
+            // ✅ TUTAJ JEST NAPRAWA - używamy prawdziwego zalogowanego użytkownika jako creator!
+            User creator = getCurrentUser(userDetails);
+
+            System.out.println("🔍 Creating project by user: " + creator.getUsername());
 
             String name = request.get("name");
             String description = request.get("description");
@@ -120,17 +119,18 @@ public class ProjectApiController {
                 return createErrorResponse("Project name is required", HttpStatus.BAD_REQUEST);
             }
 
-            // Create project
+            // Create project with actual logged-in user as creator
             Project project = projectService.createProject(name, description != null ? description : "", creator);
 
             // Add creator as admin
             projectMemberService.addMemberToProject(project, creator, ProjectRole.ADMIN);
 
+            System.out.println("✅ Project created successfully by: " + project.getCreatedBy().getUsername());
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Project created successfully");
             response.put("data", project);
-            response.put("testUser", creator.getUsername());
 
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
@@ -148,7 +148,7 @@ public class ProjectApiController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getUserFromDetails(userDetails);
+            User currentUser = getCurrentUser(userDetails);
             Project project = getProjectAndCheckAccess(id, currentUser);
 
             // Check if user has admin rights or is creator
@@ -191,7 +191,7 @@ public class ProjectApiController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getUserFromDetails(userDetails);
+            User currentUser = getCurrentUser(userDetails);
             Project project = getProjectAndCheckAccess(id, currentUser);
 
             // Only creator or super admin can delete project
@@ -225,7 +225,7 @@ public class ProjectApiController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getUserFromDetails(userDetails);
+            User currentUser = getCurrentUser(userDetails);
             Project project = getProjectAndCheckAccess(id, currentUser);
 
             List<ProjectMember> members = projectMemberService.getProjectMembers(project);
@@ -254,7 +254,7 @@ public class ProjectApiController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getUserFromDetails(userDetails);
+            User currentUser = getCurrentUser(userDetails);
             Project project = getProjectAndCheckAccess(id, currentUser);
 
             // Check admin permissions
@@ -295,7 +295,7 @@ public class ProjectApiController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getUserFromDetails(userDetails);
+            User currentUser = getCurrentUser(userDetails);
             Project project = getProjectAndCheckAccess(id, currentUser);
 
             // Check admin permissions
@@ -337,7 +337,7 @@ public class ProjectApiController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getUserFromDetails(userDetails);
+            User currentUser = getCurrentUser(userDetails);
             Project project = getProjectAndCheckAccess(id, currentUser);
 
             // Check admin permissions
@@ -378,20 +378,18 @@ public class ProjectApiController {
     }
 
     // Helper methods
-    private User getTestUser() {
-        List<User> users = userService.getAllUsers();
-        if (users.isEmpty()) {
-            throw new RuntimeException("No users found in database");
-        }
-        return users.get(0); // Używa pierwszego użytkownika do testów
-    }
 
-    private User getUserFromDetails(UserDetails userDetails) {
+    /**
+     * ✅ NOWA METODA - Pobiera aktualnie zalogowanego użytkownika
+     * Zamiast getTestUser() która zwracała zawsze pierwszego użytkownika (admina)
+     */
+    private User getCurrentUser(UserDetails userDetails) {
         if (userDetails == null) {
-            return getTestUser();
+            throw new RuntimeException("User not authenticated");
         }
+
         return userService.getUserByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("User not found: " + userDetails.getUsername()));
     }
 
     private Project getProjectAndCheckAccess(Long projectId, User user) {

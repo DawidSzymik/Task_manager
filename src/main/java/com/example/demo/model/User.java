@@ -9,7 +9,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "users")
-@JsonIgnoreProperties({"password", "teams", "tasks"}) // ✅ Ignoruj te pola przy serializacji JSON
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password", "teams", "tasks"}) // ✅ NAPRAWIONE: dodano hibernateLazyInitializer i handler
 public class User {
 
     @Id

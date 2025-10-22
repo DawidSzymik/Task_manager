@@ -21,7 +21,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/files")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:5173"})
 public class FileApiController {
 
     private final FileService fileService;
@@ -44,10 +44,12 @@ public class FileApiController {
 
     // GET /api/v1/files/tasks/{taskId} - Get files for specific task
     @GetMapping("/tasks/{taskId}")
-    public ResponseEntity<Map<String, Object>> getTaskFiles(@PathVariable Long taskId) {
+    public ResponseEntity<Map<String, Object>> getTaskFiles(
+            @PathVariable Long taskId,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
 
             // Get task and check access
             Task task = taskService.getTaskById(taskId)
@@ -86,10 +88,14 @@ public class FileApiController {
     @PostMapping("/tasks/{taskId}")
     public ResponseEntity<Map<String, Object>> uploadFile(
             @PathVariable Long taskId,
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            // ✅ TUTAJ JEST NAPRAWA - używamy prawdziwego zalogowanego użytkownika!
+            User currentUser = getCurrentUser(userDetails);
+
+            System.out.println("🔍 Uploading file by user: " + currentUser.getUsername());
 
             // Validate file
             if (file.isEmpty()) {
@@ -114,9 +120,11 @@ public class FileApiController {
                 return createErrorResponse("Viewers cannot upload files", HttpStatus.FORBIDDEN);
             }
 
-            // Upload file
+            // Upload file with actual logged-in user
             UploadedFile uploadedFile = fileService.storeFile(task, file, currentUser);
             FileDto fileDto = fileMapper.toDtoWithPermissions(uploadedFile, currentUser, userRole);
+
+            System.out.println("✅ File uploaded successfully by: " + uploadedFile.getUploadedBy().getUsername());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -137,10 +145,12 @@ public class FileApiController {
 
     // GET /api/v1/files/{id} - Get file metadata
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getFile(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> getFile(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
 
             UploadedFile file = fileService.getFileById(id)
                     .orElseThrow(() -> new RuntimeException("File with ID " + id + " not found"));
@@ -169,10 +179,12 @@ public class FileApiController {
 
     // GET /api/v1/files/{id}/download - Download file
     @GetMapping("/{id}/download")
-    public ResponseEntity<ByteArrayResource> downloadFile(@PathVariable Long id) {
+    public ResponseEntity<ByteArrayResource> downloadFile(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
 
             UploadedFile file = fileService.getFileById(id)
                     .orElseThrow(() -> new RuntimeException("File with ID " + id + " not found"));
@@ -203,10 +215,12 @@ public class FileApiController {
 
     // DELETE /api/v1/files/{id} - Delete file
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deleteFile(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> deleteFile(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
 
             UploadedFile file = fileService.getFileById(id)
                     .orElseThrow(() -> new RuntimeException("File with ID " + id + " not found"));
@@ -242,10 +256,12 @@ public class FileApiController {
 
     // GET /api/v1/files/user/{userId} - Get files uploaded by user
     @GetMapping("/user/{userId}")
-    public ResponseEntity<Map<String, Object>> getUserFiles(@PathVariable Long userId) {
+    public ResponseEntity<Map<String, Object>> getUserFiles(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
 
             User targetUser = userService.getUserById(userId)
                     .orElseThrow(() -> new RuntimeException("User with ID " + userId + " not found"));
@@ -276,12 +292,18 @@ public class FileApiController {
     }
 
     // Helper methods
-    private User getTestUser() {
-        List<User> users = userService.getAllUsers();
-        if (users.isEmpty()) {
-            throw new RuntimeException("No users found in database");
+
+    /**
+     * ✅ NOWA METODA - Pobiera aktualnie zalogowanego użytkownika
+     * Zamiast getTestUser() która zwracała zawsze pierwszego użytkownika (admina)
+     */
+    private User getCurrentUser(UserDetails userDetails) {
+        if (userDetails == null) {
+            throw new RuntimeException("User not authenticated");
         }
-        return users.get(0);
+
+        return userService.getUserByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found: " + userDetails.getUsername()));
     }
 
     private void checkTaskAccess(Task task, User user) {

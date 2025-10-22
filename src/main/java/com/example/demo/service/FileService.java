@@ -1,19 +1,19 @@
 // src/main/java/com/example/demo/service/FileService.java
 package com.example.demo.service;
 
-import com.example.demo.model.Task;
 import com.example.demo.model.UploadedFile;
+import com.example.demo.model.Task;
 import com.example.demo.model.User;
+import com.example.demo.model.NotificationType;
 import com.example.demo.repository.UploadedFileRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class FileService {
@@ -22,92 +22,69 @@ public class FileService {
     private UploadedFileRepository fileRepository;
 
     @Autowired
-    private TaskService taskService;
+    private NotificationService notificationService;
 
-    @Autowired
-    private UserService userService;
+    public UploadedFile saveFile(MultipartFile file, Task task, User uploadedBy) throws IOException {
+        UploadedFile uploadedFile = new UploadedFile(
+                file.getOriginalFilename(),
+                file.getContentType(),
+                file.getSize(),
+                file.getBytes(),
+                task,
+                uploadedBy
+        );
 
-    // Pobierz plik po ID
-    public Optional<UploadedFile> getFileById(Long fileId) {
-        return fileRepository.findById(fileId);
+        UploadedFile saved = fileRepository.save(uploadedFile);
+
+        // ✅ NOWE: Wyślij powiadomienia
+        sendFileNotifications(task, uploadedBy, saved);
+
+        return saved;
     }
 
-    // Pobierz pliki dla zadania
-    public List<UploadedFile> getFilesByTask(Task task) {
-        return fileRepository.findByTask(task);
-    }
+    private void sendFileNotifications(Task task, User uploadedBy, UploadedFile file) {
+        Set<User> usersToNotify = new HashSet<>();
 
-    // Policz pliki dla zadania
-    public long getFileCountByTask(Task task) {
-        return fileRepository.countByTask(task);
-    }
+        // 1. Dodaj twórcę zadania (jeśli to nie osoba wgrywająca)
+        if (task.getCreatedBy() != null && !task.getCreatedBy().equals(uploadedBy)) {
+            usersToNotify.add(task.getCreatedBy());
+        }
 
-    // Zapisz plik dla zadania
-    @Transactional
-    public UploadedFile storeFile(Task task, MultipartFile file, User uploader) {
-        try {
-            UploadedFile uploadedFile = new UploadedFile();
-            uploadedFile.setOriginalName(file.getOriginalFilename());
-            uploadedFile.setContentType(file.getContentType());
-            uploadedFile.setFileSize(file.getSize());
-            uploadedFile.setData(file.getBytes());
-            uploadedFile.setTask(task);
-            uploadedFile.setUploadedBy(uploader);
-            uploadedFile.setUploadedAt(LocalDateTime.now());
+        // 2. Dodaj wszystkich przypisanych użytkowników (jeśli to nie osoba wgrywająca)
+        if (task.getAssignedUsers() != null) {
+            task.getAssignedUsers().stream()
+                    .filter(user -> !user.equals(uploadedBy))
+                    .forEach(usersToNotify::add);
+        }
 
-            return fileRepository.save(uploadedFile);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to store file: " + e.getMessage(), e);
+        // 3. Dodaj użytkownika przypisanego bezpośrednio (stary sposób)
+        if (task.getAssignedTo() != null && !task.getAssignedTo().equals(uploadedBy)) {
+            usersToNotify.add(task.getAssignedTo());
+        }
+
+        // Wyślij powiadomienia
+        for (User user : usersToNotify) {
+            notificationService.createNotification(
+                    user,
+                    "📎 Nowy plik w zadaniu",
+                    uploadedBy.getUsername() + " dodał plik \"" + file.getOriginalName() + "\" do zadania: \"" + task.getTitle() + "\"",
+                    NotificationType.TASK_FILE_UPLOADED,
+                    task.getId(),
+                    "/tasks/" + task.getId()
+            );
         }
     }
 
-    // Stara metoda dla kompatybilności wstecznej
-    @Transactional
-    public void storeFileForTask(Long taskId, MultipartFile file, String username) {
-        Task task = taskService.findById(taskId);
-        User uploader = userService.getUserByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found: " + username));
-
-        storeFile(task, file, uploader);
+    public UploadedFile getFileById(Long id) {
+        return fileRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("File not found"));
     }
 
-    // Usuń plik
-    @Transactional
+    public List<UploadedFile> getTaskFiles(Task task) {
+        return fileRepository.findByTaskOrderByUploadedAtDesc(task);
+    }
+
     public void deleteFile(Long fileId) {
-        UploadedFile file = fileRepository.findById(fileId)
-                .orElseThrow(() -> new RuntimeException("File not found with id: " + fileId));
-
-        fileRepository.delete(file);
-    }
-
-    // Usuń wszystkie pliki dla zadania
-    @Transactional
-    public void deleteByTask(Task task) {
-        fileRepository.deleteByTask(task);
-    }
-
-    // Pobierz pliki użytkownika
-    public List<UploadedFile> getFilesByUser(User user) {
-        return fileRepository.findByUploadedBy(user);
-    }
-
-    // Pobierz ostatnie pliki dla zadania z limitem
-    public List<UploadedFile> getRecentFilesByTask(Task task, int limit) {
-        return fileRepository.findByTaskOrderByUploadedAtDesc(task)
-                .stream()
-                .limit(limit)
-                .toList();
-    }
-
-    // Sprawdź czy plik istnieje
-    public boolean fileExists(Long fileId) {
-        return fileRepository.existsById(fileId);
-    }
-
-    // Pobierz całkowity rozmiar plików dla zadania
-    public long getTotalFileSizeByTask(Task task) {
-        return fileRepository.findByTask(task).stream()
-                .mapToLong(UploadedFile::getFileSize)
-                .sum();
+        fileRepository.deleteById(fileId);
     }
 }

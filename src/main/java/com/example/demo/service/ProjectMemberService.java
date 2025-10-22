@@ -22,26 +22,29 @@ public class ProjectMemberService {
 
     // Dodaj użytkownika do projektu
     @Transactional
-    public ProjectMember addMemberToProject(Project project, User user, ProjectRole role) {
-        // Sprawdź czy już nie jest członkiem
-        Optional<ProjectMember> existingMember = projectMemberRepository.findByProjectAndUser(project, user);
-        if (existingMember.isPresent()) {
-            throw new RuntimeException("Użytkownik jest już członkiem tego projektu");
+    public ProjectMember addMember(Project project, User user, ProjectRole role, User addedBy) {
+        // Sprawdź czy użytkownik już jest członkiem
+        boolean alreadyMember = project.getMembers().stream()
+                .anyMatch(m -> m.getUser().equals(user));
+
+        ProjectMember member = new ProjectMember(project, user, role);
+        ProjectMember saved = memberRepository.save(member);
+
+        // ✅ NOWE: Powiadom tylko jeśli to nowy członek
+        if (!alreadyMember) {
+            notificationService.createNotification(
+                    user,
+                    "🎯 Dodano Cię do projektu",
+                    addedBy.getUsername() + " dodał Cię do projektu: \"" + project.getName() + "\" jako " + getRoleDisplayName(role),
+                    NotificationType.PROJECT_MEMBER_ADDED,
+                    project.getId(),
+                    "/projects/" + project.getId()
+            );
         }
-
-        ProjectMember member = new ProjectMember();
-        member.setProject(project);
-        member.setUser(user);
-        member.setRole(role);
-
-        ProjectMember saved = projectMemberRepository.save(member);
-
-        // Wyślij wiadomość systemową
-        String systemMessage = "👤 " + user.getUsername() + " dołączył do projektu jako " + getRoleDisplayName(role);
-        messageService.sendSystemMessage(project, systemMessage);
 
         return saved;
     }
+
 
     // Usuń użytkownika z projektu
     @Transactional

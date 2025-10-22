@@ -19,7 +19,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/comments")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:5173"})
 public class CommentApiController {
 
     private final CommentService commentService;
@@ -42,10 +42,12 @@ public class CommentApiController {
 
     // GET /api/v1/tasks/{taskId}/comments - Get comments for specific task
     @GetMapping("/tasks/{taskId}")
-    public ResponseEntity<Map<String, Object>> getTaskComments(@PathVariable Long taskId) {
+    public ResponseEntity<Map<String, Object>> getTaskComments(
+            @PathVariable Long taskId,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
 
             // Get task and check access
             Task task = taskService.getTaskById(taskId)
@@ -83,10 +85,14 @@ public class CommentApiController {
     @PostMapping("/tasks/{taskId}")
     public ResponseEntity<Map<String, Object>> createComment(
             @PathVariable Long taskId,
-            @RequestBody CreateCommentRequest request) {
+            @RequestBody CreateCommentRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            // ✅ TUTAJ JEST NAPRAWA - używamy prawdziwego zalogowanego użytkownika!
+            User currentUser = getCurrentUser(userDetails);
+
+            System.out.println("🔍 Creating comment by user: " + currentUser.getUsername());
 
             // Validate request
             String validationError = request.getValidationError();
@@ -106,12 +112,14 @@ public class CommentApiController {
                 return createErrorResponse("Viewers cannot add comments", HttpStatus.FORBIDDEN);
             }
 
-            // Create comment
+            // Create comment with actual logged-in user as author
             Comment comment = commentMapper.toEntity(request, currentUser);
             comment.setTask(task);
 
             Comment savedComment = commentService.saveComment(comment);
             CommentDto commentDto = commentMapper.toDtoWithPermissions(savedComment, currentUser, userRole);
+
+            System.out.println("✅ Comment created successfully by: " + savedComment.getAuthor().getUsername());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -132,10 +140,12 @@ public class CommentApiController {
 
     // GET /api/v1/comments/{id} - Get specific comment
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getComment(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> getComment(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
 
             Comment comment = commentService.getCommentById(id)
                     .orElseThrow(() -> new RuntimeException("Comment with ID " + id + " not found"));
@@ -166,10 +176,11 @@ public class CommentApiController {
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateComment(
             @PathVariable Long id,
-            @RequestBody UpdateCommentRequest request) {
+            @RequestBody UpdateCommentRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
 
             // Validate request
             String validationError = request.getValidationError();
@@ -215,10 +226,12 @@ public class CommentApiController {
 
     // DELETE /api/v1/comments/{id} - Delete comment
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deleteComment(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> deleteComment(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
 
             Comment comment = commentService.getCommentById(id)
                     .orElseThrow(() -> new RuntimeException("Comment with ID " + id + " not found"));
@@ -253,12 +266,18 @@ public class CommentApiController {
     }
 
     // Helper methods
-    private User getTestUser() {
-        List<User> users = userService.getAllUsers();
-        if (users.isEmpty()) {
-            throw new RuntimeException("No users found in database");
+
+    /**
+     * ✅ NOWA METODA - Pobiera aktualnie zalogowanego użytkownika
+     * Zamiast getTestUser() która zwracała zawsze pierwszego użytkownika (admina)
+     */
+    private User getCurrentUser(UserDetails userDetails) {
+        if (userDetails == null) {
+            throw new RuntimeException("User not authenticated");
         }
-        return users.get(0);
+
+        return userService.getUserByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found: " + userDetails.getUsername()));
     }
 
     private void checkTaskAccess(Task task, User user) {
