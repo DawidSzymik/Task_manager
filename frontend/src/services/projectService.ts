@@ -10,26 +10,33 @@ import type {
 
 const API_BASE_URL = '/api/v1/projects';
 
+// frontend/src/services/projectService.ts
+
 const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> => {
+    // ✅ DODAJ logowanie surowego response
+    const textResponse = await response.text();
+    console.log('Raw response:', textResponse);
+
+    let data;
     try {
-        const text = await response.text();
-        console.log('Raw response:', text);
-
-        const data = JSON.parse(text);
-        console.log('Parsed response:', data);
-
-        if (!response.ok || !data.success) {
-            throw {
-                message: data.error || data.message || 'Wystąpił błąd',
-                status: response.status,
-            };
-        }
-
-        return data;
-    } catch (error) {
-        console.error('handleResponse error:', error);
-        throw error;
+        data = JSON.parse(textResponse);
+    } catch (err) {
+        console.error('JSON Parse Error:', err);
+        console.error('Response text:', textResponse);
+        throw {
+            message: 'Invalid JSON response from server',
+            status: response.status,
+        };
     }
+
+    if (!response.ok || !data.success) {
+        throw {
+            message: data.error || data.message || 'Wystąpił błąd',
+            status: response.status,
+        };
+    }
+
+    return data;
 };
 
 const projectService = {

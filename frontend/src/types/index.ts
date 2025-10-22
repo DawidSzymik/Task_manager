@@ -178,3 +178,28 @@ export interface PaginatedResponse<T> {
     currentPage?: number;
     totalPages?: number;
 }
+// Dodaj do frontend/src/types/index.ts
+
+// Status Change Request Types
+export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface StatusChangeRequest {
+    id: number;
+    currentStatus: TaskStatus;
+    requestedStatus: TaskStatus;
+    status: RequestStatus;
+    createdAt: string;
+    requestedBy: User;
+    task: {
+        id: number;
+        title: string;
+    };
+    reviewedBy?: User;
+    reviewedAt?: string;
+    rejectionReason?: string;
+}
+
+export interface CreateStatusChangeRequest {
+    taskId: number;
+    newStatus: TaskStatus;
+}

@@ -1,25 +1,44 @@
-// src/pages/TaskDetailsPage.tsx
-import React, { useEffect, useState } from 'react';
+// frontend/src/pages/TaskDetailsPage.tsx - FINAL FIX
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
 import taskService from '../services/taskService';
 import projectService from '../services/projectService';
 import commentService from '../services/commentService';
 import fileService from '../services/fileService';
-import type { Task, UpdateTaskRequest, TaskStatus, TaskPriority, ProjectMember, Comment, UploadedFile, CreateCommentRequest } from '../types';
+import statusRequestService from '../services/statusRequestService';
+import type {
+    Task,
+    UpdateTaskRequest,
+    TaskStatus,
+    TaskPriority,
+    Comment,
+    UploadedFile,
+    StatusChangeRequest,
+    ProjectRole
+} from '../types';
 
 const TaskDetailsPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const chatEndRef = useRef<HTMLDivElement>(null);
 
     const [task, setTask] = useState<Task | null>(null);
-    const [projectMembers, setProjectMembers] = useState<ProjectMember[]>([]);
     const [comments, setComments] = useState<Comment[]>([]);
     const [files, setFiles] = useState<UploadedFile[]>([]);
+    const [statusRequests, setStatusRequests] = useState<StatusChangeRequest[]>([]);
+    const [userRole, setUserRole] = useState<ProjectRole | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // Modals & Forms
+    // UI State
+    const [showActionsMenu, setShowActionsMenu] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showStatusRequestModal, setShowStatusRequestModal] = useState(false);
+    const [showPendingRequestsModal, setShowPendingRequestsModal] = useState(false);
+    const [selectedNewStatus, setSelectedNewStatus] = useState<TaskStatus>('NEW');
+    const [rejectReason, setRejectReason] = useState('');
+    const [selectedRequestToReject, setSelectedRequestToReject] = useState<number | null>(null);
+
     const [editFormData, setEditFormData] = useState<UpdateTaskRequest>({
         title: '',
         description: '',
@@ -29,17 +48,12 @@ const TaskDetailsPage: React.FC = () => {
         assignedToId: undefined,
     });
 
-    // Comments
+    // Comments & Files
     const [commentText, setCommentText] = useState('');
     const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
     const [editingCommentText, setEditingCommentText] = useState('');
-
-    // Files
     const [uploadingFile, setUploadingFile] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
-    const [error, setError] = useState<string | null>(null);
-    const [actionInProgress, setActionInProgress] = useState(false);
 
     useEffect(() => {
         if (id) {
@@ -47,24 +61,51 @@ const TaskDetailsPage: React.FC = () => {
         }
     }, [id]);
 
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [comments, files]);
+
+    // frontend/src/pages/TaskDetailsPage.tsx
+
     const loadTaskData = async () => {
         try {
             setLoading(true);
             const taskId = parseInt(id!);
             const taskData = await taskService.getTaskById(taskId);
+            console.log('✅ Task loaded:', taskData); // ← DODAJ
             setTask(taskData);
 
-            // Load project members, comments, and files in parallel
             if (taskData.project) {
-                const [members, commentsData, filesData] = await Promise.all([
-                    projectService.getProjectMembers(taskData.project.id),
-                    commentService.getTaskComments(taskId),
-                    fileService.getTaskFiles(taskId),
+                console.log('Loading project data for project:', taskData.project.id); // ← DODAJ
+
+                const [members, commentsData, filesData, requestsData] = await Promise.all([
+                    projectService.getProjectMembers(taskData.project.id).catch(err => {
+                        console.error('❌ Members error:', err);
+                        return []; // Zwróć pustą tablicę zamiast crashować
+                    }),
+                    commentService.getTaskComments(taskId).catch(err => {
+                        console.error('❌ Comments error:', err);
+                        return [];
+                    }),
+                    fileService.getTaskFiles(taskId).catch(err => {
+                        console.error('❌ Files error:', err);
+                        return [];
+                    }),
+                    statusRequestService.getTaskRequests(taskId).catch(err => {
+                        console.error('❌ Requests error:', err);
+                        return [];
+                    }),
                 ]);
 
-                setProjectMembers(members);
+                console.log('✅ Loaded data:', { members, commentsData, filesData, requestsData }); // ← DODAJ
+
                 setComments(commentsData);
                 setFiles(filesData);
+                setStatusRequests(requestsData.filter(r => r.status === 'PENDING'));
+
+                const currentUsername = localStorage.getItem('username');
+                const currentMember = members.find(m => m.user.username === currentUsername);
+                setUserRole(currentMember?.role || null);
             }
 
             setEditFormData({
@@ -72,229 +113,179 @@ const TaskDetailsPage: React.FC = () => {
                 description: taskData.description || '',
                 status: taskData.status,
                 priority: taskData.priority,
-                deadline: taskData.deadline ? taskData.deadline.slice(0, 16) : '',
+                deadline: taskData.deadline ? new Date(taskData.deadline).toISOString().slice(0, 16) : '',
                 assignedToId: taskData.assignedTo?.id,
             });
         } catch (error: any) {
-            console.error('Failed to load task:', error);
-            setError(error.message || 'Nie udało się załadować zadania');
+            console.error('❌ Failed to load task:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    // Task handlers
     const handleUpdateTask = async (e: React.FormEvent) => {
         e.preventDefault();
-
-        if (!editFormData.title?.trim()) {
-            setError('Tytuł zadania jest wymagany');
-            return;
-        }
-
         try {
-            setActionInProgress(true);
-            setError(null);
             await taskService.updateTask(parseInt(id!), editFormData);
             setShowEditModal(false);
             await loadTaskData();
         } catch (error: any) {
-            console.error('Failed to update task:', error);
-            setError(error.message || 'Nie udało się zaktualizować zadania');
-        } finally {
-            setActionInProgress(false);
-        }
-    };
-
-    const handleQuickStatusChange = async (newStatus: TaskStatus) => {
-        try {
-            await taskService.updateTask(parseInt(id!), { status: newStatus });
-            await loadTaskData();
-        } catch (error: any) {
-            console.error('Failed to update status:', error);
-            alert(error.message || 'Nie udało się zmienić statusu');
-        }
-    };
-
-    const handleQuickPriorityChange = async (newPriority: TaskPriority) => {
-        try {
-            await taskService.updateTask(parseInt(id!), { priority: newPriority });
-            await loadTaskData();
-        } catch (error: any) {
-            console.error('Failed to update priority:', error);
-            alert(error.message || 'Nie udało się zmienić priorytetu');
-        }
-    };
-
-    const handleQuickAssignChange = async (userId: number | undefined) => {
-        try {
-            await taskService.updateTask(parseInt(id!), { assignedToId: userId });
-            await loadTaskData();
-        } catch (error: any) {
-            console.error('Failed to update assignment:', error);
-            alert(error.message || 'Nie udało się zmienić przypisania');
+            alert(error.message || 'Nie udało się zaktualizować zadania');
         }
     };
 
     const handleDeleteTask = async () => {
-        if (!window.confirm(`Czy na pewno chcesz usunąć zadanie "${task?.title}"?`)) return;
-
+        if (!window.confirm('Czy na pewno chcesz usunąć to zadanie?')) return;
         try {
             await taskService.deleteTask(parseInt(id!));
+            alert('Zadanie zostało usunięte');
             navigate(task?.project ? `/projects/${task.project.id}` : '/tasks');
         } catch (error: any) {
-            console.error('Failed to delete task:', error);
             alert(error.message || 'Nie udało się usunąć zadania');
         }
     };
 
-    // Comment handlers
+    const handleRequestStatusChange = async () => {
+        try {
+            await statusRequestService.createRequest({
+                taskId: parseInt(id!),
+                newStatus: selectedNewStatus,
+            });
+            setShowStatusRequestModal(false);
+            await loadTaskData();
+            alert('Prośba o zmianę statusu została wysłana');
+        } catch (error: any) {
+            alert(error.message || 'Nie udało się wysłać prośby');
+        }
+    };
+
+    const handleApproveRequest = async (requestId: number) => {
+        try {
+            await statusRequestService.approveRequest(requestId);
+            await loadTaskData();
+            alert('Prośba została zatwierdzona');
+        } catch (error: any) {
+            alert(error.message || 'Nie udało się zatwierdzić prośby');
+        }
+    };
+
+    const handleRejectRequest = async () => {
+        if (!selectedRequestToReject || !rejectReason.trim()) return;
+        try {
+            await statusRequestService.rejectRequest(selectedRequestToReject, rejectReason);
+            setSelectedRequestToReject(null);
+            setRejectReason('');
+            await loadTaskData();
+            alert('Prośba została odrzucona');
+        } catch (error: any) {
+            alert(error.message || 'Nie udało się odrzucić prośby');
+        }
+    };
+
     const handleAddComment = async (e: React.FormEvent) => {
         e.preventDefault();
-
         if (!commentText.trim()) return;
-
         try {
-            const commentData: CreateCommentRequest = { text: commentText.trim() };
-            await commentService.createComment(parseInt(id!), commentData);
+            await commentService.createComment(parseInt(id!), { text: commentText.trim() });
             setCommentText('');
             await loadTaskData();
         } catch (error: any) {
-            console.error('Failed to add comment:', error);
             alert(error.message || 'Nie udało się dodać komentarza');
         }
     };
 
     const handleUpdateComment = async (commentId: number) => {
         if (!editingCommentText.trim()) return;
-
         try {
             await commentService.updateComment(commentId, { text: editingCommentText.trim() });
             setEditingCommentId(null);
             setEditingCommentText('');
             await loadTaskData();
         } catch (error: any) {
-            console.error('Failed to update comment:', error);
             alert(error.message || 'Nie udało się zaktualizować komentarza');
         }
     };
 
     const handleDeleteComment = async (commentId: number) => {
         if (!window.confirm('Czy na pewno chcesz usunąć ten komentarz?')) return;
-
         try {
             await commentService.deleteComment(commentId);
             await loadTaskData();
         } catch (error: any) {
-            console.error('Failed to delete comment:', error);
             alert(error.message || 'Nie udało się usunąć komentarza');
         }
     };
 
-    // File handlers
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-
-            // Check file size (max 10MB)
             if (file.size > 10 * 1024 * 1024) {
                 alert('Plik jest za duży! Maksymalny rozmiar to 10MB.');
                 return;
             }
-
             setSelectedFile(file);
         }
     };
 
     const handleFileUpload = async () => {
         if (!selectedFile) return;
-
         try {
             setUploadingFile(true);
             await fileService.uploadFile(parseInt(id!), selectedFile);
             setSelectedFile(null);
-            // Reset file input
-            const fileInput = document.getElementById('fileInput') as HTMLInputElement;
-            if (fileInput) fileInput.value = '';
             await loadTaskData();
         } catch (error: any) {
-            console.error('Failed to upload file:', error);
             alert(error.message || 'Nie udało się przesłać pliku');
         } finally {
             setUploadingFile(false);
         }
     };
 
-    const handleDeleteFile = async (fileId: number, fileName: string) => {
-        if (!window.confirm(`Czy na pewno chcesz usunąć plik "${fileName}"?`)) return;
-
+    const handleDeleteFile = async (fileId: number) => {
+        if (!window.confirm('Czy na pewno chcesz usunąć ten plik?')) return;
         try {
             await fileService.deleteFile(fileId);
             await loadTaskData();
         } catch (error: any) {
-            console.error('Failed to delete file:', error);
             alert(error.message || 'Nie udało się usunąć pliku');
         }
     };
 
-    // Helper functions
+    const getPriorityColor = (priority: TaskPriority) => {
+        const colors: Record<TaskPriority, string> = {
+            LOW: 'bg-blue-500',
+            MEDIUM: 'bg-yellow-500',
+            HIGH: 'bg-orange-500',
+            URGENT: 'bg-red-500',
+        };
+        return colors[priority] || 'bg-gray-500';
+    };
+
     const getStatusColor = (status: TaskStatus) => {
-        switch (status) {
-            case 'NEW': return 'bg-blue-500';
-            case 'IN_PROGRESS': return 'bg-yellow-500';
-            case 'COMPLETED': return 'bg-green-500';
-            case 'CANCELLED': return 'bg-gray-500';
-            default: return 'bg-gray-500';
-        }
+        const colors: Record<TaskStatus, string> = {
+            NEW: 'bg-blue-500',
+            IN_PROGRESS: 'bg-yellow-500',
+            COMPLETED: 'bg-green-500',
+            CANCELLED: 'bg-red-500',
+        };
+        return colors[status] || 'bg-gray-500';
     };
 
     const getStatusLabel = (status: TaskStatus) => {
-        switch (status) {
-            case 'NEW': return 'Nowe';
-            case 'IN_PROGRESS': return 'W trakcie';
-            case 'COMPLETED': return 'Ukończone';
-            case 'CANCELLED': return 'Anulowane';
-            default: return status;
-        }
-    };
-
-    const getPriorityColor = (priority: TaskPriority) => {
-        switch (priority) {
-            case 'LOW': return 'text-green-400 bg-green-500';
-            case 'MEDIUM': return 'text-yellow-400 bg-yellow-500';
-            case 'HIGH': return 'text-orange-400 bg-orange-500';
-            case 'URGENT': return 'text-red-400 bg-red-500';
-            default: return 'text-gray-400 bg-gray-500';
-        }
-    };
-
-    const getPriorityLabel = (priority: TaskPriority) => {
-        switch (priority) {
-            case 'LOW': return 'Niski';
-            case 'MEDIUM': return 'Średni';
-            case 'HIGH': return 'Wysoki';
-            case 'URGENT': return 'Pilny';
-            default: return priority;
-        }
-    };
-
-    const formatFileSize = (bytes: number): string => {
-        if (bytes < 1024) return bytes + ' B';
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        const labels: Record<TaskStatus, string> = {
+            NEW: 'Nowe',
+            IN_PROGRESS: 'W trakcie',
+            COMPLETED: 'Ukończone',
+            CANCELLED: 'Anulowane',
+        };
+        return labels[status] || status;
     };
 
     if (loading) {
         return (
             <MainLayout>
                 <div className="flex items-center justify-center h-96">
-                    <div className="flex flex-col items-center">
-                        <svg className="animate-spin h-12 w-12 text-emerald-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <p className="text-gray-400">Ładowanie zadania...</p>
-                    </div>
+                    <div className="text-gray-400">Ładowanie...</div>
                 </div>
             </MainLayout>
         );
@@ -303,564 +294,251 @@ const TaskDetailsPage: React.FC = () => {
     if (!task) {
         return (
             <MainLayout>
-                <div className="text-center py-16">
-                    <p className="text-gray-400 text-lg">Zadanie nie zostało znalezione</p>
-                    <button
-                        onClick={() => navigate('/tasks')}
-                        className="mt-4 px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition"
-                    >
-                        Wróć do zadań
-                    </button>
-                </div>
+                <div className="text-center text-gray-400">Nie znaleziono zadania</div>
             </MainLayout>
         );
     }
 
+    const chatItems = [
+        ...comments.map(c => ({ type: 'comment' as const, data: c, timestamp: new Date(c.createdAt) })),
+        ...files.map(f => ({ type: 'file' as const, data: f, timestamp: new Date(f.uploadedAt) }))
+    ].sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+
     return (
         <MainLayout>
-            <div className="max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="mb-8">
-                    <button
-                        onClick={() => task.project ? navigate(`/projects/${task.project.id}`) : navigate('/tasks')}
-                        className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                        Wróć {task.project ? 'do projektu' : 'do zadań'}
-                    </button>
-
+            <div className="max-w-5xl mx-auto h-[calc(100vh-120px)] flex flex-col">
+                <div className="bg-gray-900 rounded-t-lg p-4 border-b border-gray-700">
                     <div className="flex items-start justify-between">
                         <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-3">
-                                <span className={`px-4 py-1.5 rounded-full text-sm font-semibold ${getStatusColor(task.status)} text-white`}>
-                                    {getStatusLabel(task.status)}
-                                </span>
-                                <span className={`px-4 py-1.5 rounded-full text-sm font-semibold ${getPriorityColor(task.priority).split(' ')[1]} bg-opacity-20 ${getPriorityColor(task.priority).split(' ')[0]}`}>
-                                    {getPriorityLabel(task.priority)}
-                                </span>
+                            <div className="flex items-center gap-3 mb-2">
+                                <h1 className="text-2xl font-bold text-white">{task.title}</h1>
+                                {userRole === 'MEMBER' ? (
+                                    <button
+                                        onClick={() => setShowStatusRequestModal(true)}
+                                        className={`px-2 py-1 rounded text-xs font-semibold text-white ${getStatusColor(task.status)} hover:opacity-80 transition`}
+                                    >
+                                        {getStatusLabel(task.status)} ✏️
+                                    </button>
+                                ) : (
+                                    <span className={`px-2 py-1 rounded text-xs font-semibold text-white ${getStatusColor(task.status)}`}>
+                            {getStatusLabel(task.status)}
+                        </span>
+                                )}
+                                <span className={`px-2 py-1 rounded text-xs font-semibold text-white ${getPriorityColor(task.priority)}`}>
+                        {task.priority}
+                    </span>
+                                {userRole === 'ADMIN' && statusRequests.length > 0 && (
+                                    <button
+                                        onClick={() => setShowPendingRequestsModal(true)}
+                                        className="px-2 py-1 rounded text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600 transition"
+                                    >
+                                        🔔 {statusRequests.length}
+                                    </button>
+                                )}
                             </div>
-                            <h1 className="text-3xl font-bold text-white mb-2">{task.title}</h1>
-                            {task.project && (
-                                <button
-                                    onClick={() => navigate(`/projects/${task.project!.id}`)}
-                                    className="text-emerald-400 hover:text-emerald-300 text-sm transition"
-                                >
-                                    📁 {task.project.name}
+                            {task.description && <p className="text-gray-400 text-sm">{task.description}</p>}
+                        </div>
+
+                        {/* ✅ ZMIENIONO: Menu dla ADMIN i MEMBER */}
+                        {(userRole === 'ADMIN' || userRole === 'MEMBER') && (
+                            <div className="relative">
+                                <button onClick={() => setShowActionsMenu(!showActionsMenu)} className="p-2 bg-gray-800 hover:bg-gray-700 rounded-lg">
+                                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                    </svg>
                                 </button>
-                            )}
-                        </div>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setShowEditModal(true)}
-                                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition"
-                            >
-                                Edytuj
-                            </button>
-                            <button
-                                onClick={handleDeleteTask}
-                                className="px-4 py-2 bg-red-500 bg-opacity-10 hover:bg-red-500 hover:bg-opacity-20 text-red-400 rounded-lg transition"
-                            >
-                                Usuń
-                            </button>
-                        </div>
+                                {showActionsMenu && (
+                                    <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-10">
+                                        <button
+                                            onClick={() => {
+                                                setShowEditModal(true);
+                                                setShowActionsMenu(false);
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-gray-300 hover:bg-gray-700 rounded-t-lg"
+                                        >
+                                            ✏️ Edytuj zadanie
+                                        </button>
+                                        {userRole === 'ADMIN' && (
+                                            <button
+                                                onClick={() => {
+                                                    handleDeleteTask();
+                                                    setShowActionsMenu(false);
+                                                }}
+                                                className="w-full px-4 py-2 text-left text-red-400 hover:bg-gray-700 rounded-b-lg"
+                                            >
+                                                🗑️ Usuń zadanie
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Error message */}
-                {error && (
-                    <div className="mb-6 p-4 bg-red-500 bg-opacity-10 border border-red-500 rounded-lg text-red-400">
-                        {error}
+                <div className="flex-1 bg-gray-900 overflow-y-auto p-4 space-y-3">
+                    {chatItems.length === 0 ? (
+                        <div className="text-center text-gray-500 py-12">
+                            Brak komentarzy i plików. Rozpocznij rozmowę! 💬
+                        </div>
+                    ) : (
+                    chatItems.map((item) => (
+                        <div key={`${item.type}-${item.data.id}`}>
+                            {item.type === 'comment' ? (
+                                <div className="flex gap-3">
+                                    <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-white font-semibold">
+                                        {item.data.author.username.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-sm font-semibold text-white">{item.data.author.username}</span>
+                                            <span className="text-xs text-gray-500">{new Date(item.data.createdAt).toLocaleString('pl-PL')}</span>
+                                        </div>
+                                        {editingCommentId === item.data.id ? (
+                                            <div className="space-y-2">
+                                                <textarea value={editingCommentText} onChange={(e) => setEditingCommentText(e.target.value)} className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white" rows={3} />
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => handleUpdateComment(item.data.id)} className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-sm">Zapisz</button>
+                                                    <button onClick={() => { setEditingCommentId(null); setEditingCommentText(''); }} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm">Anuluj</button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="bg-gray-800 rounded-lg px-4 py-2 inline-block max-w-2xl">
+                                                    <p className="text-gray-300 whitespace-pre-wrap">{item.data.text}</p>
+                                                </div>
+                                                {item.data.canEdit && (
+                                                    <div className="flex gap-2 mt-1">
+                                                        <button onClick={() => { setEditingCommentId(item.data.id); setEditingCommentText(item.data.text); }} className="text-xs text-gray-500 hover:text-emerald-400">Edytuj</button>
+                                                        {item.data.canDelete && <button onClick={() => handleDeleteComment(item.data.id)} className="text-xs text-gray-500 hover:text-red-400">Usuń</button>}
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex gap-3">
+                                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">📎</div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-sm font-semibold text-white">{item.data.uploadedBy.username}</span>
+                                            <span className="text-xs text-gray-500">{new Date(item.data.uploadedAt).toLocaleString('pl-PL')}</span>
+                                        </div>
+                                        <div className="bg-gray-800 rounded-lg px-4 py-3 inline-flex items-center gap-3">
+                                            <div>
+                                                <p className="text-white font-medium">{item.data.originalName}</p>
+                                                <p className="text-xs text-gray-500">{(item.data.fileSize / 1024).toFixed(1)} KB</p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <a href={fileService.getDownloadUrl(item.data.id)} download className="p-2 bg-emerald-500 hover:bg-emerald-600 rounded text-white">⬇</a>
+                                                {item.data.canDelete && <button onClick={() => handleDeleteFile(item.data.id)} className="p-2 bg-red-500 hover:bg-red-600 rounded text-white">🗑</button>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )))}
+                    <div ref={chatEndRef} />
+                </div>
+
+                {userRole !== 'VIEWER' && (
+                    <div className="bg-gray-900 rounded-b-lg border-t border-gray-700 p-4">
+                        <form onSubmit={handleAddComment} className="space-y-3">
+                            <textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Napisz komentarz..." className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white" rows={3} />
+                            <div className="flex justify-between">
+                                <div className="flex gap-2">
+                                    <input type="file" id="file-upload" onChange={handleFileSelect} className="hidden" />
+                                    <label htmlFor="file-upload" className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg cursor-pointer">📎 Załącz</label>
+                                    {selectedFile && (
+                                        <div className="flex items-center gap-2 px-3 py-1 bg-gray-800 rounded-lg">
+                                            <span className="text-sm text-gray-300">{selectedFile.name}</span>
+                                            <button type="button" onClick={() => setSelectedFile(null)} className="text-gray-500">✕</button>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex gap-2">
+                                    {selectedFile && <button type="button" onClick={handleFileUpload} disabled={uploadingFile} className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg">{uploadingFile ? 'Wysyłanie...' : 'Wyślij plik'}</button>}
+                                    <button type="submit" disabled={!commentText.trim()} className="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg disabled:opacity-50">Wyślij</button>
+                                </div>
+                            </div>
+                        </form>
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Main content - Left column */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Description */}
-                        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-                            <h2 className="text-xl font-bold text-white mb-4">Opis</h2>
-                            {task.description ? (
-                                <p className="text-gray-300 whitespace-pre-wrap">{task.description}</p>
-                            ) : (
-                                <p className="text-gray-500 italic">Brak opisu</p>
-                            )}
-                        </div>
-
-                        {/* Quick Actions */}
-                        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-                            <h2 className="text-xl font-bold text-white mb-4">Szybkie akcje</h2>
-
-                            {/* Status change */}
-                            <div className="mb-6">
-                                <h3 className="text-sm font-semibold text-gray-400 mb-3">Zmień status</h3>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {(['NEW', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as TaskStatus[]).map((status) => (
-                                        <button
-                                            key={status}
-                                            onClick={() => handleQuickStatusChange(status)}
-                                            disabled={task.status === status}
-                                            className={`p-3 rounded-lg border-2 transition text-sm font-semibold ${
-                                                task.status === status
-                                                    ? `${getStatusColor(status)} border-transparent text-white`
-                                                    : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-600'
-                                            }`}
-                                        >
-                                            {getStatusLabel(status)}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Priority change */}
-                            <div className="mb-6">
-                                <h3 className="text-sm font-semibold text-gray-400 mb-3">Zmień priorytet</h3>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as TaskPriority[]).map((priority) => (
-                                        <button
-                                            key={priority}
-                                            onClick={() => handleQuickPriorityChange(priority)}
-                                            disabled={task.priority === priority}
-                                            className={`p-3 rounded-lg border-2 transition text-sm font-semibold ${
-                                                task.priority === priority
-                                                    ? `${getPriorityColor(priority).split(' ')[1]} bg-opacity-20 border-transparent ${getPriorityColor(priority).split(' ')[0]}`
-                                                    : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-600'
-                                            }`}
-                                        >
-                                            {getPriorityLabel(priority)}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Assignment change */}
-                            <div>
-                                <h3 className="text-sm font-semibold text-gray-400 mb-3">Przypisz do</h3>
-                                <select
-                                    value={task.assignedTo?.id || ''}
-                                    onChange={(e) => handleQuickAssignChange(e.target.value ? Number(e.target.value) : undefined)}
-                                    className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                                >
-                                    <option value="">Nie przypisano</option>
-                                    {projectMembers.map((member) => (
-                                        <option key={member.user.id} value={member.user.id}>
-                                            {member.user.username}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        {/* Comments Section */}
-                        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-                            <h2 className="text-xl font-bold text-white mb-4">
-                                Komentarze ({comments.length})
-                            </h2>
-
-                            {/* Add comment form */}
-                            <form onSubmit={handleAddComment} className="mb-6">
-                                <textarea
-                                    value={commentText}
-                                    onChange={(e) => setCommentText(e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500 mb-3"
-                                    placeholder="Dodaj komentarz..."
-                                    rows={3}
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={!commentText.trim()}
-                                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Dodaj komentarz
-                                </button>
-                            </form>
-
-                            {/* Comments list */}
-                            <div className="space-y-4">
-                                {comments.length === 0 ? (
-                                    <p className="text-gray-500 italic text-center py-4">Brak komentarzy</p>
-                                ) : (
-                                    comments.map((comment) => (
-                                        <div key={comment.id} className="bg-gray-800 rounded-lg p-4">
-                                            <div className="flex items-start justify-between mb-2">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
-                                                        <span className="text-white text-sm font-semibold">
-                                                            {comment.author.username.charAt(0).toUpperCase()}
-                                                        </span>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-white font-medium">{comment.author.username}</p>
-                                                        <p className="text-gray-400 text-xs">
-                                                            {new Date(comment.createdAt).toLocaleString('pl-PL')}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                {comment.canEdit && (
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => {
-                                                                setEditingCommentId(comment.id);
-                                                                setEditingCommentText(comment.text);
-                                                            }}
-                                                            className="text-blue-400 hover:text-blue-300 text-sm"
-                                                        >
-                                                            Edytuj
-                                                        </button>
-                                                        {comment.canDelete && (
-                                                            <button
-                                                                onClick={() => handleDeleteComment(comment.id)}
-                                                                className="text-red-400 hover:text-red-300 text-sm"
-                                                            >
-                                                                Usuń
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {editingCommentId === comment.id ? (
-                                                <div>
-                                                    <textarea
-                                                        value={editingCommentText}
-                                                        onChange={(e) => setEditingCommentText(e.target.value)}
-                                                        className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-emerald-500 mb-2"
-                                                        rows={3}
-                                                    />
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => handleUpdateComment(comment.id)}
-                                                            className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-sm"
-                                                        >
-                                                            Zapisz
-                                                        </button>
-                                                        <button
-                                                            onClick={() => {
-                                                                setEditingCommentId(null);
-                                                                setEditingCommentText('');
-                                                            }}
-                                                            className="px-3 py-1 bg-gray-600 hover:bg-gray-500 text-white rounded text-sm"
-                                                        >
-                                                            Anuluj
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <p className="text-gray-300 whitespace-pre-wrap">{comment.text}</p>
-                                            )}
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Files Section */}
-                        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-                            <h2 className="text-xl font-bold text-white mb-4">
-                                Załączniki ({files.length})
-                            </h2>
-
-                            {/* Upload form */}
-                            <div className="mb-6 p-4 bg-gray-800 rounded-lg border-2 border-dashed border-gray-700">
-                                <input
-                                    id="fileInput"
-                                    type="file"
-                                    onChange={handleFileSelect}
-                                    className="hidden"
-                                />
-                                <label
-                                    htmlFor="fileInput"
-                                    className="flex flex-col items-center justify-center cursor-pointer"
-                                >
-                                    <svg className="w-12 h-12 text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                    </svg>
-                                    <p className="text-gray-400 text-sm">
-                                        {selectedFile ? selectedFile.name : 'Kliknij aby wybrać plik'}
-                                    </p>
-                                    <p className="text-gray-500 text-xs mt-1">Maksymalny rozmiar: 10MB</p>
-                                </label>
-                                {selectedFile && (
-                                    <div className="mt-3 flex justify-center gap-2">
-                                        <button
-                                            onClick={handleFileUpload}
-                                            disabled={uploadingFile}
-                                            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition disabled:opacity-50"
-                                        >
-                                            {uploadingFile ? 'Przesyłanie...' : 'Prześlij'}
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setSelectedFile(null);
-                                                const fileInput = document.getElementById('fileInput') as HTMLInputElement;
-                                                if (fileInput) fileInput.value = '';
-                                            }}
-                                            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition"
-                                        >
-                                            Anuluj
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Files list */}
-                            <div className="space-y-3">
-                                {files.length === 0 ? (
-                                    <p className="text-gray-500 italic text-center py-4">Brak załączników</p>
-                                ) : (
-                                    files.map((file) => (
-                                        <div key={file.id} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg hover:bg-gray-750 transition">
-                                            <div className="flex items-center gap-3 flex-1">
-                                                <div className="w-10 h-10 bg-blue-500 bg-opacity-20 rounded flex items-center justify-center flex-shrink-0">
-                                                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                                    </svg>
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-white font-medium truncate">{file.originalName}</p>
-                                                    <div className="flex items-center gap-3 text-xs text-gray-400">
-                                                        <span>{formatFileSize(file.fileSize)}</span>
-                                                        <span>•</span>
-                                                        <span>{file.uploadedBy.username}</span>
-                                                        <span>•</span>
-                                                        <span>{new Date(file.uploadedAt).toLocaleDateString('pl-PL')}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <a
-                                                    href={fileService.getDownloadUrl(file.id)}
-                                                    download
-                                                    className="p-2 text-emerald-400 hover:bg-emerald-500 hover:bg-opacity-10 rounded transition"
-                                                    title="Pobierz"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                                    </svg>
-                                                </a>
-                                                {file.canDelete && (
-                                                    <button
-                                                        onClick={() => handleDeleteFile(file.id, file.originalName)}
-                                                        className="p-2 text-red-400 hover:bg-red-500 hover:bg-opacity-10 rounded transition"
-                                                        title="Usuń"
-                                                    >
-                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Sidebar - Right column */}
-                    <div className="space-y-6">
-                        {/* Task info */}
-                        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
-                            <h2 className="text-lg font-bold text-white mb-4">Informacje</h2>
-                            <div className="space-y-4">
-                                {/* Assigned to */}
-                                <div>
-                                    <p className="text-gray-400 text-sm mb-1">Przypisane do</p>
-                                    {task.assignedTo ? (
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
-                                                <span className="text-white text-sm font-semibold">
-                                                    {task.assignedTo.username.charAt(0).toUpperCase()}
-                                                </span>
-                                            </div>
-                                            <span className="text-white">{task.assignedTo.username}</span>
-                                        </div>
-                                    ) : (
-                                        <p className="text-gray-500 italic">Nie przypisano</p>
-                                    )}
-                                </div>
-
-                                {/* Created by */}
-                                {task.createdBy && (
-                                    <div>
-                                        <p className="text-gray-400 text-sm mb-1">Utworzone przez</p>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                                                <span className="text-white text-sm font-semibold">
-                                                    {task.createdBy.username.charAt(0).toUpperCase()}
-                                                </span>
-                                            </div>
-                                            <span className="text-white">{task.createdBy.username}</span>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Deadline */}
-                                <div>
-                                    <p className="text-gray-400 text-sm mb-1">Deadline</p>
-                                    {task.deadline ? (
-                                        <div className="flex items-center gap-2">
-                                            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                            <span className="text-white">
-                                                {new Date(task.deadline).toLocaleString('pl-PL')}
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <p className="text-gray-500 italic">Brak deadline</p>
-                                    )}
-                                </div>
-
-                                {/* Created at */}
-                                {task.createdAt && (
-                                    <div>
-                                        <p className="text-gray-400 text-sm mb-1">Utworzono</p>
-                                        <span className="text-white text-sm">
-                                            {new Date(task.createdAt).toLocaleString('pl-PL')}
-                                        </span>
-                                    </div>
-                                )}
-
-                                {/* Completed at */}
-                                {task.completedAt && (
-                                    <div>
-                                        <p className="text-gray-400 text-sm mb-1">Ukończono</p>
-                                        <span className="text-white text-sm">
-                                            {new Date(task.completedAt).toLocaleString('pl-PL')}
-                                        </span>
-                                    </div>
-                                )}
-
-                                {/* Activity stats */}
-                                <div className="pt-4 border-t border-gray-800">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-gray-400 text-sm">Komentarze</span>
-                                        <span className="text-white font-semibold">{comments.length}</span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-gray-400 text-sm">Załączniki</span>
-                                        <span className="text-white font-semibold">{files.length}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Edit Task Modal */}
                 {showEditModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-gray-900 rounded-lg p-6 w-full max-w-2xl border border-gray-800 max-h-[90vh] overflow-y-auto">
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-gray-900 rounded-lg p-6 w-full max-w-2xl">
                             <h2 className="text-2xl font-bold text-white mb-4">Edytuj zadanie</h2>
-
-                            {error && (
-                                <div className="mb-4 p-3 bg-red-500 bg-opacity-10 border border-red-500 rounded text-red-400 text-sm">
-                                    {error}
+                            <form onSubmit={handleUpdateTask} className="space-y-4">
+                                <input type="text" value={editFormData.title} onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })} className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white" required />
+                                <textarea value={editFormData.description} onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })} className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white" rows={4} />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <select value={editFormData.status} onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value as TaskStatus })} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white">
+                                        <option value="NEW">Nowe</option>
+                                        <option value="IN_PROGRESS">W trakcie</option>
+                                        <option value="COMPLETED">Ukończone</option>
+                                        <option value="CANCELLED">Anulowane</option>
+                                    </select>
+                                    <select value={editFormData.priority} onChange={(e) => setEditFormData({ ...editFormData, priority: e.target.value as TaskPriority })} className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white">
+                                        <option value="LOW">Niski</option>
+                                        <option value="MEDIUM">Średni</option>
+                                        <option value="HIGH">Wysoki</option>
+                                        <option value="URGENT">Pilne</option>
+                                    </select>
                                 </div>
-                            )}
-
-                            <form onSubmit={handleUpdateTask}>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                    <div className="md:col-span-2">
-                                        <label className="block text-gray-400 text-sm font-medium mb-2">Tytuł *</label>
-                                        <input
-                                            type="text"
-                                            value={editFormData.title}
-                                            onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
-                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                                            maxLength={200}
-                                            required
-                                        />
-                                    </div>
-
-                                    <div className="md:col-span-2">
-                                        <label className="block text-gray-400 text-sm font-medium mb-2">Opis</label>
-                                        <textarea
-                                            value={editFormData.description}
-                                            onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
-                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                                            rows={4}
-                                            maxLength={2000}
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-gray-400 text-sm font-medium mb-2">Status</label>
-                                        <select
-                                            value={editFormData.status}
-                                            onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value as TaskStatus })}
-                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                                        >
-                                            <option value="NEW">Nowe</option>
-                                            <option value="IN_PROGRESS">W trakcie</option>
-                                            <option value="COMPLETED">Ukończone</option>
-                                            <option value="CANCELLED">Anulowane</option>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-gray-400 text-sm font-medium mb-2">Priorytet</label>
-                                        <select
-                                            value={editFormData.priority}
-                                            onChange={(e) => setEditFormData({ ...editFormData, priority: e.target.value as TaskPriority })}
-                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                                        >
-                                            <option value="LOW">Niski</option>
-                                            <option value="MEDIUM">Średni</option>
-                                            <option value="HIGH">Wysoki</option>
-                                            <option value="URGENT">Pilny</option>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-gray-400 text-sm font-medium mb-2">Deadline</label>
-                                        <input
-                                            type="datetime-local"
-                                            value={editFormData.deadline}
-                                            onChange={(e) => setEditFormData({ ...editFormData, deadline: e.target.value })}
-                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-gray-400 text-sm font-medium mb-2">Przypisz do</label>
-                                        <select
-                                            value={editFormData.assignedToId || ''}
-                                            onChange={(e) => setEditFormData({ ...editFormData, assignedToId: e.target.value ? Number(e.target.value) : undefined })}
-                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                                        >
-                                            <option value="">Nie przypisano</option>
-                                            {projectMembers.map((member) => (
-                                                <option key={member.user.id} value={member.user.id}>
-                                                    {member.user.username}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-3 mt-6">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setShowEditModal(false);
-                                            setError(null);
-                                        }}
-                                        className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition"
-                                        disabled={actionInProgress}
-                                    >
-                                        Anuluj
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition disabled:opacity-50"
-                                        disabled={actionInProgress}
-                                    >
-                                        {actionInProgress ? 'Zapisywanie...' : 'Zapisz zmiany'}
-                                    </button>
+                                <div className="flex gap-3">
+                                    <button type="button" onClick={() => setShowEditModal(false)} className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg">Anuluj</button>
+                                    <button type="submit" className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg">Zapisz</button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                )}
+
+                {showStatusRequestModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-gray-900 rounded-lg p-6 w-full max-w-md">
+                            <h2 className="text-xl font-bold text-white mb-4">Prośba o zmianę statusu</h2>
+                            <select value={selectedNewStatus} onChange={(e) => setSelectedNewStatus(e.target.value as TaskStatus)} className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white mb-4">
+                                <option value="NEW">Nowe</option>
+                                <option value="IN_PROGRESS">W trakcie</option>
+                                <option value="COMPLETED">Ukończone</option>
+                                <option value="CANCELLED">Anulowane</option>
+                            </select>
+                            <div className="flex gap-3">
+                                <button onClick={() => setShowStatusRequestModal(false)} className="flex-1 px-4 py-2 bg-gray-800 text-white rounded-lg">Anuluj</button>
+                                <button onClick={handleRequestStatusChange} className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-lg">Wyślij</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {showPendingRequestsModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-gray-900 rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+                            <div className="flex justify-between mb-4">
+                                <h2 className="text-xl font-bold text-white">Oczekujące prośby</h2>
+                                <button onClick={() => setShowPendingRequestsModal(false)} className="text-gray-400">✕</button>
+                            </div>
+                            {statusRequests.map(req => (
+                                <div key={req.id} className="bg-gray-800 rounded-lg p-4 mb-3">
+                                    <p className="text-white mb-2">{req.requestedBy.username}: {getStatusLabel(req.currentStatus as TaskStatus)} → {getStatusLabel(req.requestedStatus as TaskStatus)}</p>
+                                    {selectedRequestToReject === req.id ? (
+                                        <div>
+                                            <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Powód..." className="w-full px-3 py-2 bg-gray-900 rounded text-white mb-2" rows={2} />
+                                            <button onClick={handleRejectRequest} className="px-3 py-1 bg-red-500 text-white rounded mr-2">Potwierdź</button>
+                                            <button onClick={() => setSelectedRequestToReject(null)} className="px-3 py-1 bg-gray-700 text-white rounded">Anuluj</button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex gap-2">
+                                            <button onClick={() => handleApproveRequest(req.id)} className="flex-1 px-3 py-2 bg-green-500 text-white rounded">✓ Zatwierdź</button>
+                                            <button onClick={() => setSelectedRequestToReject(req.id)} className="flex-1 px-3 py-2 bg-red-500 text-white rounded">✕ Odrzuć</button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}

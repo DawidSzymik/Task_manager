@@ -33,7 +33,7 @@ const commentService = {
         }
     },
 
-    // Create comment
+    // Create comment - FIXED: dodaj taskId do body
     createComment: async (taskId: number, commentData: CreateCommentRequest): Promise<Comment> => {
         try {
             const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
@@ -42,7 +42,11 @@ const commentService = {
                     'Content-Type': 'application/json',
                 },
                 credentials: 'include',
-                body: JSON.stringify(commentData),
+                // ✅ FIX: Dodaj taskId do body requesta
+                body: JSON.stringify({
+                    taskId: taskId,
+                    text: commentData.text
+                }),
             });
 
             const data = await handleResponse<Comment>(response);
