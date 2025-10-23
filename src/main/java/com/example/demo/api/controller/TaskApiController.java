@@ -67,7 +67,7 @@ public class TaskApiController {
 
             } else {
                 // All tasks user has access to (through projects)
-                List<ProjectMember> userProjects = projectMemberService.getUserProjects(currentUser);
+                List<Project> userProjects = projectMemberService.getUserProjects(currentUser);
                 tasks = userProjects.stream()
                         .flatMap(pm -> taskService.getTasksByProject(pm.getProject()).stream())
                         .distinct()

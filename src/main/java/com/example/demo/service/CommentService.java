@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -22,6 +23,8 @@ public class CommentService {
     @Autowired
     private NotificationService notificationService;
 
+    // ===== CREATE =====
+
     public Comment createComment(Task task, User author, String text) {
         Comment comment = new Comment();
         comment.setTask(task);
@@ -30,11 +33,64 @@ public class CommentService {
 
         Comment saved = commentRepository.save(comment);
 
-        // ✅ NOWE: Wyślij powiadomienia
+        // ✅ Wyślij powiadomienia
         sendCommentNotifications(task, author, saved);
 
         return saved;
     }
+
+    // ===== SAVE =====
+
+    public Comment saveComment(Comment comment) {
+        return commentRepository.save(comment);
+    }
+
+    // ===== READ =====
+
+    // Główna metoda pobierania komentarzy dla zadania
+    public List<Comment> getCommentsByTask(Task task) {
+        return commentRepository.findByTaskOrderByCreatedAtDesc(task);
+    }
+
+    // Alias dla getCommentsByTask (używany w starym kodzie)
+    public List<Comment> getTaskComments(Task task) {
+        return getCommentsByTask(task);
+    }
+
+    // Pobierz pojedynczy komentarz
+    public Optional<Comment> getCommentById(Long id) {
+        return commentRepository.findById(id);
+    }
+
+    // ===== COUNT =====
+
+    // Policz komentarze dla zadania
+    public long getCommentCountByTask(Task task) {
+        return commentRepository.countByTask(task);
+    }
+
+    // ===== UPDATE =====
+
+    public Comment updateComment(Long commentId, String newText) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new RuntimeException("Comment not found"));
+        comment.setText(newText);
+        return commentRepository.save(comment);
+    }
+
+    // ===== DELETE =====
+
+    public void deleteComment(Long commentId) {
+        commentRepository.deleteById(commentId);
+    }
+
+    // ===== LEGACY METHOD (dla starego kodu) =====
+
+    public Comment addCommentToTask(Task task, String commentText, User currentUser) {
+        return createComment(task, currentUser, commentText);
+    }
+
+    // ===== NOTIFICATIONS =====
 
     private void sendCommentNotifications(Task task, User author, Comment comment) {
         Set<User> usersToNotify = new HashSet<>();
@@ -67,25 +123,5 @@ public class CommentService {
                     "/tasks/" + task.getId()
             );
         }
-    }
-
-    public Comment updateComment(Long commentId, String newText) {
-        Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new RuntimeException("Comment not found"));
-        comment.setText(newText);
-        return commentRepository.save(comment);
-    }
-
-    public void deleteComment(Long commentId) {
-        commentRepository.deleteById(commentId);
-    }
-
-    public List<Comment> getTaskComments(Task task) {
-        return commentRepository.findByTaskOrderByCreatedAtDesc(task);
-    }
-
-    public Comment getCommentById(Long id) {
-        return commentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Comment not found"));
     }
 }

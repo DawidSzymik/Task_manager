@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class StatusChangeRequestService {
@@ -21,7 +22,6 @@ public class StatusChangeRequestService {
     @Autowired
     private NotificationService notificationService;
 
-    // ZMIANA: Użyj TaskRepository zamiast TaskService
     @Autowired
     private TaskRepository taskRepository;
 
@@ -61,22 +61,20 @@ public class StatusChangeRequestService {
         StatusChangeRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Prośba nie istnieje"));
 
-        // ZMIANA: Użyj TaskRepository zamiast TaskService
         Task task = request.getTask();
         task.setStatus(request.getRequestedStatus());
         taskRepository.save(task);
 
-        // Zaktualizuj prośbę
         request.setStatus(RequestStatus.APPROVED);
         request.setReviewedBy(reviewedBy);
         request.setReviewedAt(LocalDateTime.now());
         requestRepository.save(request);
 
-        // Powiadomienie dla autora prośby
+        // Powiadom użytkownika który żądał
         notificationService.createNotification(
                 request.getRequestedBy(),
-                "Zmiana statusu zatwierdzona",
-                "Status zadania '" + task.getTitle() + "' został zmieniony na " + request.getRequestedStatus(),
+                "✅ Zmiana statusu zatwierdzona",
+                "Twoja prośba o zmianę statusu zadania \"" + task.getTitle() + "\" została zatwierdzona",
                 NotificationType.STATUS_CHANGE_APPROVED,
                 task.getId(),
                 "/tasks/view/" + task.getId()
@@ -93,28 +91,38 @@ public class StatusChangeRequestService {
         request.setRejectionReason(reason);
         requestRepository.save(request);
 
-        // Powiadomienie dla autora prośby
+        // Powiadom użytkownika który żądał
         notificationService.createNotification(
                 request.getRequestedBy(),
-                "Zmiana statusu odrzucona",
-                "Prośba o zmianę statusu zadania '" + request.getTask().getTitle() +
-                        "' została odrzucona. Powód: " + reason,
+                "❌ Zmiana statusu odrzucona",
+                "Twoja prośba o zmianę statusu zadania \"" + request.getTask().getTitle() +
+                        "\" została odrzucona. Powód: " + reason,
                 NotificationType.STATUS_CHANGE_REJECTED,
                 request.getTask().getId(),
                 "/tasks/view/" + request.getTask().getId()
         );
     }
 
+    // ✅ POPRAWKA: getUserProjects zwraca List<Project>, więc najpierw pobieramy projekty
+    // potem dla każdego projektu sprawdzamy czy user jest adminem
     public List<StatusChangeRequest> getPendingRequestsForAdmin(User admin) {
-        List<ProjectMember> adminMemberships = memberService.getUserProjects(admin).stream()
-                .filter(member -> member.getRole() == ProjectRole.ADMIN)
-                .toList();
+        // Pobierz wszystkie projekty użytkownika
+        List<Project> userProjects = memberService.getUserProjects(admin);
 
-        // ZMIANA: Użyj TaskRepository zamiast TaskService
-        List<Task> adminTasks = adminMemberships.stream()
-                .flatMap(member -> taskRepository.findByProject(member.getProject()).stream())
-                .toList();
+        // Filtruj tylko te projekty gdzie użytkownik jest adminem
+        List<Project> adminProjects = userProjects.stream()
+                .filter(project -> {
+                    Optional<ProjectMember> memberOpt = memberService.getProjectMember(project, admin);
+                    return memberOpt.isPresent() && memberOpt.get().getRole() == ProjectRole.ADMIN;
+                })
+                .collect(Collectors.toList());
 
+        // Pobierz wszystkie zadania z projektów gdzie użytkownik jest adminem
+        List<Task> adminTasks = adminProjects.stream()
+                .flatMap(project -> taskRepository.findByProject(project).stream())
+                .collect(Collectors.toList());
+
+        // Zwróć wszystkie oczekujące prośby dla tych zadań
         return requestRepository.findByTaskInAndStatus(adminTasks, RequestStatus.PENDING);
     }
 
@@ -126,14 +134,12 @@ public class StatusChangeRequestService {
         return requestRepository.findById(id);
     }
 
-    // METODA USUWANIA PROŚB DLA ZADANIA
     @Transactional
     public void deleteRequestsForTask(Long taskId) {
         try {
-            // Znajdź wszystkie prośby dla tego zadania
             List<StatusChangeRequest> requests = requestRepository.findAll().stream()
                     .filter(request -> request.getTask() != null && request.getTask().getId().equals(taskId))
-                    .toList();
+                    .collect(Collectors.toList());
 
             if (!requests.isEmpty()) {
                 requestRepository.deleteAll(requests);
@@ -142,11 +148,9 @@ public class StatusChangeRequestService {
         } catch (Exception e) {
             System.err.println("Błąd podczas usuwania prośb o zmianę statusu dla zadania ID: " + taskId);
             e.printStackTrace();
-            // Nie rzucaj wyjątku - pozwól na kontynuację usuwania zadania
         }
     }
 
-    // METODA USUWANIA PROŚB PO ZADANIU (BEZPOŚREDNIE)
     @Transactional
     public void deleteRequestsByTask(Task task) {
         try {

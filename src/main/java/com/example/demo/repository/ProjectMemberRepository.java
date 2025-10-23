@@ -1,3 +1,4 @@
+// src/main/java/com/example/demo/repository/ProjectMemberRepository.java
 package com.example.demo.repository;
 
 import com.example.demo.model.Project;
@@ -16,12 +17,22 @@ import java.util.Optional;
 @Repository
 public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Long> {
 
+    // Znajdź członków użytkownika
     List<ProjectMember> findByUser(User user);
+
+    // Znajdź członków projektu
     List<ProjectMember> findByProject(Project project);
+
+    // Znajdź konkretne członkostwo
     Optional<ProjectMember> findByProjectAndUser(Project project, User user);
+
+    // Znajdź członków z określoną rolą
     List<ProjectMember> findByProjectAndRole(Project project, ProjectRole role);
 
-    // NOWE METODY dla usuwania projektów
+    // ✅ DODANA METODA - sprawdź czy użytkownik jest członkiem projektu
+    boolean existsByProjectAndUser(Project project, User user);
+
+    // METODY USUWANIA
     @Modifying
     @Query("DELETE FROM ProjectMember pm WHERE pm.project = :project")
     void deleteByProject(@Param("project") Project project);

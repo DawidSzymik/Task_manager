@@ -87,8 +87,8 @@ public class DashboardService {
     public StatsDto getUserStats(User user) {
         StatsDto stats = new StatsDto();
 
-        // Projekty użytkownika
-        List<ProjectMember> userProjects = projectMemberService.getUserProjects(user);
+        // ✅ POPRAWKA: getUserProjects zwraca List<Project>, nie List<ProjectMember>
+        List<Project> userProjects = projectMemberService.getUserProjects(user);
         stats.setUserProjects((long) userProjects.size());
 
         // Zespoły użytkownika
@@ -134,55 +134,42 @@ public class DashboardService {
         // Ostatnie zadania
         List<Task> recentTasks = taskRepository.findAll().stream()
                 .sorted(Comparator.comparing(Task::getCreatedAt).reversed())
-                .limit(limit / 2)
+                .limit(limit)
                 .collect(Collectors.toList());
 
         for (Task task : recentTasks) {
             ActivityDto activity = new ActivityDto();
             activity.setType("TASK_CREATED");
-            activity.setDescription("Utworzono zadanie: " + task.getTitle());
+            activity.setTitle("Nowe zadanie: " + task.getTitle());
             activity.setTimestamp(task.getCreatedAt());
-            activity.setEntityType("Task");
-            activity.setEntityId(task.getId());
-            activity.setEntityName(task.getTitle());
-
             if (task.getCreatedBy() != null) {
                 activity.setUser(userMapper.toDto(task.getCreatedBy()));
             }
-
             activities.add(activity);
         }
 
         // Ostatnie komentarze
         List<Comment> recentComments = commentRepository.findAll().stream()
                 .sorted(Comparator.comparing(Comment::getCreatedAt).reversed())
-                .limit(limit / 2)
+                .limit(limit)
                 .collect(Collectors.toList());
 
         for (Comment comment : recentComments) {
             ActivityDto activity = new ActivityDto();
             activity.setType("COMMENT_ADDED");
-            activity.setDescription("Dodano komentarz");
+            activity.setTitle("Nowy komentarz w: " + comment.getTask().getTitle());
             activity.setTimestamp(comment.getCreatedAt());
-            activity.setEntityType("Comment");
-            activity.setEntityId(comment.getId());
-
             if (comment.getAuthor() != null) {
                 activity.setUser(userMapper.toDto(comment.getAuthor()));
             }
-
-            if (comment.getTask() != null) {
-                activity.setEntityName(comment.getTask().getTitle());
-            }
-
             activities.add(activity);
         }
 
         // Sortuj wszystkie aktywności po czasie
-        return activities.stream()
-                .sorted(Comparator.comparing(ActivityDto::getTimestamp).reversed())
-                .limit(limit)
-                .collect(Collectors.toList());
+        activities.sort(Comparator.comparing(ActivityDto::getTimestamp).reversed());
+
+        // Zwróć tylko limit aktywności
+        return activities.stream().limit(limit).collect(Collectors.toList());
     }
 
     // Ostatnia aktywność użytkownika
@@ -192,48 +179,36 @@ public class DashboardService {
         // Zadania użytkownika
         List<Task> userTasks = taskRepository.findByCreatedBy(user).stream()
                 .sorted(Comparator.comparing(Task::getCreatedAt).reversed())
-                .limit(limit / 2)
+                .limit(limit)
                 .collect(Collectors.toList());
 
         for (Task task : userTasks) {
             ActivityDto activity = new ActivityDto();
             activity.setType("TASK_CREATED");
-            activity.setDescription("Utworzyłeś zadanie: " + task.getTitle());
+            activity.setTitle("Utworzyłeś zadanie: " + task.getTitle());
             activity.setTimestamp(task.getCreatedAt());
-            activity.setEntityType("Task");
-            activity.setEntityId(task.getId());
-            activity.setEntityName(task.getTitle());
             activity.setUser(userMapper.toDto(user));
-
             activities.add(activity);
         }
 
         // Komentarze użytkownika
         List<Comment> userComments = commentRepository.findByAuthor(user).stream()
                 .sorted(Comparator.comparing(Comment::getCreatedAt).reversed())
-                .limit(limit / 2)
+                .limit(limit)
                 .collect(Collectors.toList());
 
         for (Comment comment : userComments) {
             ActivityDto activity = new ActivityDto();
             activity.setType("COMMENT_ADDED");
-            activity.setDescription("Dodałeś komentarz");
+            activity.setTitle("Dodałeś komentarz w: " + comment.getTask().getTitle());
             activity.setTimestamp(comment.getCreatedAt());
-            activity.setEntityType("Comment");
-            activity.setEntityId(comment.getId());
             activity.setUser(userMapper.toDto(user));
-
-            if (comment.getTask() != null) {
-                activity.setEntityName(comment.getTask().getTitle());
-            }
-
             activities.add(activity);
         }
 
-        return activities.stream()
-                .sorted(Comparator.comparing(ActivityDto::getTimestamp).reversed())
-                .limit(limit)
-                .collect(Collectors.toList());
+        // Sortuj i zwróć
+        activities.sort(Comparator.comparing(ActivityDto::getTimestamp).reversed());
+        return activities.stream().limit(limit).collect(Collectors.toList());
     }
 
     // Helper methods
@@ -249,7 +224,8 @@ public class DashboardService {
 
     private long countOverdueTasksForUser(User user) {
         LocalDateTime now = LocalDateTime.now();
-        return taskRepository.findByAssignedUsersContaining(user).stream()
+        List<Task> userTasks = taskRepository.findByAssignedUsersContaining(user);
+        return userTasks.stream()
                 .filter(task -> task.getDeadline() != null)
                 .filter(task -> task.getDeadline().isBefore(now))
                 .filter(task -> !"COMPLETED".equals(task.getStatus()))

@@ -18,9 +18,12 @@ public class ProjectMemberService {
     private ProjectMemberRepository projectMemberRepository;
 
     @Autowired
+    private NotificationService notificationService;
+
+    @Autowired
     private MessageService messageService;
 
-    // Dodaj użytkownika do projektu
+    // Dodaj użytkownika do projektu (główna metoda)
     @Transactional
     public ProjectMember addMember(Project project, User user, ProjectRole role, User addedBy) {
         // Sprawdź czy użytkownik już jest członkiem
@@ -28,9 +31,9 @@ public class ProjectMemberService {
                 .anyMatch(m -> m.getUser().equals(user));
 
         ProjectMember member = new ProjectMember(project, user, role);
-        ProjectMember saved = memberRepository.save(member);
+        ProjectMember saved = projectMemberRepository.save(member);
 
-        // ✅ NOWE: Powiadom tylko jeśli to nowy członek
+        // ✅ Powiadom tylko jeśli to nowy członek
         if (!alreadyMember) {
             notificationService.createNotification(
                     user,
@@ -45,133 +48,119 @@ public class ProjectMemberService {
         return saved;
     }
 
+    // ✅ ALIAS dla addMember - używany w ProjectApiController
+    @Transactional
+    public ProjectMember addMemberToProject(Project project, User user, ProjectRole role) {
+        return addMember(project, user, role, user); // addedBy = user (tymczasowo)
+    }
 
     // Usuń użytkownika z projektu
     @Transactional
     public void removeMemberFromProject(Project project, User user) {
         Optional<ProjectMember> memberOpt = projectMemberRepository.findByProjectAndUser(project, user);
+
         if (memberOpt.isPresent()) {
-            projectMemberRepository.delete(memberOpt.get());
+            ProjectMember member = memberOpt.get();
+            projectMemberRepository.delete(member);
 
-            String systemMessage = "👤 " + user.getUsername() + " opuścił projekt";
-            messageService.sendSystemMessage(project, systemMessage);
+            // ✅ Powiadom użytkownika
+            notificationService.createNotification(
+                    user,
+                    "❌ Usunięto z projektu",
+                    "Zostałeś usunięty z projektu: \"" + project.getName() + "\"",
+                    NotificationType.PROJECT_MEMBER_REMOVED,
+                    project.getId(),
+                    "/projects"
+            );
         }
-    }
-
-    // Usuń użytkownika ze wszystkich projektów - NAPRAWIONE
-    @Transactional
-    public void removeUserFromAllProjects(User user) {
-        try {
-            List<ProjectMember> userMemberships = projectMemberRepository.findByUser(user);
-
-            System.out.println("Usuwanie użytkownika " + user.getUsername() + " z " + userMemberships.size() + " projektów");
-
-            for (ProjectMember membership : userMemberships) {
-                try {
-                    Project project = membership.getProject();
-
-                    // Usuń członkostwo
-                    projectMemberRepository.delete(membership);
-
-                    // Wyślij wiadomość systemową (jeśli się nie uda, kontynuuj)
-                    String systemMessage = "👤 Użytkownik " + user.getUsername() + " został usunięty z projektu";
-                    messageService.sendSystemMessage(project, systemMessage);
-
-                } catch (Exception e) {
-                    System.err.println("❌ Błąd podczas usuwania z projektu: " + e.getMessage());
-                    // Kontynuuj z następnym projektem
-                }
-            }
-
-            System.out.println("✅ Pomyślnie usunięto użytkownika ze wszystkich projektów");
-
-        } catch (Exception e) {
-            System.err.println("❌ Błąd usuwania użytkownika z projektów: " + e.getMessage());
-            throw new RuntimeException("Nie udało się usunąć użytkownika z projektów: " + e.getMessage());
-        }
-    }
-
-    // Pobierz projekty użytkownika
-    public List<ProjectMember> getUserProjects(User user) {
-        try {
-            List<ProjectMember> memberships = projectMemberRepository.findByUser(user);
-
-            // Filtruj tylko istniejące projekty
-            return memberships.stream()
-                    .filter(member -> {
-                        try {
-                            return member.getProject() != null && member.getProject().getId() != null;
-                        } catch (Exception e) {
-                            System.err.println("Uszkodzona relacja członkostwa: " + e.getMessage());
-                            return false;
-                        }
-                    })
-                    .collect(Collectors.toList());
-
-        } catch (Exception e) {
-            System.err.println("Błąd pobierania projektów użytkownika: " + e.getMessage());
-            return List.of();
-        }
-    }
-
-    // Pobierz członków projektu
-    public List<ProjectMember> getProjectMembers(Project project) {
-        return projectMemberRepository.findByProject(project);
-    }
-
-    // Pobierz konkretne członkostwo
-    public Optional<ProjectMember> getProjectMember(Project project, User user) {
-        return projectMemberRepository.findByProjectAndUser(project, user);
     }
 
     // Zmień rolę użytkownika w projekcie
     @Transactional
+    public void updateMemberRole(Project project, User user, ProjectRole newRole, User changedBy) {
+        ProjectMember member = projectMemberRepository.findByProjectAndUser(project, user)
+                .orElseThrow(() -> new RuntimeException("Członek projektu nie istnieje"));
+
+        ProjectRole oldRole = member.getRole();
+        member.setRole(newRole);
+        projectMemberRepository.save(member);
+
+        // ✅ Powiadom użytkownika
+        notificationService.createNotification(
+                user,
+                "🔄 Zmiana roli w projekcie",
+                changedBy.getUsername() + " zmienił Twoją rolę w projekcie \"" + project.getName() +
+                        "\" z " + getRoleDisplayName(oldRole) + " na " + getRoleDisplayName(newRole),
+                NotificationType.PROJECT_ROLE_CHANGED,
+                project.getId(),
+                "/projects/" + project.getId()
+        );
+    }
+
+    // ✅ ALIAS dla updateMemberRole - używany w ProjectApiController
+    @Transactional
     public void changeUserRole(Project project, User user, ProjectRole newRole) {
-        Optional<ProjectMember> memberOpt = projectMemberRepository.findByProjectAndUser(project, user);
-        if (memberOpt.isPresent()) {
-            ProjectMember member = memberOpt.get();
-            ProjectRole oldRole = member.getRole();
+        updateMemberRole(project, user, newRole, user); // changedBy = user (tymczasowo)
+    }
 
-            // Sprawdź czy to nie twórca projektu
-            if (project.getCreatedBy().equals(user) && newRole != ProjectRole.ADMIN) {
-                throw new RuntimeException("Nie można zmienić roli twórcy projektu");
-            }
+    // Pobierz członka projektu
+    public Optional<ProjectMember> getProjectMember(Project project, User user) {
+        return projectMemberRepository.findByProjectAndUser(project, user);
+    }
 
-            member.setRole(newRole);
-            projectMemberRepository.save(member);
-
-            String systemMessage = "🔄 Rola użytkownika " + user.getUsername() +
-                    " została zmieniona z " + getRoleDisplayName(oldRole) +
-                    " na " + getRoleDisplayName(newRole);
-            messageService.sendSystemMessage(project, systemMessage);
-        }
+    // Pobierz wszystkich członków projektu
+    public List<ProjectMember> getProjectMembers(Project project) {
+        return projectMemberRepository.findByProject(project);
     }
 
     // Sprawdź czy użytkownik jest członkiem projektu
-    public boolean isUserMemberOfProject(Project project, User user) {
-        return projectMemberRepository.findByProjectAndUser(project, user).isPresent();
+    public boolean isProjectMember(Project project, User user) {
+        return projectMemberRepository.existsByProjectAndUser(project, user);
     }
 
-    // Sprawdź czy użytkownik jest adminem projektu - NAPRAWIONE
+    // Sprawdź czy użytkownik jest adminem projektu
     public boolean isProjectAdmin(Project project, User user) {
-        return projectMemberRepository.findByProjectAndUser(project, user)
-                .map(member -> member.getRole() == ProjectRole.ADMIN)
-                .orElse(false);
+        Optional<ProjectMember> memberOpt = getProjectMember(project, user);
+        return memberOpt.isPresent() && memberOpt.get().getRole() == ProjectRole.ADMIN;
     }
 
-    // Sprawdź czy użytkownik ma konkretną rolę w projekcie
-    public boolean hasUserRoleInProject(Project project, User user, ProjectRole role) {
-        Optional<ProjectMember> memberOpt = projectMemberRepository.findByProjectAndUser(project, user);
-        return memberOpt.isPresent() && memberOpt.get().getRole() == role;
+    // Sprawdź czy użytkownik może edytować projekt
+    public boolean canEditProject(Project project, User user) {
+        return isProjectAdmin(project, user) || project.getCreatedBy().equals(user);
     }
 
-    // Metoda pomocnicza dla nazw ról
+    // Pobierz rolę użytkownika w projekcie
+    public ProjectRole getUserRole(Project project, User user) {
+        return getProjectMember(project, user)
+                .map(ProjectMember::getRole)
+                .orElse(null);
+    }
+
+    // ✅ POPRAWKA: getUserProjects zwraca List<Project>, NIE List<ProjectMember>
+    public List<Project> getUserProjects(User user) {
+        List<ProjectMember> memberships = projectMemberRepository.findByUser(user);
+        return memberships.stream()
+                .map(ProjectMember::getProject)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    // Pobierz członków z określoną rolą
+    public List<ProjectMember> getMembersByRole(Project project, ProjectRole role) {
+        return projectMemberRepository.findByProjectAndRole(project, role);
+    }
+
+    // ✅ DODANA METODA - używana w różnych miejscach
+    public boolean existsByProjectAndUser(Project project, User user) {
+        return projectMemberRepository.existsByProjectAndUser(project, user);
+    }
+
+    // Helper: Wyświetlana nazwa roli
     private String getRoleDisplayName(ProjectRole role) {
-        switch (role) {
-            case ADMIN: return "Administrator";
-            case MEMBER: return "Członek";
-            case VIEWER: return "Obserwator";
-            default: return role.toString();
-        }
+        return switch (role) {
+            case ADMIN -> "Administrator";
+            case MEMBER -> "Członek";
+            case VIEWER -> "Obserwator";
+        };
     }
 }

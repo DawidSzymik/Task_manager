@@ -53,7 +53,7 @@ public class ProjectApiController {
                 projects = projectService.getAllProjects();
             } else {
                 // Regular users see only their projects
-                List<ProjectMember> memberships = projectMemberService.getUserProjects(currentUser);
+                List<Project> memberships = projectMemberService.getUserProjects(currentUser);
                 projects = memberships.stream()
                         .map(ProjectMember::getProject)
                         .distinct()

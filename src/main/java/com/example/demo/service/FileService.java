@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -24,9 +25,12 @@ public class FileService {
     @Autowired
     private NotificationService notificationService;
 
+    // ===== CREATE / SAVE =====
+
     public UploadedFile saveFile(MultipartFile file, Task task, User uploadedBy) throws IOException {
+        // ✅ POPRAWKA: getOriginalFilename() jest metodą MultipartFile, nie UploadedFile
         UploadedFile uploadedFile = new UploadedFile(
-                file.getOriginalFilename(),
+                file.getOriginalFilename(),  // ✅ To jest poprawne - MultipartFile.getOriginalFilename()
                 file.getContentType(),
                 file.getSize(),
                 file.getBytes(),
@@ -36,11 +40,57 @@ public class FileService {
 
         UploadedFile saved = fileRepository.save(uploadedFile);
 
-        // ✅ NOWE: Wyślij powiadomienia
+        // ✅ Wyślij powiadomienia
         sendFileNotifications(task, uploadedBy, saved);
 
         return saved;
     }
+
+    // Alias dla saveFile (używany w różnych miejscach)
+    public UploadedFile storeFile(Task task, MultipartFile file, User uploadedBy) {
+        try {
+            return saveFile(file, task, uploadedBy);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to store file", e);
+        }
+    }
+
+    // ===== READ =====
+
+    // Główna metoda pobierania plików dla zadania
+    public List<UploadedFile> getFilesByTask(Task task) {
+        return fileRepository.findByTaskOrderByUploadedAtDesc(task);
+    }
+
+    // Pobierz pliki użytkownika
+    public List<UploadedFile> getFilesByUser(User user) {
+        return fileRepository.findByUploadedBy(user);
+    }
+
+    // Pobierz pojedynczy plik
+    public Optional<UploadedFile> getFileById(Long id) {
+        return fileRepository.findById(id);
+    }
+
+    // ===== COUNT =====
+
+    // Policz pliki dla zadania
+    public long getFileCountByTask(Task task) {
+        return fileRepository.countByTask(task);
+    }
+
+    // Policz pliki użytkownika
+    public long getFileCountByUser(User user) {
+        return fileRepository.countByUploadedBy(user);
+    }
+
+    // ===== DELETE =====
+
+    public void deleteFile(Long fileId) {
+        fileRepository.deleteById(fileId);
+    }
+
+    // ===== NOTIFICATIONS =====
 
     private void sendFileNotifications(Task task, User uploadedBy, UploadedFile file) {
         Set<User> usersToNotify = new HashSet<>();
@@ -73,18 +123,5 @@ public class FileService {
                     "/tasks/" + task.getId()
             );
         }
-    }
-
-    public UploadedFile getFileById(Long id) {
-        return fileRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("File not found"));
-    }
-
-    public List<UploadedFile> getTaskFiles(Task task) {
-        return fileRepository.findByTaskOrderByUploadedAtDesc(task);
-    }
-
-    public void deleteFile(Long fileId) {
-        fileRepository.deleteById(fileId);
     }
 }

@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class TaskProposalService {
@@ -21,7 +22,6 @@ public class TaskProposalService {
     @Autowired
     private NotificationService notificationService;
 
-    // ZMIANA: Użyj TaskRepository zamiast TaskService
     @Autowired
     private TaskRepository taskRepository;
 
@@ -42,7 +42,7 @@ public class TaskProposalService {
         // Powiadomienia dla adminów projektu
         List<ProjectMember> admins = memberService.getProjectMembers(project).stream()
                 .filter(member -> member.getRole() == ProjectRole.ADMIN)
-                .toList();
+                .collect(Collectors.toList());
 
         for (ProjectMember admin : admins) {
             notificationService.createNotification(
@@ -69,7 +69,6 @@ public class TaskProposalService {
         task.setDeadline(proposal.getDeadline());
         task.setProject(proposal.getProject());
 
-        // ZMIANA: Użyj TaskRepository zamiast TaskService
         Task savedTask = taskRepository.save(task);
 
         // Zaktualizuj propozycję
@@ -110,15 +109,20 @@ public class TaskProposalService {
         );
     }
 
+    // ✅ POPRAWKA: getUserProjects zwraca List<Project>, nie List<ProjectMember>
     public List<TaskProposal> getPendingProposalsForAdmin(User admin) {
-        List<ProjectMember> adminMemberships = memberService.getUserProjects(admin).stream()
-                .filter(member -> member.getRole() == ProjectRole.ADMIN)
-                .toList();
+        // Pobierz wszystkie projekty użytkownika
+        List<Project> userProjects = memberService.getUserProjects(admin);
 
-        List<Project> adminProjects = adminMemberships.stream()
-                .map(ProjectMember::getProject)
-                .toList();
+        // Filtruj tylko te projekty gdzie użytkownik jest adminem
+        List<Project> adminProjects = userProjects.stream()
+                .filter(project -> {
+                    Optional<ProjectMember> memberOpt = memberService.getProjectMember(project, admin);
+                    return memberOpt.isPresent() && memberOpt.get().getRole() == ProjectRole.ADMIN;
+                })
+                .collect(Collectors.toList());
 
+        // Zwróć wszystkie oczekujące propozycje dla tych projektów
         return proposalRepository.findByProjectInAndStatus(adminProjects, ProposalStatus.PENDING);
     }
 
@@ -134,7 +138,6 @@ public class TaskProposalService {
         return proposalRepository.findById(id);
     }
 
-    // METODA USUWANIA PROPOZYCJI DLA USUNIĘTEGO ZADANIA
     @Transactional
     public void deleteProposalsForTask(Long taskId) {
         try {
