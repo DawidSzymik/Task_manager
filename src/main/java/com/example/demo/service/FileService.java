@@ -1,6 +1,7 @@
 // src/main/java/com/example/demo/service/FileService.java
 package com.example.demo.service;
 
+import com.example.demo.model.NotificationType;
 import com.example.demo.model.Task;
 import com.example.demo.model.UploadedFile;
 import com.example.demo.model.User;
@@ -14,6 +15,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class FileService {
@@ -26,6 +28,9 @@ public class FileService {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private NotificationService notificationService;
 
     // Pobierz plik po ID
     public Optional<UploadedFile> getFileById(Long fileId) {
@@ -42,7 +47,7 @@ public class FileService {
         return fileRepository.countByTask(task);
     }
 
-    // Zapisz plik dla zadania
+    // ✅ ZAKTUALIZOWANA METODA - z powiadomieniami
     @Transactional
     public UploadedFile storeFile(Task task, MultipartFile file, User uploader) {
         try {
@@ -55,7 +60,53 @@ public class FileService {
             uploadedFile.setUploadedBy(uploader);
             uploadedFile.setUploadedAt(LocalDateTime.now());
 
-            return fileRepository.save(uploadedFile);
+            UploadedFile saved = fileRepository.save(uploadedFile);
+
+            // ✅ WYSYŁANIE POWIADOMIEŃ
+            try {
+                String fileName = file.getOriginalFilename();
+
+                // Powiadom wszystkich przypisanych użytkowników (oprócz osoby dodającej plik)
+                Set<User> assignedUsers = task.getAssignedUsers();
+                for (User assignedUser : assignedUsers) {
+                    if (!assignedUser.equals(uploader)) {
+                        notificationService.createNotification(
+                                assignedUser,
+                                "📎 Nowy plik w zadaniu",
+                                uploader.getUsername() + " dodał plik \"" + fileName +
+                                        "\" do zadania \"" + task.getTitle() + "\"",
+                                NotificationType.TASK_FILE_UPLOADED,
+                                task.getId(),
+                                "/tasks/view/" + task.getId()
+                        );
+                    }
+                }
+
+                // Powiadom także twórcę zadania (jeśli nie jest przypisany i nie jest osobą dodającą)
+                if (task.getCreatedBy() != null && !task.getCreatedBy().equals(uploader)) {
+                    boolean creatorIsAssigned = assignedUsers.stream()
+                            .anyMatch(u -> u.equals(task.getCreatedBy()));
+
+                    if (!creatorIsAssigned) {
+                        notificationService.createNotification(
+                                task.getCreatedBy(),
+                                "📎 Nowy plik w Twoim zadaniu",
+                                uploader.getUsername() + " dodał plik \"" + fileName +
+                                        "\" do zadania \"" + task.getTitle() + "\"",
+                                NotificationType.TASK_FILE_UPLOADED,
+                                task.getId(),
+                                "/tasks/view/" + task.getId()
+                        );
+                    }
+                }
+            } catch (Exception e) {
+                // Loguj błąd, ale nie przerywaj dodawania pliku
+                System.err.println("❌ Błąd wysyłania powiadomienia o pliku: " + e.getMessage());
+                e.printStackTrace();
+            }
+
+            return saved;
+
         } catch (IOException e) {
             throw new RuntimeException("Failed to store file: " + e.getMessage(), e);
         }
@@ -75,39 +126,18 @@ public class FileService {
     @Transactional
     public void deleteFile(Long fileId) {
         UploadedFile file = fileRepository.findById(fileId)
-                .orElseThrow(() -> new RuntimeException("File not found with id: " + fileId));
-
+                .orElseThrow(() -> new RuntimeException("File with ID " + fileId + " not found"));
         fileRepository.delete(file);
     }
 
     // Usuń wszystkie pliki dla zadania
     @Transactional
-    public void deleteByTask(Task task) {
-        fileRepository.deleteByTask(task);
+    public void deleteFilesByTask(Task task) {
+        List<UploadedFile> files = getFilesByTask(task);
+        fileRepository.deleteAll(files);
     }
-
     // Pobierz pliki użytkownika
     public List<UploadedFile> getFilesByUser(User user) {
         return fileRepository.findByUploadedBy(user);
-    }
-
-    // Pobierz ostatnie pliki dla zadania z limitem
-    public List<UploadedFile> getRecentFilesByTask(Task task, int limit) {
-        return fileRepository.findByTaskOrderByUploadedAtDesc(task)
-                .stream()
-                .limit(limit)
-                .toList();
-    }
-
-    // Sprawdź czy plik istnieje
-    public boolean fileExists(Long fileId) {
-        return fileRepository.existsById(fileId);
-    }
-
-    // Pobierz całkowity rozmiar plików dla zadania
-    public long getTotalFileSizeByTask(Task task) {
-        return fileRepository.findByTask(task).stream()
-                .mapToLong(UploadedFile::getFileSize)
-                .sum();
     }
 }

@@ -20,7 +20,10 @@ public class ProjectMemberService {
     @Autowired
     private MessageService messageService;
 
-    // Dodaj użytkownika do projektu
+    @Autowired
+    private NotificationService notificationService;
+
+    // ✅ ZAKTUALIZOWANA METODA - z powiadomieniami
     @Transactional
     public ProjectMember addMemberToProject(Project project, User user, ProjectRole role) {
         // Sprawdź czy już nie jest członkiem
@@ -36,9 +39,25 @@ public class ProjectMemberService {
 
         ProjectMember saved = projectMemberRepository.save(member);
 
-        // Wyślij wiadomość systemową
+        // Wyślij wiadomość systemową w czacie projektu
         String systemMessage = "👤 " + user.getUsername() + " dołączył do projektu jako " + getRoleDisplayName(role);
         messageService.sendSystemMessage(project, systemMessage);
+
+        // ✅ WYSYŁANIE POWIADOMIENIA
+        try {
+            notificationService.createNotification(
+                    user,
+                    "🎯 Dodano Cię do projektu",
+                    "Zostałeś dodany do projektu \"" + project.getName() + "\" jako " + getRoleDisplayName(role),
+                    NotificationType.PROJECT_MEMBER_ADDED,
+                    project.getId(),
+                    "/projects/" + project.getId()
+            );
+        } catch (Exception e) {
+            // Loguj błąd, ale nie przerywaj dodawania członka
+            System.err.println("❌ Błąd wysyłania powiadomienia o dodaniu do projektu: " + e.getMessage());
+            e.printStackTrace();
+        }
 
         return saved;
     }
@@ -55,7 +74,7 @@ public class ProjectMemberService {
         }
     }
 
-    // Usuń użytkownika ze wszystkich projektów - NAPRAWIONE
+    // Usuń użytkownika ze wszystkich projektów
     @Transactional
     public void removeUserFromAllProjects(User user) {
         try {
@@ -149,7 +168,7 @@ public class ProjectMemberService {
         return projectMemberRepository.findByProjectAndUser(project, user).isPresent();
     }
 
-    // Sprawdź czy użytkownik jest adminem projektu - NAPRAWIONE
+    // Sprawdź czy użytkownik jest adminem projektu
     public boolean isProjectAdmin(Project project, User user) {
         return projectMemberRepository.findByProjectAndUser(project, user)
                 .map(member -> member.getRole() == ProjectRole.ADMIN)
