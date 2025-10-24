@@ -14,6 +14,10 @@ import TaskDetailsPage from "./pages/TaskDetailsPage.tsx";
 import CalendarPage from "./pages/CalendarPage.tsx";
 import ReportsPage from "./pages/ReportsPage.tsx";
 import ProfilePage from "./pages/ProfilePage.tsx";
+import AdminDashboardPage from "./pages/admin/AdminDashboardPage.tsx";
+import AdminUsersPage from "./pages/admin/AdminUsersPage.tsx";
+import AdminProjectsPage from "./pages/admin/AdminProjectsPage.tsx";
+import AdminTasksPage from "./pages/admin/AdminTasksPage.tsx";
 
 function App() {
     return (
@@ -117,6 +121,43 @@ function App() {
                         element={
                             <ProtectedRoute>
                                 <ProfilePage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    {/* Admin Routes - Protected for SUPER_ADMIN only */}
+                    <Route
+                        path="/admin"
+                        element={
+                            <ProtectedRoute>
+                                <AdminDashboardPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/admin/users"
+                        element={
+                            <ProtectedRoute>
+                                <AdminUsersPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/admin/projects"
+                        element={
+                            <ProtectedRoute>
+                                <AdminProjectsPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/admin/tasks"
+                        element={
+                            <ProtectedRoute>
+                                <AdminTasksPage />
                             </ProtectedRoute>
                         }
                     />
