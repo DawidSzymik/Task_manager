@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/config/SecurityConfig.java - ROZSZERZONY
+// src/main/java/com/example/demo/config/SecurityConfig.java
 package com.example.demo.config;
 
 import com.example.demo.service.CustomUserDetailsService;
@@ -45,32 +45,36 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
                         .antMatchers("/registration", "/login", "/kontakt").permitAll()
                         .antMatchers("/css/**", "/js/**", "/images/**").permitAll()
                         .antMatchers("/files/**").permitAll()
-                        .antMatchers("/api/**").permitAll() // Pozwól na API bez autoryzacji
 
-                        // NOWE - Dostęp do panelu administratora tylko dla super adminów
+                        // API - tylko login i register bez autentykacji
+                        .antMatchers("/api/v1/auth/login", "/api/v1/auth/register").permitAll()
+                        .antMatchers("/api/v1/auth/**").authenticated()
+
+                        // Reszta API wymaga autentykacji
+                        .antMatchers("/api/**").authenticated()
+
+                        // Admin panel - tylko dla super adminów
                         .antMatchers("/admin/**").hasAuthority("SUPER_ADMIN")
 
+                        // Protected routes
                         .antMatchers("/teams/**").authenticated()
                         .antMatchers("/projects/**").authenticated()
                         .antMatchers("/proposals/**").authenticated()
                         .antMatchers("/tasks/**").authenticated()
                         .antMatchers("/status-requests/**").authenticated()
                         .antMatchers("/notifications/**").authenticated()
+
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
                         .defaultSuccessUrl("/tasks/dashboard", true)
                         .successHandler((request, response, authentication) -> {
-                            // NOWE - Custom success handler
                             System.out.println("Użytkownik zalogował się: " + authentication.getName());
-
-                            // Możesz tutaj dodać logikę aktualizacji lastLogin
-                            // userService.updateLastLogin(authentication.getName());
-
                             response.sendRedirect("/tasks/dashboard");
                         })
                 )
@@ -87,7 +91,7 @@ public class SecurityConfig {
                         "/status-requests/**",
                         "/notifications/**",
                         "/admin/**",
-                        "/api/**"// NOWE - Wyłącz CSRF dla panelu admina
+                        "/api/**"
                 );
         return http.build();
     }

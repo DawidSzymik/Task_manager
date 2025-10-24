@@ -9,7 +9,7 @@ import java.util.Set;
 
 @Entity
 @Table(name = "users")
-@JsonIgnoreProperties({"password", "teams", "tasks"}) // ✅ Ignoruj te pola przy serializacji JSON
+@JsonIgnoreProperties({"password", "teams", "tasks", "hibernateLazyInitializer", "handler"})
 public class User {
 
     @Id
@@ -36,7 +36,6 @@ public class User {
     @ManyToMany(mappedBy = "assignedUsers", cascade = CascadeType.DETACH, fetch = FetchType.LAZY)
     private Set<Task> tasks = new HashSet<>();
 
-    // Konstruktory
     public User() {}
 
     public User(String username, String password) {
@@ -50,7 +49,6 @@ public class User {
         this.systemRole = systemRole;
     }
 
-    // Wyczyść wszystkie relacje przed usunięciem
     public void clearAllRelations() {
         if (tasks != null) {
             tasks.clear();
@@ -60,7 +58,6 @@ public class User {
         }
     }
 
-    // Metody pomocnicze
     public boolean isSuperAdmin() {
         return SystemRole.SUPER_ADMIN.equals(this.systemRole);
     }
@@ -69,7 +66,6 @@ public class User {
         return SystemRole.USER.equals(this.systemRole);
     }
 
-    // Gettery i settery
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -102,17 +98,4 @@ public class User {
 
     public Set<Task> getTasks() { return tasks; }
     public void setTasks(Set<Task> tasks) { this.tasks = tasks; }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        User user = (User) o;
-        return id != null && id.equals(user.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
-    }
 }

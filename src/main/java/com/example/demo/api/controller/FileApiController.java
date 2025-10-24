@@ -21,7 +21,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/files")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:5173"})
 public class FileApiController {
 
     private final FileService fileService;
@@ -42,23 +42,20 @@ public class FileApiController {
         this.fileMapper = fileMapper;
     }
 
-    // GET /api/v1/files/tasks/{taskId} - Get files for specific task
     @GetMapping("/tasks/{taskId}")
-    public ResponseEntity<Map<String, Object>> getTaskFiles(@PathVariable Long taskId) {
+    public ResponseEntity<Map<String, Object>> getTaskFiles(
+            @PathVariable Long taskId,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getUserFromDetails(userDetails);
 
-            // Get task and check access
             Task task = taskService.getTaskById(taskId)
                     .orElseThrow(() -> new RuntimeException("Task with ID " + taskId + " not found"));
 
             checkTaskAccess(task, currentUser);
-
-            // Get user role in project
             ProjectRole userRole = getUserRoleInProject(task.getProject(), currentUser);
 
-            // Get files
             List<UploadedFile> files = fileService.getFilesByTask(task);
             List<FileDto> fileDtos = fileMapper.toDtoWithPermissions(files, currentUser, userRole);
 
@@ -82,39 +79,34 @@ public class FileApiController {
         }
     }
 
-    // POST /api/v1/files/tasks/{taskId} - Upload file to task
     @PostMapping("/tasks/{taskId}")
     public ResponseEntity<Map<String, Object>> uploadFile(
             @PathVariable Long taskId,
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getUserFromDetails(userDetails);
 
-            // Validate file
             if (file.isEmpty()) {
                 return createErrorResponse("File is empty", HttpStatus.BAD_REQUEST);
             }
 
-            // Check file size (max 10MB)
-            long maxSize = 10 * 1024 * 1024; // 10MB
+            long maxSize = 10 * 1024 * 1024;
             if (file.getSize() > maxSize) {
                 return createErrorResponse("File size exceeds maximum limit of 10MB", HttpStatus.BAD_REQUEST);
             }
 
-            // Get task and check access
             Task task = taskService.getTaskById(taskId)
                     .orElseThrow(() -> new RuntimeException("Task with ID " + taskId + " not found"));
 
             checkTaskAccess(task, currentUser);
 
-            // Check if user can upload files (not viewer)
             ProjectRole userRole = getUserRoleInProject(task.getProject(), currentUser);
             if (userRole == ProjectRole.VIEWER) {
                 return createErrorResponse("Viewers cannot upload files", HttpStatus.FORBIDDEN);
             }
 
-            // Upload file
             UploadedFile uploadedFile = fileService.storeFile(task, file, currentUser);
             FileDto fileDto = fileMapper.toDtoWithPermissions(uploadedFile, currentUser, userRole);
 
@@ -135,12 +127,13 @@ public class FileApiController {
         }
     }
 
-    // GET /api/v1/files/{id} - Get file metadata
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getFile(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> getFile(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getUserFromDetails(userDetails);
 
             UploadedFile file = fileService.getFileById(id)
                     .orElseThrow(() -> new RuntimeException("File with ID " + id + " not found"));
@@ -167,12 +160,13 @@ public class FileApiController {
         }
     }
 
-    // GET /api/v1/files/{id}/download - Download file
     @GetMapping("/{id}/download")
-    public ResponseEntity<ByteArrayResource> downloadFile(@PathVariable Long id) {
+    public ResponseEntity<ByteArrayResource> downloadFile(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getUserFromDetails(userDetails);
 
             UploadedFile file = fileService.getFileById(id)
                     .orElseThrow(() -> new RuntimeException("File with ID " + id + " not found"));
@@ -201,19 +195,19 @@ public class FileApiController {
         }
     }
 
-    // DELETE /api/v1/files/{id} - Delete file
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deleteFile(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> deleteFile(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getUserFromDetails(userDetails);
 
             UploadedFile file = fileService.getFileById(id)
                     .orElseThrow(() -> new RuntimeException("File with ID " + id + " not found"));
 
             checkTaskAccess(file.getTask(), currentUser);
 
-            // Check if user can delete (uploader or admin)
             ProjectRole userRole = getUserRoleInProject(file.getTask().getProject(), currentUser);
             boolean isUploader = file.getUploadedBy() != null && file.getUploadedBy().equals(currentUser);
             boolean isAdmin = userRole == ProjectRole.ADMIN;
@@ -240,17 +234,17 @@ public class FileApiController {
         }
     }
 
-    // GET /api/v1/files/user/{userId} - Get files uploaded by user
     @GetMapping("/user/{userId}")
-    public ResponseEntity<Map<String, Object>> getUserFiles(@PathVariable Long userId) {
+    public ResponseEntity<Map<String, Object>> getUserFiles(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getUserFromDetails(userDetails);
 
             User targetUser = userService.getUserById(userId)
                     .orElseThrow(() -> new RuntimeException("User with ID " + userId + " not found"));
 
-            // Only allow viewing own files or super admin
             if (!currentUser.equals(targetUser) && currentUser.getSystemRole() != SystemRole.SUPER_ADMIN) {
                 return createErrorResponse("Access denied", HttpStatus.FORBIDDEN);
             }
@@ -275,13 +269,12 @@ public class FileApiController {
         }
     }
 
-    // Helper methods
-    private User getTestUser() {
-        List<User> users = userService.getAllUsers();
-        if (users.isEmpty()) {
-            throw new RuntimeException("No users found in database");
+    private User getUserFromDetails(UserDetails userDetails) {
+        if (userDetails == null) {
+            throw new RuntimeException("User not authenticated");
         }
-        return users.get(0);
+        return userService.getUserByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
     private void checkTaskAccess(Task task, User user) {
