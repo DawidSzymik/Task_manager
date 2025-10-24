@@ -1,4 +1,4 @@
-// src/pages/RegisterPage.tsx
+// frontend/src/pages/RegisterPage.tsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService, { type ApiError } from '../services/authService';
@@ -33,11 +33,13 @@ const RegisterPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [acceptTerms, setAcceptTerms] = useState(false);
 
+    // ✅ FIX: Uruchamiamy tylko RAZ przy montażu
     useEffect(() => {
         if (authService.isAuthenticated()) {
             navigate('/dashboard', { replace: true });
         }
-    }, [navigate]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // ✅ Pusty array - uruchom tylko raz przy montażu!
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -89,13 +91,17 @@ const RegisterPage: React.FC = () => {
         setErrors({});
 
         try {
-            // IMPORTANT: Send confirmPassword to backend!
-            const response = await authService.register(formData);
+            await authService.register({
+                username: formData.username,
+                email: formData.email,
+                password: formData.password,
+                confirmPassword: formData.confirmPassword,
+                fullName: formData.fullName,
+            });
 
-            console.log('Registration successful:', response);
-
+            // Navigate to login with success message
             navigate('/login', {
-                state: { message: 'Rejestracja zakończona pomyślnie! Możesz się teraz zalogować.' }
+                state: { message: 'Rejestracja zakończona sukcesem! Możesz się teraz zalogować.' },
             });
 
         } catch (error) {
@@ -110,182 +116,211 @@ const RegisterPage: React.FC = () => {
         }
     };
 
-    const handleKeyPress = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            handleSubmit();
-        }
-    };
-
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
-            <div className="max-w-md w-full">
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center px-4 py-12">
+            <div className="w-full max-w-md">
+                {/* Logo */}
                 <div className="text-center mb-8">
-                    <div className="inline-block bg-gray-800 p-4 rounded-2xl shadow-lg mb-4">
-                        <div className="w-16 h-16 bg-emerald-500 rounded-xl flex items-center justify-center">
-                            <span className="text-3xl font-bold text-white">TM</span>
-                        </div>
-                    </div>
-                    <h1 className="text-3xl font-bold text-white mb-2">Dołącz do nas!</h1>
-                    <p className="text-gray-400">Stwórz darmowe konto już teraz</p>
+                    <h1 className="text-4xl font-bold mb-2">
+                        <span className="text-emerald-500">TASK</span>
+                        <span className="text-white">MANAGER</span>
+                    </h1>
+                    <p className="text-gray-400">Utwórz nowe konto</p>
                 </div>
 
-                <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-700">
+                {/* Register Form */}
+                <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-8 border border-gray-700 shadow-2xl">
+                    {/* General Error */}
                     {errors.general && (
-                        <div className="mb-4 p-3 bg-red-500 bg-opacity-10 border border-red-500 rounded-lg">
-                            <p className="text-red-500 text-sm">{errors.general}</p>
+                        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg">
+                            <p className="text-red-400 text-sm">{errors.general}</p>
                         </div>
                     )}
 
-                    <div className="space-y-5">
+                    <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-5">
+                        {/* Full Name */}
                         <div>
-                            <label htmlFor="username" className="block text-sm font-medium text-gray-300 mb-2">
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Imię i nazwisko
+                            </label>
+                            <input
+                                type="text"
+                                name="fullName"
+                                value={formData.fullName}
+                                onChange={handleChange}
+                                disabled={isLoading}
+                                className={`w-full px-4 py-3 bg-gray-900/50 border ${
+                                    errors.fullName ? 'border-red-500' : 'border-gray-600'
+                                } rounded-lg text-white placeholder-gray-400 
+                                focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 
+                                transition disabled:opacity-50`}
+                                placeholder="Jan Kowalski"
+                                autoFocus
+                            />
+                            {errors.fullName && (
+                                <p className="mt-2 text-sm text-red-400">{errors.fullName}</p>
+                            )}
+                        </div>
+
+                        {/* Username */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
                                 Nazwa użytkownika
                             </label>
                             <input
                                 type="text"
-                                id="username"
                                 name="username"
                                 value={formData.username}
                                 onChange={handleChange}
-                                onKeyPress={handleKeyPress}
-                                className={`w-full px-4 py-3 bg-gray-900 border ${
-                                    errors.username ? 'border-red-500' : 'border-gray-700'
-                                } rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition`}
-                                placeholder="np. jankowalski"
                                 disabled={isLoading}
+                                className={`w-full px-4 py-3 bg-gray-900/50 border ${
+                                    errors.username ? 'border-red-500' : 'border-gray-600'
+                                } rounded-lg text-white placeholder-gray-400 
+                                focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 
+                                transition disabled:opacity-50`}
+                                placeholder="jankowalski"
                             />
-                            {errors.username && <p className="mt-1 text-sm text-red-500">{errors.username}</p>}
+                            {errors.username && (
+                                <p className="mt-2 text-sm text-red-400">{errors.username}</p>
+                            )}
                         </div>
 
+                        {/* Email */}
                         <div>
-                            <label htmlFor="fullName" className="block text-sm font-medium text-gray-300 mb-2">
-                                Pełne imię i nazwisko <span className="text-gray-500">(opcjonalnie)</span>
-                            </label>
-                            <input
-                                type="text"
-                                id="fullName"
-                                name="fullName"
-                                value={formData.fullName}
-                                onChange={handleChange}
-                                onKeyPress={handleKeyPress}
-                                className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
-                                placeholder="Jan Kowalski"
-                                disabled={isLoading}
-                            />
-                        </div>
-
-                        <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                                Adres email
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
+                                Email
                             </label>
                             <input
                                 type="email"
-                                id="email"
                                 name="email"
                                 value={formData.email}
                                 onChange={handleChange}
-                                onKeyPress={handleKeyPress}
-                                className={`w-full px-4 py-3 bg-gray-900 border ${
-                                    errors.email ? 'border-red-500' : 'border-gray-700'
-                                } rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition`}
-                                placeholder="twoj@email.com"
                                 disabled={isLoading}
+                                className={`w-full px-4 py-3 bg-gray-900/50 border ${
+                                    errors.email ? 'border-red-500' : 'border-gray-600'
+                                } rounded-lg text-white placeholder-gray-400 
+                                focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 
+                                transition disabled:opacity-50`}
+                                placeholder="jan@przykład.pl"
                             />
-                            {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
+                            {errors.email && (
+                                <p className="mt-2 text-sm text-red-400">{errors.email}</p>
+                            )}
                         </div>
 
+                        {/* Password */}
                         <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
                                 Hasło
                             </label>
                             <input
                                 type="password"
-                                id="password"
                                 name="password"
                                 value={formData.password}
                                 onChange={handleChange}
-                                onKeyPress={handleKeyPress}
-                                className={`w-full px-4 py-3 bg-gray-900 border ${
-                                    errors.password ? 'border-red-500' : 'border-gray-700'
-                                } rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition`}
-                                placeholder="Minimum 6 znaków"
                                 disabled={isLoading}
+                                className={`w-full px-4 py-3 bg-gray-900/50 border ${
+                                    errors.password ? 'border-red-500' : 'border-gray-600'
+                                } rounded-lg text-white placeholder-gray-400 
+                                focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 
+                                transition disabled:opacity-50`}
+                                placeholder="Minimum 6 znaków"
                             />
-                            {errors.password && <p className="mt-1 text-sm text-red-500">{errors.password}</p>}
+                            {errors.password && (
+                                <p className="mt-2 text-sm text-red-400">{errors.password}</p>
+                            )}
                         </div>
 
+                        {/* Confirm Password */}
                         <div>
-                            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
                                 Potwierdź hasło
                             </label>
                             <input
                                 type="password"
-                                id="confirmPassword"
                                 name="confirmPassword"
                                 value={formData.confirmPassword}
                                 onChange={handleChange}
-                                onKeyPress={handleKeyPress}
-                                className={`w-full px-4 py-3 bg-gray-900 border ${
-                                    errors.confirmPassword ? 'border-red-500' : 'border-gray-700'
-                                } rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition`}
-                                placeholder="Powtórz hasło"
                                 disabled={isLoading}
+                                className={`w-full px-4 py-3 bg-gray-900/50 border ${
+                                    errors.confirmPassword ? 'border-red-500' : 'border-gray-600'
+                                } rounded-lg text-white placeholder-gray-400 
+                                focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 
+                                transition disabled:opacity-50`}
+                                placeholder="Powtórz hasło"
                             />
-                            {errors.confirmPassword && <p className="mt-1 text-sm text-red-500">{errors.confirmPassword}</p>}
+                            {errors.confirmPassword && (
+                                <p className="mt-2 text-sm text-red-400">{errors.confirmPassword}</p>
+                            )}
                         </div>
 
+                        {/* Terms Checkbox */}
                         <div className="flex items-start">
                             <input
                                 type="checkbox"
-                                id="terms"
+                                id="acceptTerms"
                                 checked={acceptTerms}
                                 onChange={(e) => setAcceptTerms(e.target.checked)}
-                                className="w-4 h-4 mt-1 text-emerald-500 bg-gray-900 border-gray-700 rounded focus:ring-emerald-500 focus:ring-2"
                                 disabled={isLoading}
+                                className="mt-1 w-4 h-4 text-emerald-500 bg-gray-900 border-gray-600
+                                rounded focus:ring-emerald-500 focus:ring-2 disabled:opacity-50"
                             />
-                            <label htmlFor="terms" className="ml-2 text-sm text-gray-400">
+                            <label htmlFor="acceptTerms" className="ml-2 text-sm text-gray-400">
                                 Akceptuję{' '}
-                                <span className="text-emerald-500 hover:text-emerald-400 transition cursor-pointer">
+                                <a href="#" className="text-emerald-400 hover:text-emerald-300">
                                     regulamin
-                                </span>
+                                </a>
                                 {' '}i{' '}
-                                <span className="text-emerald-500 hover:text-emerald-400 transition cursor-pointer">
+                                <a href="#" className="text-emerald-400 hover:text-emerald-300">
                                     politykę prywatności
-                                </span>
+                                </a>
                             </label>
                         </div>
 
+                        {/* Submit Button */}
                         <button
-                            onClick={handleSubmit}
-                            disabled={isLoading}
-                            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                            type="submit"
+                            disabled={isLoading || !acceptTerms}
+                            className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600
+                            hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold
+                            py-3 px-4 rounded-lg transition duration-200
+                            disabled:opacity-50 disabled:cursor-not-allowed
+                            flex items-center justify-center gap-2"
                         >
                             {isLoading ? (
-                                <span className="flex items-center justify-center">
-                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <>
+                                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
-                                    Tworzenie konta...
-                                </span>
+                                    <span>Rejestracja...</span>
+                                </>
                             ) : (
-                                'Utwórz konto'
+                                'Zarejestruj się'
                             )}
                         </button>
-                    </div>
+                    </form>
 
+                    {/* Login Link */}
                     <div className="mt-6 text-center">
                         <p className="text-gray-400 text-sm">
                             Masz już konto?{' '}
                             <button
                                 onClick={() => navigate('/login')}
-                                className="text-emerald-500 hover:text-emerald-400 font-semibold transition"
                                 disabled={isLoading}
+                                className="text-emerald-400 hover:text-emerald-300 font-medium transition disabled:opacity-50"
                             >
                                 Zaloguj się
                             </button>
                         </p>
                     </div>
+                </div>
+
+                {/* Footer */}
+                <div className="mt-8 text-center">
+                    <p className="text-gray-500 text-sm">
+                        TaskManager © 2024. Wszystkie prawa zastrzeżone.
+                    </p>
                 </div>
             </div>
         </div>
