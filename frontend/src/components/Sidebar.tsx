@@ -1,6 +1,7 @@
 // src/components/Sidebar.tsx
-import React, {type JSX} from 'react';
+import React, {type JSX, useState} from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 interface MenuItem {
     name: string;
@@ -11,6 +12,8 @@ interface MenuItem {
 const Sidebar: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const { user } = useAuth();
+    const [adminMenuOpen, setAdminMenuOpen] = useState(false);
 
     const menuItems: MenuItem[] = [
         {
@@ -51,7 +54,13 @@ const Sidebar: React.FC = () => {
         },
     ];
 
-    const isActive = (path: string) => location.pathname === path;
+    const isActive = (path: string) => {
+        // Special handling for admin routes
+        if (path === '/admin') {
+            return location.pathname.startsWith('/admin');
+        }
+        return location.pathname === path;
+    };
 
     return (
         <aside className="w-64 bg-gray-900 border-r border-gray-800 min-h-screen">
@@ -76,7 +85,11 @@ const Sidebar: React.FC = () => {
                 <div className="mt-8 pt-8 border-t border-gray-800">
                     <button
                         onClick={() => navigate('/calendar')}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                            isActive('/calendar')
+                                ? 'bg-emerald-500 text-white'
+                                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                        }`}
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -85,7 +98,11 @@ const Sidebar: React.FC = () => {
                     </button>
                     <button
                         onClick={() => navigate('/reports')}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                            isActive('/reports')
+                                ? 'bg-emerald-500 text-white'
+                                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                        }`}
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -93,6 +110,97 @@ const Sidebar: React.FC = () => {
                         <span className="font-medium">Raporty</span>
                     </button>
                 </div>
+
+                {/* Admin Panel - Only for SUPER_ADMIN */}
+                {user?.systemRole === 'SUPER_ADMIN' && (
+                    <div className="mt-8 pt-8 border-t border-gray-800">
+                        <button
+                            onClick={() => {
+                                setAdminMenuOpen(!adminMenuOpen);
+                                if (!adminMenuOpen) {
+                                    navigate('/admin');
+                                }
+                            }}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                                isActive('/admin')
+                                    ? 'bg-purple-600 text-white'
+                                    : 'text-purple-400 hover:bg-purple-900/30 hover:text-purple-300'
+                            }`}
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="font-medium">Admin Panel</span>
+                            <svg
+                                className={`w-4 h-4 ml-auto transition-transform ${adminMenuOpen ? 'rotate-180' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+
+                        {/* Admin Submenu */}
+                        {adminMenuOpen && (
+                            <div className="ml-4 mt-2 space-y-1">
+                                <button
+                                    onClick={() => navigate('/admin')}
+                                    className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
+                                        location.pathname === '/admin'
+                                            ? 'bg-purple-600 text-white'
+                                            : 'text-purple-300 hover:bg-purple-900/30 hover:text-purple-200'
+                                    }`}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                                    </svg>
+                                    Dashboard
+                                </button>
+                                <button
+                                    onClick={() => navigate('/admin/users')}
+                                    className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
+                                        location.pathname === '/admin/users'
+                                            ? 'bg-purple-600 text-white'
+                                            : 'text-purple-300 hover:bg-purple-900/30 hover:text-purple-200'
+                                    }`}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                    </svg>
+                                    Users
+                                </button>
+                                <button
+                                    onClick={() => navigate('/admin/projects')}
+                                    className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
+                                        location.pathname === '/admin/projects'
+                                            ? 'bg-purple-600 text-white'
+                                            : 'text-purple-300 hover:bg-purple-900/30 hover:text-purple-200'
+                                    }`}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                    </svg>
+                                    Projects
+                                </button>
+                                <button
+                                    onClick={() => navigate('/admin/tasks')}
+                                    className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
+                                        location.pathname === '/admin/tasks'
+                                            ? 'bg-purple-600 text-white'
+                                            : 'text-purple-300 hover:bg-purple-900/30 hover:text-purple-200'
+                                    }`}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                    </svg>
+                                    Tasks
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </aside>
     );
