@@ -19,7 +19,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/comments")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:5173"})
 public class CommentApiController {
 
     private final CommentService commentService;
@@ -40,23 +40,20 @@ public class CommentApiController {
         this.commentMapper = commentMapper;
     }
 
-    // GET /api/v1/tasks/{taskId}/comments - Get comments for specific task
     @GetMapping("/tasks/{taskId}")
-    public ResponseEntity<Map<String, Object>> getTaskComments(@PathVariable Long taskId) {
+    public ResponseEntity<Map<String, Object>> getTaskComments(
+            @PathVariable Long taskId,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getUserFromDetails(userDetails);
 
-            // Get task and check access
             Task task = taskService.getTaskById(taskId)
                     .orElseThrow(() -> new RuntimeException("Task with ID " + taskId + " not found"));
 
             checkTaskAccess(task, currentUser);
-
-            // Get user role in project
             ProjectRole userRole = getUserRoleInProject(task.getProject(), currentUser);
 
-            // Get comments
             List<Comment> comments = commentService.getCommentsByTask(task);
             List<CommentDto> commentDtos = commentMapper.toDtoWithPermissions(comments, currentUser, userRole);
 
@@ -79,34 +76,30 @@ public class CommentApiController {
         }
     }
 
-    // POST /api/v1/tasks/{taskId}/comments - Create new comment
     @PostMapping("/tasks/{taskId}")
     public ResponseEntity<Map<String, Object>> createComment(
             @PathVariable Long taskId,
-            @RequestBody CreateCommentRequest request) {
+            @RequestBody CreateCommentRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getUserFromDetails(userDetails);
 
-            // Validate request
             String validationError = request.getValidationError();
             if (validationError != null) {
                 return createErrorResponse(validationError, HttpStatus.BAD_REQUEST);
             }
 
-            // Get task and check access
             Task task = taskService.getTaskById(taskId)
                     .orElseThrow(() -> new RuntimeException("Task with ID " + taskId + " not found"));
 
             checkTaskAccess(task, currentUser);
 
-            // Check if user can comment (not viewer)
             ProjectRole userRole = getUserRoleInProject(task.getProject(), currentUser);
             if (userRole == ProjectRole.VIEWER) {
                 return createErrorResponse("Viewers cannot add comments", HttpStatus.FORBIDDEN);
             }
 
-            // Create comment
             Comment comment = commentMapper.toEntity(request, currentUser);
             comment.setTask(task);
 
@@ -130,12 +123,13 @@ public class CommentApiController {
         }
     }
 
-    // GET /api/v1/comments/{id} - Get specific comment
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getComment(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> getComment(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getUserFromDetails(userDetails);
 
             Comment comment = commentService.getCommentById(id)
                     .orElseThrow(() -> new RuntimeException("Comment with ID " + id + " not found"));
@@ -162,16 +156,15 @@ public class CommentApiController {
         }
     }
 
-    // PUT /api/v1/comments/{id} - Update comment
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updateComment(
             @PathVariable Long id,
-            @RequestBody UpdateCommentRequest request) {
+            @RequestBody UpdateCommentRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getUserFromDetails(userDetails);
 
-            // Validate request
             String validationError = request.getValidationError();
             if (validationError != null) {
                 return createErrorResponse(validationError, HttpStatus.BAD_REQUEST);
@@ -182,7 +175,6 @@ public class CommentApiController {
 
             checkTaskAccess(comment.getTask(), currentUser);
 
-            // Check if user can edit (author or admin)
             ProjectRole userRole = getUserRoleInProject(comment.getTask().getProject(), currentUser);
             boolean isAuthor = comment.getAuthor().equals(currentUser);
             boolean isAdmin = userRole == ProjectRole.ADMIN;
@@ -191,7 +183,6 @@ public class CommentApiController {
                 return createErrorResponse("Only comment author or project admin can edit this comment", HttpStatus.FORBIDDEN);
             }
 
-            // Update comment
             commentMapper.updateEntity(comment, request);
             Comment updatedComment = commentService.saveComment(comment);
             CommentDto commentDto = commentMapper.toDtoWithPermissions(updatedComment, currentUser, userRole);
@@ -213,19 +204,19 @@ public class CommentApiController {
         }
     }
 
-    // DELETE /api/v1/comments/{id} - Delete comment
     @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deleteComment(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> deleteComment(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getUserFromDetails(userDetails);
 
             Comment comment = commentService.getCommentById(id)
                     .orElseThrow(() -> new RuntimeException("Comment with ID " + id + " not found"));
 
             checkTaskAccess(comment.getTask(), currentUser);
 
-            // Check if user can delete (author or admin)
             ProjectRole userRole = getUserRoleInProject(comment.getTask().getProject(), currentUser);
             boolean isAuthor = comment.getAuthor().equals(currentUser);
             boolean isAdmin = userRole == ProjectRole.ADMIN;
@@ -252,17 +243,15 @@ public class CommentApiController {
         }
     }
 
-    // Helper methods
-    private User getTestUser() {
-        List<User> users = userService.getAllUsers();
-        if (users.isEmpty()) {
-            throw new RuntimeException("No users found in database");
+    private User getUserFromDetails(UserDetails userDetails) {
+        if (userDetails == null) {
+            throw new RuntimeException("User not authenticated");
         }
-        return users.get(0);
+        return userService.getUserByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
     private void checkTaskAccess(Task task, User user) {
-        // Check if user has access to the project containing this task
         ProjectMember membership = projectMemberService.getProjectMember(task.getProject(), user)
                 .orElse(null);
 
@@ -273,12 +262,12 @@ public class CommentApiController {
 
     private ProjectRole getUserRoleInProject(Project project, User user) {
         if (user.getSystemRole() == SystemRole.SUPER_ADMIN) {
-            return ProjectRole.ADMIN; // Super admin has admin privileges
+            return ProjectRole.ADMIN;
         }
 
         return projectMemberService.getProjectMember(project, user)
                 .map(ProjectMember::getRole)
-                .orElse(ProjectRole.VIEWER); // Default to viewer if not found
+                .orElse(ProjectRole.VIEWER);
     }
 
     private ResponseEntity<Map<String, Object>> createErrorResponse(String message, HttpStatus status) {
