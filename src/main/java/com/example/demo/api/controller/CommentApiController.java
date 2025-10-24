@@ -100,10 +100,10 @@ public class CommentApiController {
                 return createErrorResponse("Viewers cannot add comments", HttpStatus.FORBIDDEN);
             }
 
-            Comment comment = commentMapper.toEntity(request, currentUser);
-            comment.setTask(task);
+            // ✅ POPRAWKA: Użyj addCommentToTask() zamiast saveComment()
+            // Ta metoda MA LOGIKĘ POWIADOMIEŃ!
+            Comment savedComment = commentService.addCommentToTask(task, request.getText(), currentUser);
 
-            Comment savedComment = commentService.saveComment(comment);
             CommentDto commentDto = commentMapper.toDtoWithPermissions(savedComment, currentUser, userRole);
 
             Map<String, Object> response = new HashMap<>();
