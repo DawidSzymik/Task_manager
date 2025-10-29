@@ -73,6 +73,37 @@ const fileService = {
     getDownloadUrl: (id: number): string => {
         return `${API_BASE_URL}/${id}/download`;
     },
+    getPreviewUrl: (id: number): string => {
+        return `${API_BASE_URL}/${id}/preview`;
+    },
+
+    // Check if file can be previewed
+    canPreview: async (id: number): Promise<boolean> => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/${id}/can-preview`, {
+                method: 'GET',
+                credentials: 'include',
+            });
+
+            const data = await handleResponse<{ canPreview: boolean }>(response);
+            return data.data?.canPreview || false;
+        } catch (error) {
+            console.error('Can preview check error:', error);
+            return false;
+        }
+    },
+
+    // Check if content type is previewable (client-side helper)
+    isPreviewableContentType: (contentType: string): boolean => {
+        if (!contentType) return false;
+
+        return (
+            contentType === 'application/pdf' ||
+            contentType.startsWith('image/') ||
+            contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+            contentType === 'application/vnd.ms-excel'
+        );
+    },
 };
 
 export default fileService;
