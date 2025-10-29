@@ -6,10 +6,7 @@ import com.example.demo.api.mapper.FileMapper;
 import com.example.demo.model.*;
 import com.example.demo.service.*;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -268,7 +265,96 @@ public class FileApiController {
             return createErrorResponse("Failed to retrieve user files: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+// src/main/java/com/example/demo/api/controller/FileApiController.java
+// DODAJ TEN ENDPOINT DO ISTNIEJĄCEGO FileApiController
 
+    /**
+     * Endpoint do podglądu pliku w przeglądarce (inline)
+     * GET /api/v1/files/{id}/preview
+     */
+    @GetMapping("/{id}/preview")
+    public ResponseEntity<ByteArrayResource> previewFile(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        try {
+            User currentUser = getUserFromDetails(userDetails);
+
+            UploadedFile file = fileService.getFileById(id)
+                    .orElseThrow(() -> new RuntimeException("File with ID " + id + " not found"));
+
+            checkTaskAccess(file.getTask(), currentUser);
+
+            if (file.getData() == null) {
+                throw new RuntimeException("File data not found");
+            }
+
+            ByteArrayResource resource = new ByteArrayResource(file.getData());
+
+            // KLUCZOWA RÓŻNICA: Content-Disposition = "inline" zamiast "attachment"
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getOriginalName() + "\"")
+                    .contentType(MediaType.parseMediaType(file.getContentType()))
+                    .contentLength(file.getData().length)
+                    .cacheControl(CacheControl.maxAge(3600, java.util.concurrent.TimeUnit.SECONDS))
+                    .body(resource);
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Sprawdź czy plik można wyświetlić w podglądzie
+     * GET /api/v1/files/{id}/can-preview
+     */
+    @GetMapping("/{id}/can-preview")
+    public ResponseEntity<Map<String, Object>> canPreview(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        try {
+            User currentUser = getUserFromDetails(userDetails);
+
+            UploadedFile file = fileService.getFileById(id)
+                    .orElseThrow(() -> new RuntimeException("File with ID " + id + " not found"));
+
+            checkTaskAccess(file.getTask(), currentUser);
+
+            boolean canPreview = isPreviewable(file.getContentType());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("canPreview", canPreview);
+            response.put("contentType", file.getContentType());
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            return createErrorResponse(e.getMessage(), HttpStatus.FORBIDDEN);
+        } catch (RuntimeException e) {
+            return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return createErrorResponse("Failed to check preview capability: " + e.getMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Helper method
+    private boolean isPreviewable(String contentType) {
+        if (contentType == null) return false;
+
+        return contentType.equals("application/pdf") ||
+                contentType.startsWith("image/") ||
+                contentType.equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") ||
+                contentType.equals("application/vnd.ms-excel");
+    }
     private User getUserFromDetails(UserDetails userDetails) {
         if (userDetails == null) {
             throw new RuntimeException("User not authenticated");
