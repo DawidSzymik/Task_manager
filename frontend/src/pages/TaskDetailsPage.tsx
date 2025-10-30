@@ -11,8 +11,6 @@ import statusRequestService from '../services/statusRequestService';
 import type {
     Task,
     UpdateTaskRequest,
-    TaskStatus,
-    TaskPriority,
     Comment,
     UploadedFile,
     StatusChangeRequest,
@@ -21,24 +19,16 @@ import type {
 
 const TaskDetailsPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
+    useNavigate();
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     const [task, setTask] = useState<Task | null>(null);
     const [comments, setComments] = useState<Comment[]>([]);
     const [files, setFiles] = useState<UploadedFile[]>([]);
-    const [statusRequests, setStatusRequests] = useState<StatusChangeRequest[]>([]);
+    const [, setStatusRequests] = useState<StatusChangeRequest[]>([]);
     const [userRole, setUserRole] = useState<ProjectRole | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // UI State
-    const [showActionsMenu, setShowActionsMenu] = useState(false);
-    const [showEditModal, setShowEditModal] = useState(false);
-    const [showStatusRequestModal, setShowStatusRequestModal] = useState(false);
-    const [showPendingRequestsModal, setShowPendingRequestsModal] = useState(false);
-    const [selectedNewStatus, setSelectedNewStatus] = useState<TaskStatus>('NEW');
-    const [rejectReason, setRejectReason] = useState('');
-    const [selectedRequestToReject, setSelectedRequestToReject] = useState<number | null>(null);
 
     // ⭐ NOWY STATE - Podgląd plików
     const [previewFile, setPreviewFile] = useState<{
@@ -47,7 +37,7 @@ const TaskDetailsPage: React.FC = () => {
         type: string;
     } | null>(null);
 
-    const [editFormData, setEditFormData] = useState<UpdateTaskRequest>({
+    const [, setEditFormData] = useState<UpdateTaskRequest>({
         title: '',
         description: '',
         status: 'NEW',
@@ -113,65 +103,6 @@ const TaskDetailsPage: React.FC = () => {
     };
 
     // ... (wszystkie pozostałe handlery bez zmian)
-    const handleUpdateTask = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            await taskService.updateTask(parseInt(id!), editFormData);
-            setShowEditModal(false);
-            await loadTaskData();
-        } catch (error: any) {
-            alert(error.message || 'Nie udało się zaktualizować zadania');
-        }
-    };
-
-    const handleDeleteTask = async () => {
-        if (!window.confirm('Czy na pewno chcesz usunąć to zadanie?')) return;
-        try {
-            await taskService.deleteTask(parseInt(id!));
-            alert('Zadanie zostało usunięte');
-            navigate(task?.project ? `/projects/${task.project.id}` : '/tasks');
-        } catch (error: any) {
-            alert(error.message || 'Nie udało się usunąć zadania');
-        }
-    };
-
-    const handleRequestStatusChange = async () => {
-        try {
-            await statusRequestService.createRequest({
-                taskId: parseInt(id!),
-                newStatus: selectedNewStatus,
-            });
-            setShowStatusRequestModal(false);
-            await loadTaskData();
-            alert('Prośba o zmianę statusu została wysłana');
-        } catch (error: any) {
-            alert(error.message || 'Nie udało się wysłać prośby');
-        }
-    };
-
-    const handleApproveRequest = async (requestId: number) => {
-        try {
-            await statusRequestService.approveRequest(requestId);
-            await loadTaskData();
-            alert('Prośba została zatwierdzona');
-        } catch (error: any) {
-            alert(error.message || 'Nie udało się zatwierdzić prośby');
-        }
-    };
-
-    const handleRejectRequest = async () => {
-        if (!selectedRequestToReject || !rejectReason.trim()) return;
-        try {
-            await statusRequestService.rejectRequest(selectedRequestToReject, rejectReason);
-            setSelectedRequestToReject(null);
-            setRejectReason('');
-            await loadTaskData();
-            alert('Prośba została odrzucona');
-        } catch (error: any) {
-            alert(error.message || 'Nie udało się odrzucić prośby');
-        }
-    };
-
     const handleAddComment = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!commentText.trim()) return;
@@ -254,37 +185,6 @@ const TaskDetailsPage: React.FC = () => {
     const handleClosePreview = () => {
         setPreviewFile(null);
     };
-
-    const getPriorityColor = (priority: TaskPriority) => {
-        const colors: Record<TaskPriority, string> = {
-            LOW: 'bg-blue-500',
-            MEDIUM: 'bg-yellow-500',
-            HIGH: 'bg-orange-500',
-            URGENT: 'bg-red-500',
-        };
-        return colors[priority] || 'bg-gray-500';
-    };
-
-    const getStatusColor = (status: TaskStatus) => {
-        const colors: Record<TaskStatus, string> = {
-            NEW: 'bg-blue-500',
-            IN_PROGRESS: 'bg-yellow-500',
-            COMPLETED: 'bg-green-500',
-            CANCELLED: 'bg-red-500',
-        };
-        return colors[status] || 'bg-gray-500';
-    };
-
-    const getStatusLabel = (status: TaskStatus) => {
-        const labels: Record<TaskStatus, string> = {
-            NEW: 'Nowe',
-            IN_PROGRESS: 'W trakcie',
-            COMPLETED: 'Ukończone',
-            CANCELLED: 'Anulowane',
-        };
-        return labels[status] || status;
-    };
-
     if (loading) {
         return (
             <MainLayout>
