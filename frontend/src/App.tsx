@@ -14,6 +14,7 @@ import TaskDetailsPage from "./pages/TaskDetailsPage.tsx";
 import CalendarPage from "./pages/CalendarPage.tsx";
 import ReportsPage from "./pages/ReportsPage.tsx";
 import ProfilePage from "./pages/ProfilePage.tsx";
+import NotificationsPage from "./pages/NotificationsPage.tsx";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage.tsx";
 import AdminUsersPage from "./pages/admin/AdminUsersPage.tsx";
 import AdminProjectsPage from "./pages/admin/AdminProjectsPage.tsx";
@@ -125,7 +126,17 @@ function App() {
                         }
                     />
 
-                    {/* Admin Routes - Protected for SUPER_ADMIN only */}
+                    {/* Notifications Route - NOWA TRASA */}
+                    <Route
+                        path="/notifications"
+                        element={
+                            <ProtectedRoute>
+                                <NotificationsPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    {/* Admin Routes */}
                     <Route
                         path="/admin"
                         element={
@@ -161,6 +172,9 @@ function App() {
                             </ProtectedRoute>
                         }
                     />
+
+                    {/* 404 Route */}
+                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
             </Router>
         </AuthProvider>
