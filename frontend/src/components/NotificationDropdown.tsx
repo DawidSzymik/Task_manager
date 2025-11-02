@@ -77,6 +77,32 @@ const NotificationDropdown: React.FC = () => {
         }
     };
 
+    // Konwersja URL z formatu Spring do React Router
+    const convertSpringUrlToReact = (url: string): string => {
+        if (!url) return '/dashboard';
+
+        // /tasks/view/123 -> /tasks/123
+        const taskViewMatch = url.match(/\/tasks\/view\/(\d+)/);
+        if (taskViewMatch) {
+            return `/tasks/${taskViewMatch[1]}`;
+        }
+
+        // /projects/view/123 -> /projects/123
+        const projectViewMatch = url.match(/\/projects\/view\/(\d+)/);
+        if (projectViewMatch) {
+            return `/projects/${projectViewMatch[1]}`;
+        }
+
+        // /teams/view/123 -> /teams/123
+        const teamViewMatch = url.match(/\/teams\/view\/(\d+)/);
+        if (teamViewMatch) {
+            return `/teams/${teamViewMatch[1]}`;
+        }
+
+        // Jeśli URL już jest w formacie React, zwróć go bez zmian
+        return url;
+    };
+
     const handleNotificationClick = async (notification: Notification) => {
         if (!notification.isRead) {
             await notificationService.markAsRead(notification.id);
@@ -84,11 +110,11 @@ const NotificationDropdown: React.FC = () => {
         }
         setShowDropdown(false);
         if (notification.actionUrl) {
-            navigate(notification.actionUrl);
+            const reactUrl = convertSpringUrlToReact(notification.actionUrl);
+            navigate(reactUrl);
         }
     };
 
-    // W NotificationDropdown.tsx - funkcja getIcon:
     const getIcon = (type: string) => {
         switch (type) {
             case 'TASK_PROPOSAL_PENDING':
@@ -111,6 +137,14 @@ const NotificationDropdown: React.FC = () => {
                 return '👤';
             case 'PROJECT_MEMBER_ADDED':
                 return '🎯';
+            case 'NEW_MESSAGE':
+                return '📩';
+            case 'TASK_STATUS_CHANGED':
+                return '📊';
+            case 'NEW_ACTIVITY':
+                return '⚡';
+            case 'ROLE_CHANGED':
+                return '🔑';
             default:
                 return '📢';
         }
@@ -181,9 +215,6 @@ const NotificationDropdown: React.FC = () => {
                             </div>
                         ) : notifications.length === 0 ? (
                             <div className="p-8 text-center text-gray-400">
-                                <svg className="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                                </svg>
                                 <p>Brak powiadomień</p>
                             </div>
                         ) : (
@@ -191,7 +222,7 @@ const NotificationDropdown: React.FC = () => {
                                 <div
                                     key={notification.id}
                                     onClick={() => handleNotificationClick(notification)}
-                                    className={`p-4 border-b border-gray-700 hover:bg-gray-750 cursor-pointer transition ${
+                                    className={`p-3 border-b border-gray-700 hover:bg-gray-700 cursor-pointer transition ${
                                         !notification.isRead ? 'bg-gray-750' : ''
                                     }`}
                                 >

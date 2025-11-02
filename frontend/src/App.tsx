@@ -14,6 +14,7 @@ import TaskDetailsPage from "./pages/TaskDetailsPage.tsx";
 import CalendarPage from "./pages/CalendarPage.tsx";
 import ReportsPage from "./pages/ReportsPage.tsx";
 import ProfilePage from "./pages/ProfilePage.tsx";
+import UserProfilePage from "./pages/UserProfilePage.tsx"; // ✅ DODANE
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage.tsx";
 import AdminUsersPage from "./pages/admin/AdminUsersPage.tsx";
 import AdminProjectsPage from "./pages/admin/AdminProjectsPage.tsx";
@@ -115,12 +116,22 @@ function App() {
                         }
                     />
 
-                    {/* Profile Route */}
+                    {/* Profile Routes */}
                     <Route
                         path="/profile"
                         element={
                             <ProtectedRoute>
                                 <ProfilePage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    {/* ✅ NOWY ROUTE - Podgląd profilu innego użytkownika */}
+                    <Route
+                        path="/users/:id"
+                        element={
+                            <ProtectedRoute>
+                                <UserProfilePage />
                             </ProtectedRoute>
                         }
                     />
