@@ -103,7 +103,7 @@ public class SearchApiController {
                     userMap.put("email", user.getEmail());
                     userMap.put("systemRole", user.getSystemRole().name());
                     userMap.put("type", "user");
-                    userMap.put("url", "/profile"); // Could be user profile page
+                    userMap.put("url", "/users/" + user.getId()); // ✅ ZMIENIONE - pokazuje profil konkretnego użytkownika
                     return userMap;
                 })
                 .collect(Collectors.toList());

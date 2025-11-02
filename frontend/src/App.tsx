@@ -14,7 +14,7 @@ import TaskDetailsPage from "./pages/TaskDetailsPage.tsx";
 import CalendarPage from "./pages/CalendarPage.tsx";
 import ReportsPage from "./pages/ReportsPage.tsx";
 import ProfilePage from "./pages/ProfilePage.tsx";
-import NotificationsPage from "./pages/NotificationsPage.tsx";
+import UserProfilePage from "./pages/UserProfilePage.tsx"; // ✅ DODANE
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage.tsx";
 import AdminUsersPage from "./pages/admin/AdminUsersPage.tsx";
 import AdminProjectsPage from "./pages/admin/AdminProjectsPage.tsx";
@@ -116,7 +116,7 @@ function App() {
                         }
                     />
 
-                    {/* Profile Route */}
+                    {/* Profile Routes */}
                     <Route
                         path="/profile"
                         element={
@@ -126,17 +126,17 @@ function App() {
                         }
                     />
 
-                    {/* Notifications Route - NOWA TRASA */}
+                    {/* ✅ NOWY ROUTE - Podgląd profilu innego użytkownika */}
                     <Route
-                        path="/notifications"
+                        path="/users/:id"
                         element={
                             <ProtectedRoute>
-                                <NotificationsPage />
+                                <UserProfilePage />
                             </ProtectedRoute>
                         }
                     />
 
-                    {/* Admin Routes */}
+                    {/* Admin Routes - Protected for SUPER_ADMIN only */}
                     <Route
                         path="/admin"
                         element={
@@ -172,9 +172,6 @@ function App() {
                             </ProtectedRoute>
                         }
                     />
-
-                    {/* 404 Route */}
-                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
             </Router>
         </AuthProvider>
