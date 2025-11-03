@@ -73,6 +73,51 @@ public class ProjectMemberService {
             messageService.sendSystemMessage(project, systemMessage);
         }
     }
+// Zmień rolę członka po ID członkostwa
+    @Transactional
+    public ProjectMember changeMemberRole(Long memberId, ProjectRole newRole) {
+        ProjectMember member = projectMemberRepository.findById(memberId)
+                .orElseThrow(() -> new RuntimeException("Członkostwo nie istnieje"));
+
+        Project project = member.getProject();
+        User user = member.getUser();
+        ProjectRole oldRole = member.getRole();
+
+        // Sprawdź czy to nie twórca projektu
+        if (project.getCreatedBy().equals(user) && newRole != ProjectRole.ADMIN) {
+            throw new RuntimeException("Nie można zmienić roli twórcy projektu");
+        }
+
+        member.setRole(newRole);
+        ProjectMember updated = projectMemberRepository.save(member);
+
+        String systemMessage = "🔄 Rola użytkownika " + user.getUsername() +
+                " została zmieniona z " + getRoleDisplayName(oldRole) +
+                " na " + getRoleDisplayName(newRole);
+        messageService.sendSystemMessage(project, systemMessage);
+
+        return updated;
+    }
+
+    // Usuń członka po ID członkostwa
+    @Transactional
+    public void removeMember(Long memberId) {
+        ProjectMember member = projectMemberRepository.findById(memberId)
+                .orElseThrow(() -> new RuntimeException("Członkostwo nie istnieje"));
+
+        Project project = member.getProject();
+        User user = member.getUser();
+
+        // Nie można usunąć twórcy
+        if (project.getCreatedBy().equals(user)) {
+            throw new RuntimeException("Nie można usunąć twórcy projektu");
+        }
+
+        projectMemberRepository.delete(member);
+
+        String systemMessage = "👤 " + user.getUsername() + " opuścił projekt";
+        messageService.sendSystemMessage(project, systemMessage);
+    }
 
     // Usuń użytkownika ze wszystkich projektów
     @Transactional
@@ -180,6 +225,8 @@ public class ProjectMemberService {
         Optional<ProjectMember> memberOpt = projectMemberRepository.findByProjectAndUser(project, user);
         return memberOpt.isPresent() && memberOpt.get().getRole() == role;
     }
+
+
 
     // Metoda pomocnicza dla nazw ról
     private String getRoleDisplayName(ProjectRole role) {

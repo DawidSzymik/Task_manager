@@ -22,6 +22,9 @@ public class ProjectDto {
 
     private UserDto createdBy;
     private List<ProjectMemberDto> members;
+
+    // ✅ DODANE POLE
+    private int memberCount;
     private int taskCount;
     private int completedTaskCount;
     private String status; // active, completed, suspended
@@ -56,6 +59,10 @@ public class ProjectDto {
 
     public List<ProjectMemberDto> getMembers() { return members; }
     public void setMembers(List<ProjectMemberDto> members) { this.members = members; }
+
+    // ✅ DODANE GETTERY I SETTERY
+    public int getMemberCount() { return memberCount; }
+    public void setMemberCount(int memberCount) { this.memberCount = memberCount; }
 
     public int getTaskCount() { return taskCount; }
     public void setTaskCount(int taskCount) { this.taskCount = taskCount; }

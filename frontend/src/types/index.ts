@@ -107,12 +107,11 @@ export interface Task {
 
 export interface CreateTaskRequest {
     title: string;
-    description?: string;
-    priority?: TaskPriority;
-    deadline?: string;
+    description: string;
+    priority: TaskPriority;
+    deadline: string;
     projectId: number;
-    assignedToId?: number;
-    assignedUserIds?: number[];
+    assignedUserIds?: number[];  // ZMIANA: zamiast assignedToId
 }
 
 export interface UpdateTaskRequest {
