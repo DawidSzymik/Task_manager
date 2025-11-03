@@ -9,99 +9,77 @@ import com.example.demo.model.*;
 import com.example.demo.service.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/tasks")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:5173"})
 public class TaskApiController {
 
     private final TaskService taskService;
     private final ProjectService projectService;
     private final ProjectMemberService projectMemberService;
     private final UserService userService;
+    private final NotificationService notificationService;
     private final TaskMapper taskMapper;
 
     public TaskApiController(TaskService taskService,
                              ProjectService projectService,
                              ProjectMemberService projectMemberService,
                              UserService userService,
+                             NotificationService notificationService,
                              TaskMapper taskMapper) {
         this.taskService = taskService;
         this.projectService = projectService;
         this.projectMemberService = projectMemberService;
         this.userService = userService;
+        this.notificationService = notificationService;
         this.taskMapper = taskMapper;
     }
 
-    // GET /api/v1/tasks - Get all tasks (filtered by user access)
-    @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllTasks(
-            @RequestParam(value = "projectId", required = false) Long projectId,
-            @RequestParam(value = "status", required = false) String status,
-            @RequestParam(value = "priority", required = false) String priority,
-            @RequestParam(value = "assignedToMe", defaultValue = "false") boolean assignedToMe) {
-
-        try {
-            User currentUser = getTestUser();
-            List<Task> tasks;
-
-            if (projectId != null) {
-                // Tasks for specific project
-                Project project = projectService.getProjectById(projectId)
-                        .orElseThrow(() -> new RuntimeException("Project with ID " + projectId + " not found"));
-
-                // Check user access to project
-                checkProjectAccess(project, currentUser);
-                tasks = taskService.getTasksByProject(project);
-
-            } else if (assignedToMe) {
-                // Tasks assigned to current user
-                tasks = taskService.getTasksByAssignedUser(currentUser);
-
-            } else {
-                // All tasks user has access to (through projects)
-                List<ProjectMember> userProjects = projectMemberService.getUserProjects(currentUser);
-                tasks = userProjects.stream()
-                        .flatMap(pm -> taskService.getTasksByProject(pm.getProject()).stream())
-                        .distinct()
-                        .collect(Collectors.toList());
-            }
-
-            // Apply filters
-            if (status != null && !status.isEmpty()) {
-                tasks = tasks.stream()
-                        .filter(task -> status.equals(task.getStatus()))
-                        .collect(Collectors.toList());
-            }
-
-            if (priority != null && !priority.isEmpty()) {
-                tasks = tasks.stream()
-                        .filter(task -> priority.equals(task.getPriority()))
-                        .collect(Collectors.toList());
-            }
-
-            List<TaskDto> taskDtos = taskMapper.toDtoWithStats(tasks);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "Tasks retrieved successfully");
-            response.put("data", taskDtos);
-            response.put("count", taskDtos.size());
-            response.put("testUser", currentUser.getUsername());
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return createErrorResponse("Failed to retrieve tasks: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+    private User getTestUser() {
+        List<User> users = userService.getAllUsers();
+        if (users.isEmpty()) {
+            throw new RuntimeException("No users found in database");
         }
+        return users.get(0);
+    }
+
+    private User getUserFromDetails(UserDetails userDetails) {
+        return userService.getUserByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    private void checkProjectAccess(Project project, User user) {
+        Optional<ProjectMember> membership = projectMemberService.getProjectMember(project, user);
+        if (membership.isEmpty()) {
+            throw new IllegalArgumentException("User is not a member of this project");
+        }
+    }
+
+    private void checkTaskAccess(Task task, User user) {
+        checkProjectAccess(task.getProject(), user);
+    }
+
+    private ProjectRole getUserRoleInProject(Project project, User user) {
+        return projectMemberService.getProjectMember(project, user)
+                .map(ProjectMember::getRole)
+                .orElse(null);
+    }
+
+    private ResponseEntity<Map<String, Object>> createErrorResponse(String message, HttpStatus status) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", false);
+        response.put("error", message);
+        return ResponseEntity.status(status).body(response);
     }
 
     // GET /api/v1/tasks/{id} - Get task by ID
@@ -110,11 +88,11 @@ public class TaskApiController {
 
         try {
             User currentUser = getTestUser();
+
             Task task = taskService.getTaskById(id)
                     .orElseThrow(() -> new RuntimeException("Task with ID " + id + " not found"));
 
-            // Check user access to project
-            checkProjectAccess(task.getProject(), currentUser);
+            checkTaskAccess(task, currentUser);
 
             TaskDto taskDto = taskMapper.toDtoWithStats(task);
 
@@ -189,6 +167,66 @@ public class TaskApiController {
             }
 
             Task savedTask = taskService.saveTask(task);
+
+            System.out.println("\n========================================");
+            System.out.println("🔵 Zadanie zapisane - rozpoczynam wysyłanie powiadomień");
+            System.out.println("Zadanie: " + savedTask.getTitle() + " (ID: " + savedTask.getId() + ")");
+            System.out.println("Twórca: " + creator.getUsername() + " (ID: " + creator.getId() + ")");
+            System.out.println("Projekt: " + project.getName() + " (ID: " + project.getId() + ")");
+
+            // Sprawdź przypisanych użytkowników
+            Set<User> assignedUsers = savedTask.getAssignedUsers();
+            System.out.println("📋 Przypisanych użytkowników: " + (assignedUsers != null ? assignedUsers.size() : 0));
+            if (assignedUsers != null && !assignedUsers.isEmpty()) {
+                for (User u : assignedUsers) {
+                    System.out.println("  - " + u.getUsername() + " (ID: " + u.getId() + ")");
+                }
+            }
+
+            // ✅ WYSYŁANIE POWIADOMIEŃ - nowe zadanie w projekcie
+            try {
+                System.out.println("\n🔔 Pobieram członków projektu...");
+                List<ProjectMember> projectMembers = projectMemberService.getProjectMembers(project);
+                System.out.println("Członków projektu: " + projectMembers.size());
+
+                int notificationsSent = 0;
+                for (ProjectMember member : projectMembers) {
+                    User memberUser = member.getUser();
+                    System.out.println("\n  👤 Sprawdzam członka: " + memberUser.getUsername() +
+                            " (ID: " + memberUser.getId() + ", rola: " + member.getRole() + ")");
+
+                    // Powiadom tylko członków projektu (nie twórcy zadania)
+                    if (memberUser.equals(creator)) {
+                        System.out.println("  ⏭️ Pomijam - to twórca zadania");
+                        continue;
+                    }
+
+                    System.out.println("  📤 Wysyłam powiadomienie...");
+                    try {
+                        Notification notification = notificationService.createNotification(
+                                memberUser,
+                                "📋 Nowe zadanie w projekcie",
+                                creator.getUsername() + " utworzył zadanie \"" + task.getTitle() +
+                                        "\" w projekcie \"" + project.getName() + "\"",
+                                NotificationType.TASK_ASSIGNED,
+                                savedTask.getId(),
+                                "/tasks/view/" + savedTask.getId()
+                        );
+                        System.out.println("  ✅ Powiadomienie wysłane (ID: " + notification.getId() + ")");
+                        notificationsSent++;
+                    } catch (Exception e) {
+                        System.err.println("  ❌ Błąd wysyłania powiadomienia: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                }
+                System.out.println("\n✅ Wysłano łącznie " + notificationsSent + " powiadomień o nowym zadaniu");
+            } catch (Exception e) {
+                System.err.println("❌ KRYTYCZNY BŁĄD w sekcji powiadomień: " + e.getMessage());
+                e.printStackTrace();
+            }
+
+            System.out.println("========================================\n");
+
             TaskDto taskDto = taskMapper.toDtoWithStats(savedTask);
 
             Map<String, Object> response = new HashMap<>();
@@ -353,22 +391,23 @@ public class TaskApiController {
 
             checkProjectAccess(project, currentUser);
 
-            List<Task> tasks = taskService.getTasksByProject(project);
-
-            // Apply status filter if provided
+            List<Task> tasks;
             if (status != null && !status.isEmpty()) {
-                tasks = tasks.stream()
-                        .filter(task -> status.equals(task.getStatus()))
-                        .collect(Collectors.toList());
+                tasks = taskService.getTasksByProject(project).stream()
+                        .filter(t -> status.equals(t.getStatus()))
+                        .toList();
+            } else {
+                tasks = taskService.getTasksByProject(project);
             }
 
-            List<TaskDto> taskDtos = taskMapper.toDtoWithStats(tasks);
+            List<TaskDto> taskDtos = tasks.stream()
+                    .map(taskMapper::toDtoWithStats)
+                    .toList();
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Project tasks retrieved successfully");
             response.put("data", taskDtos);
-            response.put("count", taskDtos.size());
             response.put("projectId", projectId);
             response.put("testUser", currentUser.getUsername());
 
@@ -394,52 +433,91 @@ public class TaskApiController {
 
             List<Task> tasks = taskService.getTasksByAssignedUser(currentUser);
 
-            // Apply status filter if provided
             if (status != null && !status.isEmpty()) {
                 tasks = tasks.stream()
-                        .filter(task -> status.equals(task.getStatus()))
-                        .collect(Collectors.toList());
+                        .filter(t -> status.equals(t.getStatus()))
+                        .toList();
             }
 
-            List<TaskDto> taskDtos = taskMapper.toDtoWithStats(tasks);
+            List<TaskDto> taskDtos = tasks.stream()
+                    .map(taskMapper::toDtoWithStats)
+                    .toList();
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("message", "My tasks retrieved successfully");
+            response.put("message", "User tasks retrieved successfully");
             response.put("data", taskDtos);
-            response.put("count", taskDtos.size());
             response.put("testUser", currentUser.getUsername());
 
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             e.printStackTrace();
-            return createErrorResponse("Failed to retrieve my tasks: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return createErrorResponse("Failed to retrieve user tasks: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    // Helper methods
-    private User getTestUser() {
-        List<User> users = userService.getAllUsers();
-        if (users.isEmpty()) {
-            throw new RuntimeException("No users found in database");
-        }
-        return users.get(0); // Uses first user for testing
-    }
+    // GET /api/v1/tasks - Get all tasks (with optional filters)
+    @GetMapping
+    public ResponseEntity<Map<String, Object>> getAllTasks(
+            @RequestParam(value = "projectId", required = false) Long projectId,
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "priority", required = false) String priority,
+            @RequestParam(value = "assignedToMe", required = false) Boolean assignedToMe) {
 
-    private void checkProjectAccess(Project project, User user) {
-        if (user.getSystemRole() != SystemRole.SUPER_ADMIN) {
-            Optional<ProjectMember> memberOpt = projectMemberService.getProjectMember(project, user);
-            if (memberOpt.isEmpty()) {
-                throw new IllegalArgumentException("Access denied to project with ID " + project.getId());
+        try {
+            User currentUser = getTestUser();
+
+            List<Task> tasks;
+
+            if (assignedToMe != null && assignedToMe) {
+                tasks = taskService.getTasksByAssignedUser(currentUser);
+            } else if (projectId != null) {
+                Project project = projectService.getProjectById(projectId)
+                        .orElseThrow(() -> new RuntimeException("Project with ID " + projectId + " not found"));
+                checkProjectAccess(project, currentUser);
+                tasks = taskService.getTasksByProject(project);
+            } else {
+                // Get all tasks from projects user is member of
+                List<Project> userProjects = projectService.getProjectsByUser(currentUser);
+                tasks = userProjects.stream()
+                        .flatMap(p -> taskService.getTasksByProject(p).stream())
+                        .distinct()
+                        .toList();
             }
-        }
-    }
 
-    private ResponseEntity<Map<String, Object>> createErrorResponse(String message, HttpStatus status) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", false);
-        response.put("error", message);
-        return ResponseEntity.status(status).body(response);
+            // Apply filters
+            if (status != null && !status.isEmpty()) {
+                tasks = tasks.stream()
+                        .filter(t -> status.equals(t.getStatus()))
+                        .toList();
+            }
+
+            if (priority != null && !priority.isEmpty()) {
+                tasks = tasks.stream()
+                        .filter(t -> priority.equals(t.getPriority()))
+                        .toList();
+            }
+
+            List<TaskDto> taskDtos = tasks.stream()
+                    .map(taskMapper::toDtoWithStats)
+                    .toList();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Tasks retrieved successfully");
+            response.put("data", taskDtos);
+            response.put("testUser", currentUser.getUsername());
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            return createErrorResponse(e.getMessage(), HttpStatus.FORBIDDEN);
+        } catch (RuntimeException e) {
+            return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return createErrorResponse("Failed to retrieve tasks: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 }

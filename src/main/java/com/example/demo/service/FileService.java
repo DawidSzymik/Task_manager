@@ -1,6 +1,7 @@
 // src/main/java/com/example/demo/service/FileService.java
 package com.example.demo.service;
 
+import com.example.demo.model.Notification;
 import com.example.demo.model.NotificationType;
 import com.example.demo.model.Task;
 import com.example.demo.model.UploadedFile;
@@ -32,25 +33,27 @@ public class FileService {
     @Autowired
     private NotificationService notificationService;
 
-    // Pobierz plik po ID
     public Optional<UploadedFile> getFileById(Long fileId) {
         return fileRepository.findById(fileId);
     }
 
-    // Pobierz pliki dla zadania
     public List<UploadedFile> getFilesByTask(Task task) {
         return fileRepository.findByTask(task);
     }
 
-    // Policz pliki dla zadania
     public long getFileCountByTask(Task task) {
         return fileRepository.countByTask(task);
     }
 
-    // ✅ ZAKTUALIZOWANA METODA - z powiadomieniami
     @Transactional
     public UploadedFile storeFile(Task task, MultipartFile file, User uploader) {
         try {
+            System.out.println("\n========================================");
+            System.out.println("🔵 START storeFile");
+            System.out.println("Zadanie: " + task.getTitle() + " (ID: " + task.getId() + ")");
+            System.out.println("Uploader: " + uploader.getUsername() + " (ID: " + uploader.getId() + ")");
+            System.out.println("Plik: " + file.getOriginalFilename());
+
             UploadedFile uploadedFile = new UploadedFile();
             uploadedFile.setOriginalName(file.getOriginalFilename());
             uploadedFile.setContentType(file.getContentType());
@@ -61,50 +64,56 @@ public class FileService {
             uploadedFile.setUploadedAt(LocalDateTime.now());
 
             UploadedFile saved = fileRepository.save(uploadedFile);
+            System.out.println("✅ Plik zapisany (ID: " + saved.getId() + ")");
 
-            // ✅ WYSYŁANIE POWIADOMIEŃ
+            // WYSYŁANIE POWIADOMIEŃ
             try {
+                System.out.println("\n🔔 Rozpoczynam wysyłanie powiadomień...");
                 String fileName = file.getOriginalFilename();
 
-                // Powiadom wszystkich przypisanych użytkowników (oprócz osoby dodającej plik)
                 Set<User> assignedUsers = task.getAssignedUsers();
-                for (User assignedUser : assignedUsers) {
-                    if (!assignedUser.equals(uploader)) {
-                        notificationService.createNotification(
-                                assignedUser,
-                                "📎 Nowy plik w zadaniu",
-                                uploader.getUsername() + " dodał plik \"" + fileName +
-                                        "\" do zadania \"" + task.getTitle() + "\"",
-                                NotificationType.TASK_FILE_UPLOADED,
-                                task.getId(),
-                                "/tasks/view/" + task.getId()
-                        );
+                System.out.println("📋 Liczba przypisanych użytkowników: " + (assignedUsers != null ? assignedUsers.size() : 0));
+
+                if (assignedUsers == null || assignedUsers.isEmpty()) {
+                    System.out.println("⚠️ BRAK przypisanych użytkowników - nie wysyłam powiadomień");
+                } else {
+                    int notificationsSent = 0;
+                    for (User assignedUser : assignedUsers) {
+                        System.out.println("\n  👤 Sprawdzam użytkownika: " + assignedUser.getUsername() + " (ID: " + assignedUser.getId() + ")");
+
+                        if (assignedUser.equals(uploader)) {
+                            System.out.println("  ⏭️ Pomijam - to uploader pliku");
+                            continue;
+                        }
+
+                        System.out.println("  📤 Wysyłam powiadomienie...");
+                        try {
+                            Notification notification = notificationService.createNotification(
+                                    assignedUser,
+                                    "📎 Nowy plik w zadaniu",
+                                    uploader.getUsername() + " dodał plik \"" + fileName +
+                                            "\" do zadania \"" + task.getTitle() + "\"",
+                                    NotificationType.TASK_FILE_UPLOADED,
+                                    task.getId(),
+                                    "/tasks/view/" + task.getId()
+                            );
+                            System.out.println("  ✅ Powiadomienie wysłane (ID: " + notification.getId() + ")");
+                            notificationsSent++;
+                        } catch (Exception e) {
+                            System.err.println("  ❌ Błąd wysyłania powiadomienia: " + e.getMessage());
+                            e.printStackTrace();
+                        }
                     }
+                    System.out.println("\n✅ Wysłano łącznie " + notificationsSent + " powiadomień");
                 }
 
-                // Powiadom także twórcę zadania (jeśli nie jest przypisany i nie jest osobą dodającą)
-                if (task.getCreatedBy() != null && !task.getCreatedBy().equals(uploader)) {
-                    boolean creatorIsAssigned = assignedUsers.stream()
-                            .anyMatch(u -> u.equals(task.getCreatedBy()));
-
-                    if (!creatorIsAssigned) {
-                        notificationService.createNotification(
-                                task.getCreatedBy(),
-                                "📎 Nowy plik w Twoim zadaniu",
-                                uploader.getUsername() + " dodał plik \"" + fileName +
-                                        "\" do zadania \"" + task.getTitle() + "\"",
-                                NotificationType.TASK_FILE_UPLOADED,
-                                task.getId(),
-                                "/tasks/view/" + task.getId()
-                        );
-                    }
-                }
             } catch (Exception e) {
-                // Loguj błąd, ale nie przerywaj dodawania pliku
-                System.err.println("❌ Błąd wysyłania powiadomienia o pliku: " + e.getMessage());
+                System.err.println("❌ KRYTYCZNY BŁĄD w sekcji powiadomień: " + e.getMessage());
                 e.printStackTrace();
             }
 
+            System.out.println("🔵 KONIEC storeFile");
+            System.out.println("========================================\n");
             return saved;
 
         } catch (IOException e) {
@@ -112,7 +121,6 @@ public class FileService {
         }
     }
 
-    // Stara metoda dla kompatybilności wstecznej
     @Transactional
     public void storeFileForTask(Long taskId, MultipartFile file, String username) {
         Task task = taskService.findById(taskId);
@@ -122,7 +130,6 @@ public class FileService {
         storeFile(task, file, uploader);
     }
 
-    // Usuń plik
     @Transactional
     public void deleteFile(Long fileId) {
         UploadedFile file = fileRepository.findById(fileId)
@@ -130,13 +137,12 @@ public class FileService {
         fileRepository.delete(file);
     }
 
-    // Usuń wszystkie pliki dla zadania
     @Transactional
     public void deleteFilesByTask(Task task) {
         List<UploadedFile> files = getFilesByTask(task);
         fileRepository.deleteAll(files);
     }
-    // Pobierz pliki użytkownika
+
     public List<UploadedFile> getFilesByUser(User user) {
         return fileRepository.findByUploadedBy(user);
     }

@@ -14,7 +14,8 @@ import TaskDetailsPage from "./pages/TaskDetailsPage.tsx";
 import CalendarPage from "./pages/CalendarPage.tsx";
 import ReportsPage from "./pages/ReportsPage.tsx";
 import ProfilePage from "./pages/ProfilePage.tsx";
-import UserProfilePage from "./pages/UserProfilePage.tsx"; // ✅ DODANE
+import UserProfilePage from "./pages/UserProfilePage.tsx";
+import NotificationsPage from "./pages/NotificationsPage.tsx"; // ✅ DODANE
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage.tsx";
 import AdminUsersPage from "./pages/admin/AdminUsersPage.tsx";
 import AdminProjectsPage from "./pages/admin/AdminProjectsPage.tsx";
@@ -116,6 +117,16 @@ function App() {
                         }
                     />
 
+                    {/* ✅ NOWA TRASA - Powiadomienia */}
+                    <Route
+                        path="/notifications"
+                        element={
+                            <ProtectedRoute>
+                                <NotificationsPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
                     {/* Profile Routes */}
                     <Route
                         path="/profile"
@@ -126,7 +137,7 @@ function App() {
                         }
                     />
 
-                    {/* ✅ NOWY ROUTE - Podgląd profilu innego użytkownika */}
+                    {/* User Profile - View other users */}
                     <Route
                         path="/users/:id"
                         element={

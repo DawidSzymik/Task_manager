@@ -2,6 +2,7 @@
 package com.example.demo.service;
 
 import com.example.demo.model.Comment;
+import com.example.demo.model.Notification;
 import com.example.demo.model.NotificationType;
 import com.example.demo.model.Task;
 import com.example.demo.model.User;
@@ -24,22 +25,18 @@ public class CommentService {
     @Autowired
     private NotificationService notificationService;
 
-    // Podstawowa metoda pobierania komentarzy dla zadania
     public List<Comment> getCommentsByTask(Task task) {
         return commentRepository.findByTask(task);
     }
 
-    // Komentarze posortowane chronologicznie (najnowsze najpierw)
     public List<Comment> getCommentsByTaskSorted(Task task) {
         return commentRepository.findByTaskOrderByCreatedAtDesc(task);
     }
 
     public Comment saveComment(Comment comment) {
         if (comment.getId() == null) {
-            // Nowy komentarz
             comment.setCreatedAt(LocalDateTime.now());
         } else {
-            // Aktualizacja komentarza
             comment.setUpdatedAt(LocalDateTime.now());
         }
         return commentRepository.save(comment);
@@ -65,14 +62,18 @@ public class CommentService {
         commentRepository.deleteByTask(task);
     }
 
-    // Metoda używana w TaskMapper i innych miejscach
     public List<Comment> getCommentsForTask(Task task) {
         return commentRepository.findByTask(task);
     }
 
-    // ✅ ZAKTUALIZOWANA METODA - z powiadomieniami
     @Transactional
     public Comment addCommentToTask(Task task, String commentText, User author) {
+        System.out.println("\n========================================");
+        System.out.println("🔵 START addCommentToTask");
+        System.out.println("Zadanie: " + task.getTitle() + " (ID: " + task.getId() + ")");
+        System.out.println("Autor komentarza: " + author.getUsername() + " (ID: " + author.getId() + ")");
+        System.out.println("Treść: " + commentText);
+
         Comment comment = new Comment();
         comment.setText(commentText);
         comment.setTask(task);
@@ -80,60 +81,65 @@ public class CommentService {
         comment.setCreatedAt(LocalDateTime.now());
 
         Comment saved = commentRepository.save(comment);
+        System.out.println("✅ Komentarz zapisany (ID: " + saved.getId() + ")");
 
-        // ✅ WYSYŁANIE POWIADOMIEŃ
+        // WYSYŁANIE POWIADOMIEŃ
         try {
-            // Skróć treść komentarza dla powiadomienia (max 50 znaków)
+            System.out.println("\n🔔 Rozpoczynam wysyłanie powiadomień...");
+
             String shortText = commentText.length() > 50
                     ? commentText.substring(0, 50) + "..."
                     : commentText;
 
-            // Powiadom wszystkich przypisanych użytkowników (oprócz autora komentarza)
             Set<User> assignedUsers = task.getAssignedUsers();
-            for (User assignedUser : assignedUsers) {
-                if (!assignedUser.equals(author)) {
-                    notificationService.createNotification(
-                            assignedUser,
-                            "💬 Nowy komentarz w zadaniu",
-                            author.getUsername() + " skomentował zadanie \"" + task.getTitle() + "\": " + shortText,
-                            NotificationType.TASK_COMMENT_ADDED,
-                            task.getId(),
-                            "/tasks/view/" + task.getId()
-                    );
+            System.out.println("📋 Liczba przypisanych użytkowników: " + (assignedUsers != null ? assignedUsers.size() : 0));
+
+            if (assignedUsers == null || assignedUsers.isEmpty()) {
+                System.out.println("⚠️ BRAK przypisanych użytkowników - nie wysyłam powiadomień");
+            } else {
+                int notificationsSent = 0;
+                for (User assignedUser : assignedUsers) {
+                    System.out.println("\n  👤 Sprawdzam użytkownika: " + assignedUser.getUsername() + " (ID: " + assignedUser.getId() + ")");
+
+                    if (assignedUser.equals(author)) {
+                        System.out.println("  ⏭️ Pomijam - to autor komentarza");
+                        continue;
+                    }
+
+                    System.out.println("  📤 Wysyłam powiadomienie...");
+                    try {
+                        Notification notification = notificationService.createNotification(
+                                assignedUser,
+                                "💬 Nowy komentarz w zadaniu",
+                                author.getUsername() + " skomentował zadanie \"" + task.getTitle() + "\": " + shortText,
+                                NotificationType.TASK_COMMENT_ADDED,
+                                task.getId(),
+                                "/tasks/view/" + task.getId()
+                        );
+                        System.out.println("  ✅ Powiadomienie wysłane (ID: " + notification.getId() + ")");
+                        notificationsSent++;
+                    } catch (Exception e) {
+                        System.err.println("  ❌ Błąd wysyłania powiadomienia: " + e.getMessage());
+                        e.printStackTrace();
+                    }
                 }
+                System.out.println("\n✅ Wysłano łącznie " + notificationsSent + " powiadomień");
             }
 
-            // Powiadom także twórcę zadania (jeśli nie jest przypisany i nie jest autorem komentarza)
-            if (task.getCreatedBy() != null && !task.getCreatedBy().equals(author)) {
-                boolean creatorIsAssigned = assignedUsers.stream()
-                        .anyMatch(u -> u.equals(task.getCreatedBy()));
-
-                if (!creatorIsAssigned) {
-                    notificationService.createNotification(
-                            task.getCreatedBy(),
-                            "💬 Nowy komentarz w Twoim zadaniu",
-                            author.getUsername() + " skomentował zadanie \"" + task.getTitle() + "\"",
-                            NotificationType.TASK_COMMENT_ADDED,
-                            task.getId(),
-                            "/tasks/view/" + task.getId()
-                    );
-                }
-            }
         } catch (Exception e) {
-            // Loguj błąd, ale nie przerywaj dodawania komentarza
-            System.err.println("❌ Błąd wysyłania powiadomienia o komentarzu: " + e.getMessage());
+            System.err.println("❌ KRYTYCZNY BŁĄD w sekcji powiadomień: " + e.getMessage());
             e.printStackTrace();
         }
 
+        System.out.println("🔵 KONIEC addCommentToTask");
+        System.out.println("========================================\n");
         return saved;
     }
 
-    // Dodatkowe metody użyteczne
     public long getCommentCountByTask(Task task) {
         return commentRepository.countByTask(task);
     }
 
-    // Pobierz ostatnie komentarze z limitem
     public List<Comment> getRecentCommentsByTask(Task task, int limit) {
         return commentRepository.findByTaskOrderByCreatedAtDesc(task)
                 .stream()
