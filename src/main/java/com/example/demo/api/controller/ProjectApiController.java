@@ -1,54 +1,84 @@
 // src/main/java/com/example/demo/api/controller/ProjectApiController.java
 package com.example.demo.api.controller;
 
-import com.example.demo.model.Project;
-import com.example.demo.model.ProjectMember;
-import com.example.demo.model.User;
-import com.example.demo.model.ProjectRole;
-import com.example.demo.model.SystemRole;
-import com.example.demo.service.ProjectMemberService;
-import com.example.demo.service.ProjectService;
-import com.example.demo.service.UserService;
+import com.example.demo.api.dto.request.CreateProjectRequest;
+import com.example.demo.api.dto.request.UpdateProjectRequest;
+import com.example.demo.api.dto.response.ProjectDto;
+import com.example.demo.api.dto.response.ProjectMemberDto;
+import com.example.demo.api.mapper.ProjectMapper;
+import com.example.demo.model.*;
+import com.example.demo.service.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/projects")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:5173"})
 public class ProjectApiController {
 
     private final ProjectService projectService;
     private final ProjectMemberService projectMemberService;
+    private final TaskService taskService;
     private final UserService userService;
+    private final ProjectMapper projectMapper;
 
     public ProjectApiController(ProjectService projectService,
                                 ProjectMemberService projectMemberService,
-                                UserService userService) {
+                                TaskService taskService,
+                                UserService userService,
+                                ProjectMapper projectMapper) {
         this.projectService = projectService;
         this.projectMemberService = projectMemberService;
+        this.taskService = taskService;
         this.userService = userService;
+        this.projectMapper = projectMapper;
     }
 
+    // ✅ Używa prawdziwego zalogowanego użytkownika
+    private User getCurrentUser(UserDetails userDetails) {
+        return userService.getUserByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found: " + userDetails.getUsername()));
+    }
+
+    private void checkProjectAccess(Project project, User user) {
+        Optional<ProjectMember> membership = projectMemberService.getProjectMember(project, user);
+        if (membership.isEmpty()) {
+            throw new IllegalArgumentException("User is not a member of this project");
+        }
+    }
+
+    private boolean isProjectAdmin(Project project, User user) {
+        return projectMemberService.getProjectMember(project, user)
+                .map(member -> member.getRole() == ProjectRole.ADMIN)
+                .orElse(false);
+    }
+
+    private ResponseEntity<Map<String, Object>> createErrorResponse(String message, HttpStatus status) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", false);
+        response.put("error", message);
+        return ResponseEntity.status(status).body(response);
+    }
+
+    // ============================================================================
+    // GET ENDPOINTS
+    // ============================================================================
+
     // GET /api/v1/projects - Get all projects (filtered by user access)
+    // ✅ POPRAWIONE: zwraca ProjectDto z memberCount i taskCount
     @GetMapping
     public ResponseEntity<Map<String, Object>> getAllProjects(
-            @RequestParam(value = "includeAll", defaultValue = "false") boolean includeAll) {
+            @RequestParam(value = "includeAll", defaultValue = "false") boolean includeAll,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            // TYMCZASOWO: używaj pierwszego użytkownika z bazy jako test (bez autoryzacji)
-            List<User> users = userService.getAllUsers();
-            if (users.isEmpty()) {
-                return createErrorResponse("No users found in database", HttpStatus.INTERNAL_SERVER_ERROR);
-            }
-            User currentUser = users.get(0);
+            User currentUser = getCurrentUser(userDetails);
 
             List<Project> projects;
 
@@ -64,35 +94,87 @@ public class ProjectApiController {
                         .toList();
             }
 
+            // ✅ KLUCZOWA ZMIANA: Konwertuj na ProjectDto ze statystykami
+            List<ProjectDto> projectDtos = projects.stream()
+                    .map(project -> {
+                        ProjectDto dto = projectMapper.toDto(project);
+
+                        // Policz członków
+                        List<ProjectMember> members = projectMemberService.getProjectMembers(project);
+                        dto.setMemberCount(members.size());
+
+                        // Policz zadania
+                        List<Task> tasks = taskService.getTasksByProject(project);
+                        dto.setTaskCount(tasks.size());
+
+                        // Policz ukończone zadania
+                        long completedTasks = tasks.stream()
+                                .filter(t -> "COMPLETED".equals(t.getStatus()))
+                                .count();
+                        dto.setCompletedTaskCount((int) completedTasks);
+
+                        // Ustaw status projektu
+                        if (tasks.isEmpty()) {
+                            dto.setStatus("planning");
+                        } else if (completedTasks == tasks.size()) {
+                            dto.setStatus("completed");
+                        } else {
+                            dto.setStatus("active");
+                        }
+
+                        return dto;
+                    })
+                    .collect(Collectors.toList());
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Projects retrieved successfully");
-            response.put("data", projects);
-            response.put("testUser", currentUser.getUsername()); // DEBUG info
-            response.put("userRole", currentUser.getSystemRole()); // DEBUG info
+            response.put("data", projectDtos);  // ✅ Zwracamy ProjectDto zamiast surowych Project
+            response.put("currentUser", currentUser.getUsername());
 
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            e.printStackTrace(); // DEBUG - zobacz błąd w logach
+            e.printStackTrace();
             return createErrorResponse("Failed to retrieve projects: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    // GET /api/v1/projects/{id} - Get project by ID
+    // GET /api/v1/projects/{id} - Get project by ID with details
     @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getProjectById(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> getProjectById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            // TYMCZASOWO: użyj pierwszego użytkownika
-            User currentUser = getTestUser();
-            Project project = getProjectAndCheckAccess(id, currentUser);
+            User currentUser = getCurrentUser(userDetails);
+
+            Project project = projectService.getProjectById(id)
+                    .orElseThrow(() -> new RuntimeException("Project with ID " + id + " not found"));
+
+            checkProjectAccess(project, currentUser);
+
+            // Pobierz członków projektu
+            List<ProjectMember> members = projectMemberService.getProjectMembers(project);
+
+            // Konwertuj na DTO z członkami
+            ProjectDto projectDto = projectMapper.toDtoWithMembers(project, members);
+
+            // Dodaj statystyki
+            List<Task> tasks = taskService.getTasksByProject(project);
+            projectDto.setMemberCount(members.size());
+            projectDto.setTaskCount(tasks.size());
+
+            long completedTasks = tasks.stream()
+                    .filter(t -> "COMPLETED".equals(t.getStatus()))
+                    .count();
+            projectDto.setCompletedTaskCount((int) completedTasks);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Project retrieved successfully");
-            response.put("data", project);
-            response.put("testUser", currentUser.getUsername());
+            response.put("data", projectDto);
+            response.put("currentUser", currentUser.getUsername());
 
             return ResponseEntity.ok(response);
 
@@ -106,118 +188,6 @@ public class ProjectApiController {
         }
     }
 
-    // POST /api/v1/projects - Create new project
-    @PostMapping
-    public ResponseEntity<Map<String, Object>> createProject(@RequestBody Map<String, String> request) {
-
-        try {
-            User creator = getTestUser();
-
-            String name = request.get("name");
-            String description = request.get("description");
-
-            if (name == null || name.trim().isEmpty()) {
-                return createErrorResponse("Project name is required", HttpStatus.BAD_REQUEST);
-            }
-
-            // Create project
-            Project project = projectService.createProject(name, description != null ? description : "", creator);
-
-            // Add creator as admin
-            projectMemberService.addMemberToProject(project, creator, ProjectRole.ADMIN);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "Project created successfully");
-            response.put("data", project);
-            response.put("testUser", creator.getUsername());
-
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return createErrorResponse("Failed to create project: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    // PUT /api/v1/projects/{id} - Update project
-    @PutMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> updateProject(
-            @PathVariable Long id,
-            @RequestBody Map<String, String> request,
-            @AuthenticationPrincipal UserDetails userDetails) {
-
-        try {
-            User currentUser = getUserFromDetails(userDetails);
-            Project project = getProjectAndCheckAccess(id, currentUser);
-
-            // Check if user has admin rights or is creator
-            if (!canModifyProject(project, currentUser)) {
-                return createErrorResponse("Insufficient permissions to modify this project", HttpStatus.FORBIDDEN);
-            }
-
-            String name = request.get("name");
-            String description = request.get("description");
-
-            if (name == null || name.trim().isEmpty()) {
-                return createErrorResponse("Project name is required", HttpStatus.BAD_REQUEST);
-            }
-
-            // Update project
-            project.setName(name);
-            project.setDescription(description != null ? description : "");
-            Project updatedProject = projectService.saveProject(project);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "Project updated successfully");
-            response.put("data", updatedProject);
-
-            return ResponseEntity.ok(response);
-
-        } catch (IllegalArgumentException e) {
-            return createErrorResponse(e.getMessage(), HttpStatus.FORBIDDEN);
-        } catch (RuntimeException e) {
-            return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
-        } catch (Exception e) {
-            return createErrorResponse("Failed to update project: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    // DELETE /api/v1/projects/{id} - Delete project
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> deleteProject(
-            @PathVariable Long id,
-            @AuthenticationPrincipal UserDetails userDetails) {
-
-        try {
-            User currentUser = getUserFromDetails(userDetails);
-            Project project = getProjectAndCheckAccess(id, currentUser);
-
-            // Only creator or super admin can delete project
-            if (!project.getCreatedBy().equals(currentUser) &&
-                    currentUser.getSystemRole() != SystemRole.SUPER_ADMIN) {
-                return createErrorResponse("Only project creator or super admin can delete this project", HttpStatus.FORBIDDEN);
-            }
-
-            // Use the admin delete method which handles cascading
-            projectService.deleteProjectByAdmin(id);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "Project deleted successfully");
-
-            return ResponseEntity.ok(response);
-
-        } catch (IllegalArgumentException e) {
-            return createErrorResponse(e.getMessage(), HttpStatus.FORBIDDEN);
-        } catch (RuntimeException e) {
-            return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
-        } catch (Exception e) {
-            return createErrorResponse("Failed to delete project: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
     // GET /api/v1/projects/{id}/members - Get project members
     @GetMapping("/{id}/members")
     public ResponseEntity<Map<String, Object>> getProjectMembers(
@@ -225,15 +195,25 @@ public class ProjectApiController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getUserFromDetails(userDetails);
-            Project project = getProjectAndCheckAccess(id, currentUser);
+            User currentUser = getCurrentUser(userDetails);
+
+            Project project = projectService.getProjectById(id)
+                    .orElseThrow(() -> new RuntimeException("Project with ID " + id + " not found"));
+
+            checkProjectAccess(project, currentUser);
 
             List<ProjectMember> members = projectMemberService.getProjectMembers(project);
+
+            // Konwertuj na DTO
+            List<ProjectMemberDto> memberDtos = members.stream()
+                    .map(projectMapper::toMemberDto)
+                    .collect(Collectors.toList());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Project members retrieved successfully");
-            response.put("data", members);
+            response.put("data", memberDtos);
+            response.put("currentUser", currentUser.getUsername());
 
             return ResponseEntity.ok(response);
 
@@ -246,6 +226,53 @@ public class ProjectApiController {
         }
     }
 
+    // ============================================================================
+    // POST ENDPOINTS
+    // ============================================================================
+
+    // POST /api/v1/projects - Create new project
+    @PostMapping
+    public ResponseEntity<Map<String, Object>> createProject(
+            @RequestBody CreateProjectRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        try {
+            User creator = getCurrentUser(userDetails);
+
+            if (request.getName() == null || request.getName().trim().isEmpty()) {
+                return createErrorResponse("Project name is required", HttpStatus.BAD_REQUEST);
+            }
+
+            // Create project
+            Project project = projectService.createProject(
+                    request.getName(),
+                    request.getDescription() != null ? request.getDescription() : "",
+                    creator
+            );
+
+            // Twórca automatycznie staje się adminem
+            projectMemberService.addMemberToProject(project, creator, ProjectRole.ADMIN);
+
+            // Konwertuj na DTO ze statystykami
+            ProjectDto projectDto = projectMapper.toDto(project);
+            projectDto.setMemberCount(1); // Twórca
+            projectDto.setTaskCount(0); // Nowy projekt
+            projectDto.setStatus("planning");
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Project created successfully");
+            response.put("data", projectDto);
+            response.put("currentUser", creator.getUsername());
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return createErrorResponse("Failed to create project: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     // POST /api/v1/projects/{id}/members - Add member to project
     @PostMapping("/{id}/members")
     public ResponseEntity<Map<String, Object>> addMemberToProject(
@@ -254,8 +281,12 @@ public class ProjectApiController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getUserFromDetails(userDetails);
-            Project project = getProjectAndCheckAccess(id, currentUser);
+            User currentUser = getCurrentUser(userDetails);
+
+            Project project = projectService.getProjectById(id)
+                    .orElseThrow(() -> new RuntimeException("Project with ID " + id + " not found"));
+
+            checkProjectAccess(project, currentUser);
 
             // Check admin permissions
             if (!isProjectAdmin(project, currentUser)) {
@@ -271,10 +302,13 @@ public class ProjectApiController {
 
             ProjectMember newMember = projectMemberService.addMemberToProject(project, userToAdd, role);
 
+            ProjectMemberDto memberDto = projectMapper.toMemberDto(newMember);
+
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Member added to project successfully");
-            response.put("data", newMember);
+            response.put("data", memberDto);
+            response.put("currentUser", currentUser.getUsername());
 
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
@@ -283,39 +317,61 @@ public class ProjectApiController {
         } catch (RuntimeException e) {
             return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
         } catch (Exception e) {
+            e.printStackTrace();
             return createErrorResponse("Failed to add member: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    // DELETE /api/v1/projects/{id}/members/{userId} - Remove member from project
-    @DeleteMapping("/{id}/members/{userId}")
-    public ResponseEntity<Map<String, Object>> removeMemberFromProject(
+    // ============================================================================
+    // PUT ENDPOINTS
+    // ============================================================================
+
+    // PUT /api/v1/projects/{id} - Update project
+    @PutMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> updateProject(
             @PathVariable Long id,
-            @PathVariable Long userId,
+            @RequestBody UpdateProjectRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getUserFromDetails(userDetails);
-            Project project = getProjectAndCheckAccess(id, currentUser);
+            User currentUser = getCurrentUser(userDetails);
 
-            // Check admin permissions
+            Project project = projectService.getProjectById(id)
+                    .orElseThrow(() -> new RuntimeException("Project with ID " + id + " not found"));
+
+            checkProjectAccess(project, currentUser);
+
+            // Only admins can update projects
             if (!isProjectAdmin(project, currentUser)) {
-                return createErrorResponse("Only project administrators can remove members", HttpStatus.FORBIDDEN);
+                return createErrorResponse("Only project administrators can update projects", HttpStatus.FORBIDDEN);
             }
 
-            User userToRemove = userService.getUserById(userId)
-                    .orElseThrow(() -> new RuntimeException("User with ID " + userId + " not found"));
-
-            // Cannot remove project creator
-            if (project.getCreatedBy().equals(userToRemove)) {
-                return createErrorResponse("Cannot remove project creator", HttpStatus.BAD_REQUEST);
+            // Update project
+            if (request.getName() != null) {
+                project.setName(request.getName());
+            }
+            if (request.getDescription() != null) {
+                project.setDescription(request.getDescription());
+            }
+            if (request.getDeadline() != null) {
+                project.setDeadline(request.getDeadline());
             }
 
-            projectMemberService.removeMemberFromProject(project, userToRemove);
+            Project updatedProject = projectService.updateProject(project);
+
+            // Konwertuj na DTO ze statystykami
+            ProjectDto projectDto = projectMapper.toDto(updatedProject);
+            List<ProjectMember> members = projectMemberService.getProjectMembers(updatedProject);
+            List<Task> tasks = taskService.getTasksByProject(updatedProject);
+
+            projectDto.setMemberCount(members.size());
+            projectDto.setTaskCount(tasks.size());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("message", "Member removed from project successfully");
+            response.put("message", "Project updated successfully");
+            response.put("data", projectDto);
+            response.put("currentUser", currentUser.getUsername());
 
             return ResponseEntity.ok(response);
 
@@ -324,47 +380,42 @@ public class ProjectApiController {
         } catch (RuntimeException e) {
             return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
         } catch (Exception e) {
-            return createErrorResponse("Failed to remove member: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            e.printStackTrace();
+            return createErrorResponse("Failed to update project: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    // PUT /api/v1/projects/{id}/members/{userId}/role - Change member role
-    @PutMapping("/{id}/members/{userId}/role")
+    // PUT /api/v1/projects/{projectId}/members/{memberId}/role - Change member role
+    @PutMapping("/{projectId}/members/{memberId}/role")
     public ResponseEntity<Map<String, Object>> changeMemberRole(
-            @PathVariable Long id,
-            @PathVariable Long userId,
+            @PathVariable Long projectId,
+            @PathVariable Long memberId,
             @RequestBody Map<String, String> request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getUserFromDetails(userDetails);
-            Project project = getProjectAndCheckAccess(id, currentUser);
+            User currentUser = getCurrentUser(userDetails);
 
-            // Check admin permissions
+            Project project = projectService.getProjectById(projectId)
+                    .orElseThrow(() -> new RuntimeException("Project with ID " + projectId + " not found"));
+
+            checkProjectAccess(project, currentUser);
+
             if (!isProjectAdmin(project, currentUser)) {
                 return createErrorResponse("Only project administrators can change member roles", HttpStatus.FORBIDDEN);
             }
 
-            User targetUser = userService.getUserById(userId)
-                    .orElseThrow(() -> new RuntimeException("User with ID " + userId + " not found"));
+            String newRoleStr = request.get("role");
+            ProjectRole newRole = ProjectRole.valueOf(newRoleStr);
 
-            String roleStr = request.get("role");
-            if (roleStr == null) {
-                return createErrorResponse("Role is required", HttpStatus.BAD_REQUEST);
-            }
-
-            ProjectRole newRole = ProjectRole.valueOf(roleStr);
-
-            projectMemberService.changeUserRole(project, targetUser, newRole);
-
-            // Get updated member info
-            ProjectMember updatedMember = projectMemberService.getProjectMember(project, targetUser)
-                    .orElseThrow(() -> new RuntimeException("Member not found after role change"));
+            ProjectMember updatedMember = projectMemberService.changeMemberRole(memberId, newRole);
+            ProjectMemberDto memberDto = projectMapper.toMemberDto(updatedMember);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("message", "Member role changed successfully");
-            response.put("data", updatedMember);
+            response.put("message", "Member role updated successfully");
+            response.put("data", memberDto);
+            response.put("currentUser", currentUser.getUsername());
 
             return ResponseEntity.ok(response);
 
@@ -373,66 +424,88 @@ public class ProjectApiController {
         } catch (RuntimeException e) {
             return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
         } catch (Exception e) {
-            return createErrorResponse("Failed to change member role: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            e.printStackTrace();
+            return createErrorResponse("Failed to update member role: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    // Helper methods
-    private User getTestUser() {
-        List<User> users = userService.getAllUsers();
-        if (users.isEmpty()) {
-            throw new RuntimeException("No users found in database");
-        }
-        return users.get(0); // Używa pierwszego użytkownika do testów
-    }
+    // ============================================================================
+    // DELETE ENDPOINTS
+    // ============================================================================
 
-    private User getUserFromDetails(UserDetails userDetails) {
-        if (userDetails == null) {
-            return getTestUser();
-        }
-        return userService.getUserByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-    }
+    // DELETE /api/v1/projects/{id} - Delete project
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> deleteProject(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
-    private Project getProjectAndCheckAccess(Long projectId, User user) {
-        Project project = projectService.getProjectById(projectId)
-                .orElseThrow(() -> new RuntimeException("Project with ID " + projectId + " not found"));
+        try {
+            User currentUser = getCurrentUser(userDetails);
 
-        // Check if user has access to this project
-        if (user.getSystemRole() != SystemRole.SUPER_ADMIN) {
-            Optional<ProjectMember> memberOpt = projectMemberService.getProjectMember(project, user);
-            if (memberOpt.isEmpty()) {
-                throw new IllegalArgumentException("Access denied to project with ID " + projectId);
+            Project project = projectService.getProjectById(id)
+                    .orElseThrow(() -> new RuntimeException("Project with ID " + id + " not found"));
+
+            checkProjectAccess(project, currentUser);
+
+            // Only admins can delete projects
+            if (!isProjectAdmin(project, currentUser)) {
+                return createErrorResponse("Only project administrators can delete projects", HttpStatus.FORBIDDEN);
             }
-        }
 
-        return project;
+            projectService.deleteProject(id);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Project deleted successfully");
+            response.put("currentUser", currentUser.getUsername());
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            return createErrorResponse(e.getMessage(), HttpStatus.FORBIDDEN);
+        } catch (RuntimeException e) {
+            return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return createErrorResponse("Failed to delete project: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
-    private boolean canModifyProject(Project project, User user) {
-        // Creator can always modify
-        if (project.getCreatedBy().equals(user)) {
-            return true;
+    // DELETE /api/v1/projects/{projectId}/members/{memberId} - Remove member from project
+    @DeleteMapping("/{projectId}/members/{memberId}")
+    public ResponseEntity<Map<String, Object>> removeMemberFromProject(
+            @PathVariable Long projectId,
+            @PathVariable Long memberId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        try {
+            User currentUser = getCurrentUser(userDetails);
+
+            Project project = projectService.getProjectById(projectId)
+                    .orElseThrow(() -> new RuntimeException("Project with ID " + projectId + " not found"));
+
+            checkProjectAccess(project, currentUser);
+
+            if (!isProjectAdmin(project, currentUser)) {
+                return createErrorResponse("Only project administrators can remove members", HttpStatus.FORBIDDEN);
+            }
+
+            projectMemberService.removeMember(memberId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Member removed from project successfully");
+            response.put("currentUser", currentUser.getUsername());
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException e) {
+            return createErrorResponse(e.getMessage(), HttpStatus.FORBIDDEN);
+        } catch (RuntimeException e) {
+            return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return createErrorResponse("Failed to remove member: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
-
-        // Super admin can modify any project
-        if (user.getSystemRole() == SystemRole.SUPER_ADMIN) {
-            return true;
-        }
-
-        // Project admin can modify
-        return isProjectAdmin(project, user);
-    }
-
-    private boolean isProjectAdmin(Project project, User user) {
-        Optional<ProjectMember> memberOpt = projectMemberService.getProjectMember(project, user);
-        return memberOpt.isPresent() && memberOpt.get().getRole() == ProjectRole.ADMIN;
-    }
-
-    private ResponseEntity<Map<String, Object>> createErrorResponse(String message, HttpStatus status) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", false);
-        response.put("error", message);
-        return ResponseEntity.status(status).body(response);
     }
 }

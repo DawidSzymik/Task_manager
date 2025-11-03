@@ -32,7 +32,7 @@ const ProjectDetailsPage: React.FC = () => {
         priority: 'MEDIUM',
         deadline: '',
         projectId: 0,
-        assignedToId: undefined,
+        assignedUserIds: [],  // ZMIANA: tablica zamiast assignedToId
     });
 
     const [error, setError] = useState<string | null>(null);
@@ -151,7 +151,7 @@ const ProjectDetailsPage: React.FC = () => {
                 priority: 'MEDIUM',
                 deadline: '',
                 projectId: parseInt(id!),
-                assignedToId: undefined,
+                assignedUserIds: [],  // ZMIANA
             });
             await loadProjectData();
         } catch (error: any) {
@@ -576,19 +576,28 @@ const ProjectDetailsPage: React.FC = () => {
                                 </div>
 
                                 <div className="mb-6">
-                                    <label className="block text-gray-400 text-sm font-medium mb-2">Przypisz do</label>
+                                    <label className="block text-gray-400 text-sm font-medium mb-2">
+                                        Przypisz użytkowników (CTRL + klik dla wielu)
+                                    </label>
                                     <select
-                                        value={taskFormData.assignedToId || ''}
-                                        onChange={(e) => setTaskFormData({ ...taskFormData, assignedToId: e.target.value ? Number(e.target.value) : undefined })}
+                                        multiple
+                                        size={6}
+                                        value={taskFormData.assignedUserIds?.map(String) || []}
+                                        onChange={(e) => {
+                                            const selected = Array.from(e.target.selectedOptions, option => Number(option.value));
+                                            setTaskFormData({ ...taskFormData, assignedUserIds: selected });
+                                        }}
                                         className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
                                     >
-                                        <option value="">Nie przypisano</option>
                                         {members.map((member) => (
                                             <option key={member.user.id} value={member.user.id}>
                                                 {member.user.username}
                                             </option>
                                         ))}
                                     </select>
+                                    <small className="text-gray-500 text-xs mt-1 block">
+                                        Przytrzymaj CTRL (CMD na Mac) aby wybrać wielu użytkowników
+                                    </small>
                                 </div>
 
                                 <div className="flex gap-3">
@@ -602,7 +611,7 @@ const ProjectDetailsPage: React.FC = () => {
                                                 priority: 'MEDIUM',
                                                 deadline: '',
                                                 projectId: parseInt(id!),
-                                                assignedToId: undefined,
+                                                assignedUserIds: [],  // ZMIANA
                                             });
                                             setError(null);
                                         }}

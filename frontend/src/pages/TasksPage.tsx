@@ -8,7 +8,7 @@ import type { Task, Project, TaskStatus, TaskPriority } from '../types';
 
 const TasksPage: React.FC = () => {
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams(); // usuń setSearchParams
+    const [searchParams] = useSearchParams();
 
     const [tasks, setTasks] = useState<Task[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
@@ -21,7 +21,7 @@ const TasksPage: React.FC = () => {
     );
     const [selectedStatus, setSelectedStatus] = useState<TaskStatus | ''>('');
     const [selectedPriority, setSelectedPriority] = useState<TaskPriority | ''>('');
-    const [assignedToMe, setAssignedToMe] = useState(false);
+    const [assignedToMe, setAssignedToMe] = useState(true);
 
     useEffect(() => {
         loadInitialData();
@@ -49,7 +49,7 @@ const TasksPage: React.FC = () => {
             if (selectedProject) filters.projectId = selectedProject;
             if (selectedStatus) filters.status = selectedStatus;
             if (selectedPriority) filters.priority = selectedPriority;
-            if (assignedToMe) filters.assignedToMe = true;
+            filters.assignedToMe = assignedToMe;
 
             const data = await taskService.getAllTasks(filters);
             setTasks(data);
@@ -61,75 +61,51 @@ const TasksPage: React.FC = () => {
         }
     };
 
-    const handleDeleteTask = async (taskId: number, taskTitle: string) => {
-        if (!window.confirm(`Czy na pewno chcesz usunąć zadanie "${taskTitle}"?`)) {
-            return;
-        }
-
-        try {
-            await taskService.deleteTask(taskId);
-            await loadTasks();
-        } catch (error: any) {
-            console.error('Failed to delete task:', error);
-            alert(error.message || 'Nie udało się usunąć zadania');
-        }
-    };
-
-    const getStatusColor = (status?: TaskStatus) => {
-        if (!status) return 'bg-gray-500';
+    const getStatusColor = (status: TaskStatus | undefined): string => {
         switch (status) {
             case 'NEW': return 'bg-blue-500';
             case 'IN_PROGRESS': return 'bg-yellow-500';
             case 'COMPLETED': return 'bg-green-500';
-            case 'CANCELLED': return 'bg-gray-500';
+            case 'CANCELLED': return 'bg-red-500';
             default: return 'bg-gray-500';
         }
     };
 
-    const getStatusLabel = (status?: TaskStatus) => {
-        if (!status) return 'Nieznany';
+    const getStatusText = (status: TaskStatus | undefined): string => {
         switch (status) {
             case 'NEW': return 'Nowe';
             case 'IN_PROGRESS': return 'W trakcie';
             case 'COMPLETED': return 'Ukończone';
             case 'CANCELLED': return 'Anulowane';
-            default: return status;
+            default: return status || 'Nieznany';
         }
     };
 
-    const getPriorityColor = (priority?: TaskPriority) => {
-        if (!priority) return 'text-gray-400';
+    const getPriorityColor = (priority: TaskPriority | undefined): string => {
         switch (priority) {
-            case 'LOW': return 'text-green-400';
-            case 'MEDIUM': return 'text-yellow-400';
-            case 'HIGH': return 'text-orange-400';
-            case 'URGENT': return 'text-red-400';
-            default: return 'text-gray-400';
+            case 'URGENT': return 'text-red-500';
+            case 'HIGH': return 'text-orange-500';
+            case 'MEDIUM': return 'text-yellow-500';
+            case 'LOW': return 'text-green-500';
+            default: return 'text-gray-500';
         }
     };
 
-    const getPriorityLabel = (priority?: TaskPriority) => {
-        if (!priority) return 'Nieznany';
+    const getPriorityText = (priority: TaskPriority | undefined): string => {
         switch (priority) {
-            case 'LOW': return 'Niski';
-            case 'MEDIUM': return 'Średni';
+            case 'URGENT': return 'Pilne';
             case 'HIGH': return 'Wysoki';
-            case 'URGENT': return 'Pilny';
-            default: return priority;
+            case 'MEDIUM': return 'Średni';
+            case 'LOW': return 'Niski';
+            default: return priority || 'Brak';
         }
     };
 
     if (loading) {
         return (
             <MainLayout>
-                <div className="flex items-center justify-center h-96">
-                    <div className="flex flex-col items-center">
-                        <svg className="animate-spin h-12 w-12 text-emerald-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <p className="text-gray-400">Ładowanie zadań...</p>
-                    </div>
+                <div className="flex items-center justify-center h-64">
+                    <div className="text-gray-400">Ładowanie zadań...</div>
                 </div>
             </MainLayout>
         );
@@ -137,22 +113,35 @@ const TasksPage: React.FC = () => {
 
     return (
         <MainLayout>
-            <div className="max-w-7xl mx-auto">
+            <div className="space-y-6">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white mb-2">Zadania</h1>
-                        <p className="text-gray-400">Zarządzaj swoimi zadaniami</p>
-                    </div>
+                <div className="flex items-center justify-between">
+                    <h1 className="text-3xl font-bold text-white">Moje Zadania</h1>
                 </div>
 
                 {/* Filters */}
-                <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-6">
-                    <h2 className="text-lg font-semibold text-white mb-4">Filtry</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        {/* Project filter */}
+                <div className="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                        {/* Widok */}
                         <div>
-                            <label className="block text-gray-400 text-sm mb-2">Projekt</label>
+                            <label className="block text-gray-400 text-sm font-medium mb-2">
+                                Widok
+                            </label>
+                            <select
+                                value={assignedToMe ? 'my' : 'all'}
+                                onChange={(e) => setAssignedToMe(e.target.value === 'my')}
+                                className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                            >
+                                <option value="my">Tylko moje zadania</option>
+                                <option value="all">Wszystkie zadania</option>
+                            </select>
+                        </div>
+
+                        {/* Project Filter */}
+                        <div>
+                            <label className="block text-gray-400 text-sm font-medium mb-2">
+                                Projekt
+                            </label>
                             <select
                                 value={selectedProject || ''}
                                 onChange={(e) => setSelectedProject(e.target.value ? Number(e.target.value) : null)}
@@ -167,9 +156,11 @@ const TasksPage: React.FC = () => {
                             </select>
                         </div>
 
-                        {/* Status filter */}
+                        {/* Status Filter */}
                         <div>
-                            <label className="block text-gray-400 text-sm mb-2">Status</label>
+                            <label className="block text-gray-400 text-sm font-medium mb-2">
+                                Status
+                            </label>
                             <select
                                 value={selectedStatus}
                                 onChange={(e) => setSelectedStatus(e.target.value as TaskStatus | '')}
@@ -183,9 +174,11 @@ const TasksPage: React.FC = () => {
                             </select>
                         </div>
 
-                        {/* Priority filter */}
+                        {/* Priority Filter */}
                         <div>
-                            <label className="block text-gray-400 text-sm mb-2">Priorytet</label>
+                            <label className="block text-gray-400 text-sm font-medium mb-2">
+                                Priorytet
+                            </label>
                             <select
                                 value={selectedPriority}
                                 onChange={(e) => setSelectedPriority(e.target.value as TaskPriority | '')}
@@ -199,98 +192,102 @@ const TasksPage: React.FC = () => {
                             </select>
                         </div>
 
-                        {/* Assigned to me */}
+                        {/* Clear Filters */}
                         <div className="flex items-end">
-                            <label className="flex items-center gap-2 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg cursor-pointer hover:border-emerald-500 transition">
-                                <input
-                                    type="checkbox"
-                                    checked={assignedToMe}
-                                    onChange={(e) => setAssignedToMe(e.target.checked)}
-                                    className="w-4 h-4 text-emerald-500 bg-gray-700 border-gray-600 rounded focus:ring-emerald-500"
-                                />
-                                <span className="text-white text-sm">Przypisane do mnie</span>
-                            </label>
+                            <button
+                                onClick={() => {
+                                    setSelectedProject(null);
+                                    setSelectedStatus('');
+                                    setSelectedPriority('');
+                                    setAssignedToMe(true);
+                                }}
+                                className="w-full px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition"
+                            >
+                                Wyczyść filtry
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                {/* Error message */}
+                {/* Error Message */}
                 {error && (
-                    <div className="mb-6 p-4 bg-red-500 bg-opacity-10 border border-red-500 rounded-lg text-red-400">
-                        {error}
+                    <div className="bg-red-500 bg-opacity-10 border border-red-500 rounded-lg p-4">
+                        <p className="text-red-400">{error}</p>
                     </div>
                 )}
 
-                {/* Tasks List */}
+                {/* Tasks Grid */}
                 {tasks.length === 0 ? (
-                    <div className="text-center py-16">
-                        <svg className="w-24 h-24 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                        </svg>
-                        <p className="text-gray-400 text-lg mb-4">Brak zadań do wyświetlenia</p>
-                        <p className="text-gray-500 text-sm">Wybierz projekt, aby dodać nowe zadanie</p>
+                    <div className="bg-gray-900 rounded-lg p-8 text-center border border-gray-800">
+                        <p className="text-gray-400">
+                            {assignedToMe
+                                ? 'Nie masz przypisanych żadnych zadań'
+                                : 'Nie znaleziono zadań spełniających kryteria'}
+                        </p>
                     </div>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {tasks.map((task) => (
                             <div
                                 key={task.id}
-                                className="bg-gray-900 border border-gray-800 rounded-lg p-6 hover:border-emerald-500 transition-colors cursor-pointer"
+                                className="bg-gray-900 rounded-lg p-6 border border-gray-800 hover:border-emerald-500 transition cursor-pointer"
                                 onClick={() => navigate(`/tasks/${task.id}`)}
                             >
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(task.status)} text-white`}>
-                                                {getStatusLabel(task.status)}
-                                            </span>
-                                            <span className={`text-sm font-semibold ${getPriorityColor(task.priority)}`}>
-                                                {getPriorityLabel(task.priority)}
-                                            </span>
-                                        </div>
-                                        <h3 className="text-xl font-bold text-white mb-2">{task.title}</h3>
-                                        {task.description && (
-                                            <p className="text-gray-400 text-sm line-clamp-2 mb-3">{task.description}</p>
-                                        )}
-                                        <div className="flex items-center gap-4 text-sm text-gray-400">
-                                            {task.project && (
-                                                <span className="flex items-center gap-1">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                                                    </svg>
-                                                    {task.project.name}
-                                                </span>
-                                            )}
-                                            {task.assignedTo && (
-                                                <span className="flex items-center gap-1">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                                    </svg>
-                                                    {task.assignedTo.username}
-                                                </span>
-                                            )}
-                                            {task.deadline && (
-                                                <span className="flex items-center gap-1">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                    </svg>
-                                                    {new Date(task.deadline).toLocaleDateString('pl-PL')}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteTask(task.id, task.title);
-                                        }}
-                                        className="p-2 bg-red-500 bg-opacity-10 hover:bg-red-500 hover:bg-opacity-20 text-red-400 rounded-lg transition"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
+                                {/* Task Header */}
+                                <div className="flex items-start justify-between mb-3">
+                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(task.status)} bg-opacity-20 text-white`}>
+                                        {getStatusText(task.status)}
+                                    </span>
+                                    <span className={`text-sm font-semibold ${getPriorityColor(task.priority)}`}>
+                                        {getPriorityText(task.priority)}
+                                    </span>
                                 </div>
+
+                                {/* Task Content */}
+                                <h3 className="text-xl font-bold text-white mb-2">{task.title}</h3>
+                                {task.description && (
+                                    <p className="text-gray-400 text-sm line-clamp-2 mb-3">{task.description}</p>
+                                )}
+
+                                {/* Task Meta */}
+                                <div className="flex items-center gap-4 text-sm text-gray-400">
+                                    {task.project && (
+                                        <span className="flex items-center gap-1">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                            </svg>
+                                            {task.project.name}
+                                        </span>
+                                    )}
+                                    {task.assignedUsers && task.assignedUsers.length > 0 && (
+                                        <span className="flex items-center gap-1">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg>
+                                            {task.assignedUsers.length} {task.assignedUsers.length === 1 ? 'osoba' : 'osoby'}
+                                        </span>
+                                    )}
+                                    {task.deadline && (
+                                        <span className="flex items-center gap-1">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            {new Date(task.deadline).toLocaleDateString('pl-PL')}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Task Stats - POPRAWIONE: sprawdzenie czy istnieją */}
+                                {((task.commentCount && task.commentCount > 0) || (task.fileCount && task.fileCount > 0)) && (
+                                    <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-800 text-xs text-gray-500">
+                                        {task.commentCount && task.commentCount > 0 && (
+                                            <span>💬 {task.commentCount} komentarzy</span>
+                                        )}
+                                        {task.fileCount && task.fileCount > 0 && (
+                                            <span>📎 {task.fileCount} plików</span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

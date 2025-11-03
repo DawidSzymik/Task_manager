@@ -97,6 +97,9 @@ public class ProjectService {
     public void deleteProject(Long projectId) {
         deleteProjectByAdmin(projectId); // Używa istniejącej rozszerzonej metody
     }
+    public Project updateProject(Project project) {
+        return projectRepository.save(project);
+    }
     // NOWA METODA - Usuwanie projektu przez administratora
     @Transactional
     public void deleteProjectByAdmin(Long projectId) {
