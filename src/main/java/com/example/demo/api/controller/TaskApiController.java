@@ -443,6 +443,17 @@ public class TaskApiController {
                 return createErrorResponse("Viewers cannot modify tasks", HttpStatus.FORBIDDEN);
             }
 
+            // ✅ NOWA LOGIKA: Sprawdź, czy próbuje się zmienić status
+            if (request.getStatus() != null && !request.getStatus().equals(task.getStatus())) {
+                // Tylko ADMIN może bezpośrednio zmieniać status
+                if (membership.getRole() != ProjectRole.ADMIN) {
+                    return createErrorResponse(
+                            "Members cannot change task status directly. Please use status change request endpoint: POST /api/v1/status-requests",
+                            HttpStatus.FORBIDDEN
+                    );
+                }
+            }
+
             // Update task fields
             if (request.getTitle() != null) {
                 task.setTitle(request.getTitle());
@@ -450,14 +461,14 @@ public class TaskApiController {
             if (request.getDescription() != null) {
                 task.setDescription(request.getDescription());
             }
-            if (request.getStatus() != null) {
-                task.setStatus(request.getStatus());
-
-                // Set completion time if task is completed
-                if ("COMPLETED".equals(request.getStatus()) && task.getCompletedAt() == null) {
-                    task.setCompletedAt(java.time.LocalDateTime.now());
-                } else if (!"COMPLETED".equals(request.getStatus())) {
-                    task.setCompletedAt(null);
+            // ⚠️ WAŻNE: Status może być zmieniony tylko przez ADMIN (sprawdzono wyżej)
+            // ✅ Blokuj zmianę statusu dla MEMBER
+            if (request.getStatus() != null && !request.getStatus().equals(task.getStatus())) {
+                if (membership.getRole() != ProjectRole.ADMIN) {
+                    return createErrorResponse(
+                            "Members cannot change task status directly. Please use status change request endpoint: POST /api/v1/status-requests",
+                            HttpStatus.FORBIDDEN
+                    );
                 }
             }
             if (request.getPriority() != null) {
@@ -474,7 +485,7 @@ public class TaskApiController {
                 task.setAssignedTo(assignedUser);
             }
 
-            // ✅ NOWE: Obsługa wielu użytkowników
+            // Obsługa wielu użytkowników
             if (request.getAssignedUserIds() != null) {
                 Set<User> assignedUsers = new HashSet<>();
                 for (Long userId : request.getAssignedUserIds()) {
@@ -505,7 +516,6 @@ public class TaskApiController {
             return createErrorResponse("Failed to update task: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
     // ============================================================================
     // DELETE ENDPOINT - Delete task
     // ============================================================================

@@ -1,10 +1,14 @@
-// src/main/java/com/example/demo/api/controller/StatusChangeRequestApiController.java
+// ============================================================================
+// PEŁNY POPRAWIONY StatusChangeRequestApiController.java
+// ============================================================================
 package com.example.demo.api.controller;
 
 import com.example.demo.model.*;
 import com.example.demo.service.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -33,15 +37,22 @@ public class StatusChangeRequestApiController {
         this.taskService = taskService;
         this.userService = userService;
         this.projectMemberService = projectMemberService;
-        this.projectService = projectService;  // <- DODANE
+        this.projectService = projectService;
+    }
 
+    // ✅ NOWA METODA - Pobiera aktualnie zalogowanego użytkownika
+    private User getCurrentUser(UserDetails userDetails) {
+        return userService.getUserByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
     // GET /api/v1/status-requests/task/{taskId}
     @GetMapping("/task/{taskId}")
-    public ResponseEntity<Map<String, Object>> getRequestsForTask(@PathVariable Long taskId) {
+    public ResponseEntity<Map<String, Object>> getRequestsForTask(
+            @PathVariable Long taskId,
+            @AuthenticationPrincipal UserDetails userDetails) {
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
             Task task = taskService.getTaskById(taskId)
                     .orElseThrow(() -> new RuntimeException("Task not found"));
 
@@ -64,9 +75,11 @@ public class StatusChangeRequestApiController {
 
     // POST /api/v1/status-requests
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createRequest(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<Map<String, Object>> createRequest(
+            @RequestBody Map<String, Object> request,
+            @AuthenticationPrincipal UserDetails userDetails) {
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
             Long taskId = ((Number) request.get("taskId")).longValue();
             String newStatus = (String) request.get("newStatus");
 
@@ -108,9 +121,11 @@ public class StatusChangeRequestApiController {
 
     // POST /api/v1/status-requests/{id}/approve
     @PostMapping("/{id}/approve")
-    public ResponseEntity<Map<String, Object>> approveRequest(@PathVariable Long id) {
+    public ResponseEntity<Map<String, Object>> approveRequest(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
             StatusChangeRequest request = statusRequestService.getRequestById(id)
                     .orElseThrow(() -> new RuntimeException("Request not found"));
 
@@ -132,13 +147,14 @@ public class StatusChangeRequestApiController {
             return createErrorResponse(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    // Dodaj ten endpoint do StatusChangeRequestApiController.java
 
     // GET /api/v1/status-requests/project/{projectId}
     @GetMapping("/project/{projectId}")
-    public ResponseEntity<Map<String, Object>> getProjectRequests(@PathVariable Long projectId) {
+    public ResponseEntity<Map<String, Object>> getProjectRequests(
+            @PathVariable Long projectId,
+            @AuthenticationPrincipal UserDetails userDetails) {
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
 
             Project project = projectService.getProjectById(projectId)
                     .orElseThrow(() -> new RuntimeException("Project not found"));
@@ -147,15 +163,12 @@ public class StatusChangeRequestApiController {
 
             ProjectRole userRole = getUserRoleInProject(project, currentUser);
 
-            // Tylko admin może zobaczyć prośby
             if (userRole != ProjectRole.ADMIN) {
                 return createErrorResponse("Only admins can view status change requests", HttpStatus.FORBIDDEN);
             }
 
-            // Pobierz wszystkie zadania projektu
             List<Task> projectTasks = taskService.getTasksByProject(project);
 
-            // Pobierz prośby dla tych zadań
             List<StatusChangeRequest> requests = projectTasks.stream()
                     .flatMap(task -> statusRequestService.getRequestsByTask(task).stream())
                     .collect(Collectors.toList());
@@ -179,9 +192,10 @@ public class StatusChangeRequestApiController {
     @PostMapping("/{id}/reject")
     public ResponseEntity<Map<String, Object>> rejectRequest(
             @PathVariable Long id,
-            @RequestBody Map<String, String> body) {
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal UserDetails userDetails) {
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
             String reason = body.get("reason");
 
             StatusChangeRequest request = statusRequestService.getRequestById(id)
@@ -206,14 +220,9 @@ public class StatusChangeRequestApiController {
         }
     }
 
-    // Helper methods
-    private User getTestUser() {
-        List<User> users = userService.getAllUsers();
-        if (users.isEmpty()) {
-            throw new RuntimeException("No users found");
-        }
-        return users.get(0);
-    }
+    // ============================================================================
+    // HELPER METHODS
+    // ============================================================================
 
     private void checkTaskAccess(Task task, User user) {
         ProjectMember membership = projectMemberService.getProjectMember(task.getProject(), user)
@@ -222,17 +231,15 @@ public class StatusChangeRequestApiController {
             throw new IllegalArgumentException("Access denied");
         }
     }
+
     private void checkProjectAccess(Project project, User user) {
-        // Super admin ma dostęp do wszystkiego
         if (user.getSystemRole() == SystemRole.SUPER_ADMIN) {
             return;
         }
 
-        // Sprawdź czy użytkownik jest członkiem projektu
         boolean isMember = projectMemberService.getProjectMember(project, user).isPresent();
-
         if (!isMember) {
-            throw new IllegalArgumentException("User does not have access to this project");
+            throw new IllegalArgumentException("Access denied: User is not a member of this project");
         }
     }
 
@@ -240,6 +247,7 @@ public class StatusChangeRequestApiController {
         if (user.getSystemRole() == SystemRole.SUPER_ADMIN) {
             return ProjectRole.ADMIN;
         }
+
         return projectMemberService.getProjectMember(project, user)
                 .map(ProjectMember::getRole)
                 .orElse(ProjectRole.VIEWER);
@@ -258,16 +266,19 @@ public class StatusChangeRequestApiController {
         requestedBy.put("username", request.getRequestedBy().getUsername());
         dto.put("requestedBy", requestedBy);
 
-        Map<String, Object> taskInfo = new HashMap<>();
-        taskInfo.put("id", request.getTask().getId());
-        taskInfo.put("title", request.getTask().getTitle());
-        dto.put("task", taskInfo);
+        Map<String, Object> task = new HashMap<>();
+        task.put("id", request.getTask().getId());
+        task.put("title", request.getTask().getTitle());
+        dto.put("task", task);
 
         if (request.getReviewedBy() != null) {
             Map<String, Object> reviewedBy = new HashMap<>();
             reviewedBy.put("id", request.getReviewedBy().getId());
             reviewedBy.put("username", request.getReviewedBy().getUsername());
             dto.put("reviewedBy", reviewedBy);
+        }
+
+        if (request.getReviewedAt() != null) {
             dto.put("reviewedAt", request.getReviewedAt().toString());
         }
 
