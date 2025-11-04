@@ -14,6 +14,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,158 +42,139 @@ public class DashboardService {
     private ProjectMemberService projectMemberService;
 
     @Autowired
+    private TaskService taskService;
+
+    @Autowired
     private UserMapper userMapper;
 
     // Ogólne statystyki systemu (dla admina)
     public StatsDto getSystemStats() {
         StatsDto stats = new StatsDto();
 
-        // Użytkownicy
         stats.setTotalUsers(userRepository.count());
         stats.setActiveUsers(userRepository.countByIsActiveTrue());
-
-        // Projekty i zespoły
         stats.setTotalProjects(projectRepository.count());
         stats.setTotalTeams(teamRepository.count());
-
-        // Zadania
         stats.setTotalTasks(taskRepository.count());
         stats.setTasksNew(taskRepository.countByStatus("NEW"));
         stats.setTasksInProgress(taskRepository.countByStatus("IN_PROGRESS"));
         stats.setTasksCompleted(taskRepository.countByStatus("COMPLETED"));
         stats.setTasksCancelled(taskRepository.countByStatus("CANCELLED"));
-
-        // Komentarze i pliki
         stats.setTotalComments(commentRepository.count());
         stats.setTotalFiles(fileRepository.count());
 
-        // Task completion rate
         long totalTasks = stats.getTotalTasks();
         if (totalTasks > 0) {
             double completionRate = (stats.getTasksCompleted() * 100.0) / totalTasks;
             stats.setTaskCompletionRate(completionRate);
         }
 
-        // Przeterminowane zadania
         stats.setOverdueTasks(countOverdueTasks());
-
-        // Zadania ukończone w tym tygodniu/miesiącu
         stats.setTasksCompletedThisWeek(countTasksCompletedInPeriod(7));
         stats.setTasksCompletedThisMonth(countTasksCompletedInPeriod(30));
 
         return stats;
     }
 
-    // Statystyki użytkownika
+    // Statystyki użytkownika - DOKŁADNIE TA SAMA LOGIKA CO W TaskApiController!
     public StatsDto getUserStats(User user) {
+        System.out.println("\n========================================");
+        System.out.println("🔍 DASHBOARD getUserStats dla: " + user.getUsername());
+
         StatsDto stats = new StatsDto();
 
-        // Projekty użytkownika
-        List<ProjectMember> userProjects = projectMemberService.getUserProjects(user);
-        stats.setUserProjects((long) userProjects.size());
+        // KROK 1: Zadania przypisane - używamy DOKŁADNIE tej samej metody co TaskApiController
+        // TaskApiController robi: tasks = taskService.getTasksByAssignedUser(currentUser);
+        List<Task> assignedTasks = taskService.getTasksByAssignedUser(user);
+        System.out.println("📋 Zadania przypisane (z taskService.getTasksByAssignedUser): " + assignedTasks.size());
 
-        // Zespoły użytkownika
-        List<Team> userTeams = teamRepository.findByMembersContaining(user);
-        stats.setUserTeams((long) userTeams.size());
+        assignedTasks.forEach(task -> System.out.println("  - [" + task.getId() + "] " + task.getTitle() +
+                " | Status: " + task.getStatus() +
+                " | Projekt: " + (task.getProject() != null ? task.getProject().getName() : "BRAK")));
 
-        // Zadania przypisane do użytkownika
-        List<Task> assignedTasks = taskRepository.findByAssignedUsersContaining(user);
         stats.setUserTasksAssigned((long) assignedTasks.size());
 
-        // Zadania utworzone przez użytkownika
+        // KROK 2: Projekty - tylko unikalne projekty z przypisanych zadań
+        Set<Project> projectsWithAssignedTasks = assignedTasks.stream()
+                .map(Task::getProject)
+                .filter(project -> project != null)
+                .collect(Collectors.toSet());
+
+        System.out.println("📁 Projekty z przypisanymi zadaniami: " + projectsWithAssignedTasks.size());
+        projectsWithAssignedTasks.forEach(p -> System.out.println("  - [" + p.getId() + "] " + p.getName()));
+
+        stats.setUserProjects((long) projectsWithAssignedTasks.size());
+
+        // KROK 3: Zespoły użytkownika
+        List<Team> userTeams = teamRepository.findByMembersContaining(user);
+        System.out.println("👥 Zespoły użytkownika: " + userTeams.size());
+        stats.setUserTeams((long) userTeams.size());
+
+        // KROK 4: Zadania utworzone przez użytkownika
         List<Task> createdTasks = taskRepository.findByCreatedBy(user);
+        System.out.println("✏️ Zadania utworzone: " + createdTasks.size());
         stats.setUserTasksCreated((long) createdTasks.size());
 
-        // Komentarze użytkownika
+        // KROK 5: Komentarze
         List<Comment> userComments = commentRepository.findByAuthor(user);
+        System.out.println("💬 Komentarze: " + userComments.size());
         stats.setUserComments((long) userComments.size());
 
-        // Pliki przesłane przez użytkownika
+        // KROK 6: Pliki
         List<UploadedFile> userFiles = fileRepository.findByUploadedBy(user);
+        System.out.println("📎 Pliki: " + userFiles.size());
         stats.setUserFilesUploaded((long) userFiles.size());
 
-        // Task completion rate użytkownika
-        long completedByUser = assignedTasks.stream()
-                .filter(task -> "COMPLETED".equals(task.getStatus()))
+        // KROK 7: Completion rate
+        long completedTasks = assignedTasks.stream()
+                .filter(task -> "COMPLETED".equals(task.getStatus()) || "DONE".equals(task.getStatus()))
                 .count();
 
+        System.out.println("✅ Ukończone: " + completedTasks + " / " + assignedTasks.size());
+
         if (!assignedTasks.isEmpty()) {
-            double completionRate = (completedByUser * 100.0) / assignedTasks.size();
+            double completionRate = (completedTasks * 100.0) / assignedTasks.size();
             stats.setTaskCompletionRate(completionRate);
+            System.out.println("📊 Completion rate: " + String.format("%.1f%%", completionRate));
         }
 
-        // Przeterminowane zadania użytkownika
-        stats.setOverdueTasks(countOverdueTasksForUser(user));
+        // KROK 8: Przeterminowane
+        long overdueCount = countOverdueTasksForUser(user);
+        stats.setOverdueTasks(overdueCount);
+        System.out.println("⚠️ Przeterminowane: " + overdueCount);
+
+        System.out.println("========================================\n");
 
         return stats;
     }
 
-    // Ostatnia aktywność (dla wszystkich)
     public List<ActivityDto> getRecentActivity(int limit) {
         List<ActivityDto> activities = new ArrayList<>();
 
-        // Ostatnie zadania
         List<Task> recentTasks = taskRepository.findAll().stream()
                 .sorted(Comparator.comparing(Task::getCreatedAt).reversed())
-                .limit(limit / 2)
+                .limit(limit)
                 .collect(Collectors.toList());
 
         for (Task task : recentTasks) {
             ActivityDto activity = new ActivityDto();
             activity.setType("TASK_CREATED");
-            activity.setDescription("Utworzono zadanie: " + task.getTitle());
+            activity.setDescription("Zadanie utworzone: " + task.getTitle());
             activity.setTimestamp(task.getCreatedAt());
-            activity.setEntityType("Task");
-            activity.setEntityId(task.getId());
-            activity.setEntityName(task.getTitle());
-
-            if (task.getCreatedBy() != null) {
-                activity.setUser(userMapper.toDto(task.getCreatedBy()));
-            }
-
+            activity.setUser(userMapper.toDto(task.getCreatedBy()));
             activities.add(activity);
         }
 
-        // Ostatnie komentarze
-        List<Comment> recentComments = commentRepository.findAll().stream()
-                .sorted(Comparator.comparing(Comment::getCreatedAt).reversed())
-                .limit(limit / 2)
-                .collect(Collectors.toList());
-
-        for (Comment comment : recentComments) {
-            ActivityDto activity = new ActivityDto();
-            activity.setType("COMMENT_ADDED");
-            activity.setDescription("Dodano komentarz");
-            activity.setTimestamp(comment.getCreatedAt());
-            activity.setEntityType("Comment");
-            activity.setEntityId(comment.getId());
-
-            if (comment.getAuthor() != null) {
-                activity.setUser(userMapper.toDto(comment.getAuthor()));
-            }
-
-            if (comment.getTask() != null) {
-                activity.setEntityName(comment.getTask().getTitle());
-            }
-
-            activities.add(activity);
-        }
-
-        // Sortuj wszystkie aktywności po czasie
-        return activities.stream()
-                .sorted(Comparator.comparing(ActivityDto::getTimestamp).reversed())
-                .limit(limit)
-                .collect(Collectors.toList());
+        activities.sort(Comparator.comparing(ActivityDto::getTimestamp).reversed());
+        return activities.stream().limit(limit).collect(Collectors.toList());
     }
 
-    // Ostatnia aktywność użytkownika
     public List<ActivityDto> getUserRecentActivity(User user, int limit) {
         List<ActivityDto> activities = new ArrayList<>();
 
-        // Zadania użytkownika
         List<Task> userTasks = taskRepository.findByCreatedBy(user).stream()
                 .sorted(Comparator.comparing(Task::getCreatedAt).reversed())
-                .limit(limit / 2)
+                .limit(limit)
                 .collect(Collectors.toList());
 
         for (Task task : userTasks) {
@@ -200,59 +182,47 @@ public class DashboardService {
             activity.setType("TASK_CREATED");
             activity.setDescription("Utworzyłeś zadanie: " + task.getTitle());
             activity.setTimestamp(task.getCreatedAt());
-            activity.setEntityType("Task");
-            activity.setEntityId(task.getId());
-            activity.setEntityName(task.getTitle());
             activity.setUser(userMapper.toDto(user));
-
             activities.add(activity);
         }
 
-        // Komentarze użytkownika
         List<Comment> userComments = commentRepository.findByAuthor(user).stream()
                 .sorted(Comparator.comparing(Comment::getCreatedAt).reversed())
-                .limit(limit / 2)
+                .limit(limit)
                 .collect(Collectors.toList());
 
         for (Comment comment : userComments) {
             ActivityDto activity = new ActivityDto();
             activity.setType("COMMENT_ADDED");
-            activity.setDescription("Dodałeś komentarz");
+            activity.setDescription("Dodałeś komentarz do zadania: " + comment.getTask().getTitle());
             activity.setTimestamp(comment.getCreatedAt());
-            activity.setEntityType("Comment");
-            activity.setEntityId(comment.getId());
             activity.setUser(userMapper.toDto(user));
-
-            if (comment.getTask() != null) {
-                activity.setEntityName(comment.getTask().getTitle());
-            }
-
             activities.add(activity);
         }
 
-        return activities.stream()
-                .sorted(Comparator.comparing(ActivityDto::getTimestamp).reversed())
-                .limit(limit)
-                .collect(Collectors.toList());
+        activities.sort(Comparator.comparing(ActivityDto::getTimestamp).reversed());
+        return activities.stream().limit(limit).collect(Collectors.toList());
     }
 
-    // Helper methods
     private long countOverdueTasks() {
         LocalDateTime now = LocalDateTime.now();
         return taskRepository.findAll().stream()
                 .filter(task -> task.getDeadline() != null)
                 .filter(task -> task.getDeadline().isBefore(now))
                 .filter(task -> !"COMPLETED".equals(task.getStatus()))
+                .filter(task -> !"DONE".equals(task.getStatus()))
                 .filter(task -> !"CANCELLED".equals(task.getStatus()))
                 .count();
     }
 
     private long countOverdueTasksForUser(User user) {
         LocalDateTime now = LocalDateTime.now();
-        return taskRepository.findByAssignedUsersContaining(user).stream()
+        // Używamy tej samej metody co w getUserStats
+        return taskService.getTasksByAssignedUser(user).stream()
                 .filter(task -> task.getDeadline() != null)
                 .filter(task -> task.getDeadline().isBefore(now))
                 .filter(task -> !"COMPLETED".equals(task.getStatus()))
+                .filter(task -> !"DONE".equals(task.getStatus()))
                 .filter(task -> !"CANCELLED".equals(task.getStatus()))
                 .count();
     }
@@ -260,7 +230,7 @@ public class DashboardService {
     private long countTasksCompletedInPeriod(int days) {
         LocalDateTime startDate = LocalDateTime.now().minus(days, ChronoUnit.DAYS);
         return taskRepository.findAll().stream()
-                .filter(task -> "COMPLETED".equals(task.getStatus()))
+                .filter(task -> "COMPLETED".equals(task.getStatus()) || "DONE".equals(task.getStatus()))
                 .filter(task -> task.getCompletedAt() != null)
                 .filter(task -> task.getCompletedAt().isAfter(startDate))
                 .count();
