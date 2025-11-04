@@ -1,4 +1,4 @@
-// frontend/src/services/statusRequestService.ts
+// frontend/src/services/statusRequestService.ts - ZAKTUALIZOWANY
 import type { StatusChangeRequest, CreateStatusChangeRequest, ApiResponse } from '../types';
 
 const API_BASE_URL = '/api/v1/status-requests';
@@ -29,6 +29,22 @@ const statusRequestService = {
             return data.data || [];
         } catch (error) {
             console.error('Get task requests error:', error);
+            throw error;
+        }
+    },
+
+    // ✅ NOWE: Get requests for project
+    getProjectRequests: async (projectId: number): Promise<StatusChangeRequest[]> => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/project/${projectId}`, {
+                method: 'GET',
+                credentials: 'include',
+            });
+
+            const data = await handleResponse<StatusChangeRequest[]>(response);
+            return data.data || [];
+        } catch (error) {
+            console.error('Get project requests error:', error);
             throw error;
         }
     },

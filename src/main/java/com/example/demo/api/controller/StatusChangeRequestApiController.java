@@ -21,16 +21,20 @@ public class StatusChangeRequestApiController {
     private final TaskService taskService;
     private final UserService userService;
     private final ProjectMemberService projectMemberService;
+    private final ProjectService projectService;
 
     public StatusChangeRequestApiController(
             StatusChangeRequestService statusRequestService,
             TaskService taskService,
             UserService userService,
-            ProjectMemberService projectMemberService) {
+            ProjectMemberService projectMemberService,
+            ProjectService projectService) {
         this.statusRequestService = statusRequestService;
         this.taskService = taskService;
         this.userService = userService;
         this.projectMemberService = projectMemberService;
+        this.projectService = projectService;  // <- DODANE
+
     }
 
     // GET /api/v1/status-requests/task/{taskId}
@@ -128,6 +132,48 @@ public class StatusChangeRequestApiController {
             return createErrorResponse(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+    // Dodaj ten endpoint do StatusChangeRequestApiController.java
+
+    // GET /api/v1/status-requests/project/{projectId}
+    @GetMapping("/project/{projectId}")
+    public ResponseEntity<Map<String, Object>> getProjectRequests(@PathVariable Long projectId) {
+        try {
+            User currentUser = getTestUser();
+
+            Project project = projectService.getProjectById(projectId)
+                    .orElseThrow(() -> new RuntimeException("Project not found"));
+
+            checkProjectAccess(project, currentUser);
+
+            ProjectRole userRole = getUserRoleInProject(project, currentUser);
+
+            // Tylko admin może zobaczyć prośby
+            if (userRole != ProjectRole.ADMIN) {
+                return createErrorResponse("Only admins can view status change requests", HttpStatus.FORBIDDEN);
+            }
+
+            // Pobierz wszystkie zadania projektu
+            List<Task> projectTasks = taskService.getTasksByProject(project);
+
+            // Pobierz prośby dla tych zadań
+            List<StatusChangeRequest> requests = projectTasks.stream()
+                    .flatMap(task -> statusRequestService.getRequestsByTask(task).stream())
+                    .collect(Collectors.toList());
+
+            List<Map<String, Object>> requestDtos = requests.stream()
+                    .map(this::toDto)
+                    .collect(Collectors.toList());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Project requests retrieved successfully");
+            response.put("data", requestDtos);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            return createErrorResponse(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 
     // POST /api/v1/status-requests/{id}/reject
     @PostMapping("/{id}/reject")
@@ -174,6 +220,19 @@ public class StatusChangeRequestApiController {
                 .orElse(null);
         if (membership == null && user.getSystemRole() != SystemRole.SUPER_ADMIN) {
             throw new IllegalArgumentException("Access denied");
+        }
+    }
+    private void checkProjectAccess(Project project, User user) {
+        // Super admin ma dostęp do wszystkiego
+        if (user.getSystemRole() == SystemRole.SUPER_ADMIN) {
+            return;
+        }
+
+        // Sprawdź czy użytkownik jest członkiem projektu
+        boolean isMember = projectMemberService.getProjectMember(project, user).isPresent();
+
+        if (!isMember) {
+            throw new IllegalArgumentException("User does not have access to this project");
         }
     }
 
