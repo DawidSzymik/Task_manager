@@ -43,6 +43,27 @@ const ProjectDetailsPage: React.FC = () => {
 
     const [error, setError] = useState<string | null>(null);
     const [actionInProgress, setActionInProgress] = useState(false);
+    const groupUsersByTeam = (users: User[]) => {
+        const teamGroups: { [teamName: string]: User[] } = {};
+        const usersWithoutTeam: User[] = [];
+
+        users.forEach(user => {
+            if (user.teams && user.teams.length > 0) {
+                user.teams.forEach(team => {
+                    if (!teamGroups[team.name]) {
+                        teamGroups[team.name] = [];
+                    }
+                    if (!teamGroups[team.name].some(u => u.id === user.id)) {
+                        teamGroups[team.name].push(user);
+                    }
+                });
+            } else {
+                usersWithoutTeam.push(user);
+            }
+        });
+
+        return { teamGroups, usersWithoutTeam };
+    };
 
     useEffect(() => {
         if (id) {
@@ -647,13 +668,63 @@ const ProjectDetailsPage: React.FC = () => {
                                         onChange={(e) => setSelectedUserId(parseInt(e.target.value))}
                                         className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
                                         required
+                                        size={8}
                                     >
-                                        <option value="">-- Wybierz --</option>
-                                        {availableUsers.map((user: User) => (
-                                            <option key={user.id} value={user.id}>
-                                                {user.username} ({user.email})
-                                            </option>
-                                        ))}
+                                        <option value="">-- Wybierz użytkownika --</option>
+                                        {(() => {
+                                            const { teamGroups, usersWithoutTeam } = groupUsersByTeam(availableUsers);
+                                            const sortedTeamNames = Object.keys(teamGroups).sort();
+
+                                            return (
+                                                <>
+                                                    {/* Użytkownicy pogrupowani według zespołów */}
+                                                    {sortedTeamNames.map((teamName) => {
+                                                        const sortedUsers = [...teamGroups[teamName]].sort((a, b) =>
+                                                            a.username.localeCompare(b.username)
+                                                        );
+
+                                                        return (
+                                                            <optgroup
+                                                                key={teamName}
+                                                                label={teamName}
+                                                                style={{ fontWeight: 'bold', color: '#10b981' }}
+                                                            >
+                                                                {sortedUsers.map(user => (
+                                                                    <option
+                                                                        key={user.id}
+                                                                        value={user.id}
+                                                                        style={{ paddingLeft: '20px', fontWeight: 'normal' }}
+                                                                    >
+                                                                        &nbsp;&nbsp;{user.username} ({user.email})
+                                                                    </option>
+                                                                ))}
+                                                            </optgroup>
+                                                        );
+                                                    })}
+
+                                                    {/* Użytkownicy bez zespołu */}
+                                                    {usersWithoutTeam.length > 0 && (
+                                                        <optgroup
+                                                            label="Użytkownicy bez zespołu"
+                                                            style={{ fontWeight: 'bold', color: '#6b7280' }}
+                                                        >
+                                                            {usersWithoutTeam
+                                                                .sort((a, b) => a.username.localeCompare(b.username))
+                                                                .map(user => (
+                                                                    <option
+                                                                        key={user.id}
+                                                                        value={user.id}
+                                                                        style={{ paddingLeft: '20px', fontWeight: 'normal' }}
+                                                                    >
+                                                                        &nbsp;&nbsp;{user.username} ({user.email})
+                                                                    </option>
+                                                                ))
+                                                            }
+                                                        </optgroup>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
                                     </select>
                                 </div>
 

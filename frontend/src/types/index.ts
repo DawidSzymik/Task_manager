@@ -10,6 +10,8 @@ export interface User {
     active?: boolean;
     lastLogin?: string;
     createdAt?: string;
+    teamNames?: string[];  // Zachowane dla kompatybilności wstecznej
+    teams?: SimpleTeam[];  // ⭐ DODANE - uproszczone obiekty zespołów
 }
 
 // Team Types
@@ -104,7 +106,11 @@ export interface Task {
     hasDeadlinePassed?: boolean;
     daysUntilDeadline?: number;
 }
-
+// Uproszczony typ dla zespołu (tylko id i name)
+export interface SimpleTeam {
+    id: number;
+    name: string;
+}
 export interface CreateTaskRequest {
     title: string;
     description: string;
