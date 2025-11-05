@@ -71,7 +71,7 @@ public class TeamMapper {
         return dto;
     }
 
-    // Entity to DTO with members and permissions
+    // ✅ NOWA METODA: Entity to DTO with members, permissions, and stats
     public TeamDto toDtoComplete(Team team, User currentUser) {
         TeamDto dto = toDtoWithMembers(team);
 
@@ -84,6 +84,14 @@ public class TeamMapper {
         dto.setCanDelete(isCreator || isSuperAdmin);
         dto.setMember(isMember);
 
+        return dto;
+    }
+
+    // ✅ NOWA METODA: Entity to DTO with stats (projectCount, taskCount)
+    public TeamDto toDtoWithStats(Team team, User currentUser, int projectCount, int taskCount) {
+        TeamDto dto = toDtoComplete(team, currentUser);
+        dto.setProjectCount(projectCount);
+        dto.setTaskCount(taskCount);
         return dto;
     }
 

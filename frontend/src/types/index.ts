@@ -1,4 +1,4 @@
-// src/types/index.ts
+// src/types/index.ts - ZAKTUALIZOWANA WERSJA
 
 // User Types
 export interface User {
@@ -10,11 +10,11 @@ export interface User {
     active?: boolean;
     lastLogin?: string;
     createdAt?: string;
-    teamNames?: string[];  // Zachowane dla kompatybilności wstecznej
-    teams?: SimpleTeam[];  // ⭐ DODANE - uproszczone obiekty zespołów
+    teamNames?: string[];
+    teams?: SimpleTeam[];
 }
 
-// Team Types
+// Team Types - DODANE projectCount i taskCount
 export interface Team {
     id: number;
     name: string;
@@ -23,6 +23,8 @@ export interface Team {
     createdBy?: User;
     members?: User[];
     memberCount?: number;
+    projectCount?: number;  // ✅ DODANE
+    taskCount?: number;     // ✅ DODANE
     isCreator?: boolean;
     canEdit?: boolean;
     canDelete?: boolean;
@@ -40,6 +42,12 @@ export interface UpdateTeamRequest {
 
 export interface AddMemberRequest {
     userId: number;
+}
+
+// Uproszczony typ dla zespołu (tylko id i name)
+export interface SimpleTeam {
+    id: number;
+    name: string;
 }
 
 // Project Role Type
@@ -106,18 +114,14 @@ export interface Task {
     hasDeadlinePassed?: boolean;
     daysUntilDeadline?: number;
 }
-// Uproszczony typ dla zespołu (tylko id i name)
-export interface SimpleTeam {
-    id: number;
-    name: string;
-}
+
 export interface CreateTaskRequest {
     title: string;
     description: string;
     priority: TaskPriority;
     deadline: string;
     projectId: number;
-    assignedUserIds?: number[];  // ZMIANA: zamiast assignedToId
+    assignedUserIds?: number[];
 }
 
 export interface UpdateTaskRequest {
@@ -183,7 +187,6 @@ export interface PaginatedResponse<T> {
     currentPage?: number;
     totalPages?: number;
 }
-// Dodaj do frontend/src/types/index.ts
 
 // Status Change Request Types
 export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';

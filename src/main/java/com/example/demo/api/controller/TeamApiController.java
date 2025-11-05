@@ -28,15 +28,24 @@ public class TeamApiController {
     private final UserService userService;
     private final TeamMapper teamMapper;
     private final UserMapper userMapper;
+    private final ProjectMemberService projectMemberService;  // ✅ DODAJ
+    private final ProjectService projectService;              // ✅ DODAJ
+    private final TaskService taskService;
 
     public TeamApiController(TeamService teamService,
                              UserService userService,
                              TeamMapper teamMapper,
+                             ProjectMemberService projectMemberService,  // ✅ DODAJ
+                             ProjectService projectService,              // ✅ DODAJ
+                             TaskService taskService,
                              UserMapper userMapper) {
         this.teamService = teamService;
         this.userService = userService;
         this.teamMapper = teamMapper;
         this.userMapper = userMapper;
+        this.projectMemberService = projectMemberService;  // ✅ DODAJ
+        this.projectService = projectService;              // ✅ DODAJ
+        this.taskService = taskService;
     }
 
     // GET /api/v1/teams - Get all teams
@@ -90,7 +99,43 @@ public class TeamApiController {
             // Check if user has access to this team
             checkTeamAccess(team, currentUser);
 
-            TeamDto teamDto = teamMapper.toDtoComplete(team, currentUser);
+            // ✅ NOWA LOGIKA: Policz projekty i zadania dla zespołu
+            int projectCount = 0;
+            int taskCount = 0;
+
+            if (team.getMembers() != null && !team.getMembers().isEmpty()) {
+                // Zbierz wszystkie projekty członków zespołu
+                java.util.Set<Long> projectIds = new java.util.HashSet<>();
+
+                for (User member : team.getMembers()) {
+                    List<com.example.demo.model.ProjectMember> memberProjects =
+                            projectMemberService.getUserProjects(member);
+
+                    for (com.example.demo.model.ProjectMember pm : memberProjects) {
+                        if (pm.getProject() != null) {
+                            projectIds.add(pm.getProject().getId());
+                        }
+                    }
+                }
+
+                projectCount = projectIds.size();
+
+                // Policz wszystkie zadania przypisane do projektów zespołu
+                for (Long projectId : projectIds) {
+                    com.example.demo.model.Project project =
+                            projectService.getProjectById(projectId)
+                                    .orElse(null);
+
+                    if (project != null) {
+                        List<com.example.demo.model.Task> projectTasks =
+                                taskService.getTasksByProject(project);
+                        taskCount += projectTasks.size();
+                    }
+                }
+            }
+
+            // ✅ Użyj nowej metody toDtoWithStats
+            TeamDto teamDto = teamMapper.toDtoWithStats(team, currentUser, projectCount, taskCount);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -108,6 +153,7 @@ public class TeamApiController {
             return createErrorResponse("Failed to retrieve team: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
 
     // POST /api/v1/teams - Create new team
     @PostMapping
