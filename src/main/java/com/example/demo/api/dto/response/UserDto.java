@@ -22,6 +22,7 @@ public class UserDto {
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime lastLogin;
+    private List<SimpleTeamDto> teams; // DODANE - uproszczone obiekty zespołów
 
     private List<String> teamNames;
     private int projectCount;
@@ -64,6 +65,9 @@ public class UserDto {
 
     public List<String> getTeamNames() { return teamNames; }
     public void setTeamNames(List<String> teamNames) { this.teamNames = teamNames; }
+
+    public List<SimpleTeamDto> getTeams() { return teams; }
+    public void setTeams(List<SimpleTeamDto> teams) { this.teams = teams; }
 
     public int getProjectCount() { return projectCount; }
     public void setProjectCount(int projectCount) { this.projectCount = projectCount; }

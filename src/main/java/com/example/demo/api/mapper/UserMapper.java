@@ -3,6 +3,7 @@ package com.example.demo.api.mapper;
 
 import com.example.demo.api.dto.request.CreateUserRequest;
 import com.example.demo.api.dto.request.UpdateUserRequest;
+import com.example.demo.api.dto.response.SimpleTeamDto;
 import com.example.demo.api.dto.response.UserDto;
 import com.example.demo.model.User;
 import com.example.demo.model.Team;
@@ -34,7 +35,13 @@ public class UserMapper {
                     .collect(Collectors.toList());
             dto.setTeamNames(teamNames);
         }
-
+// Mapuj na uproszczone obiekty zespołów
+        if (user.getTeams() != null) {
+            List<SimpleTeamDto> teams = user.getTeams().stream()
+                    .map(team -> new SimpleTeamDto(team.getId(), team.getName()))
+                    .collect(Collectors.toList());
+            dto.setTeams(teams);
+        }
         return dto;
     }
 
