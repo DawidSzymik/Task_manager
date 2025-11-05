@@ -88,9 +88,11 @@ const adminService = {
         try {
             const params = new URLSearchParams();
             if (search) params.append('search', search);
-            if (active !== undefined) params.append('active', String(active));
+            if (active !== undefined) params.append('active', active.toString());
 
-            const response = await fetch(`${API_BASE_URL}/users?${params.toString()}`, {
+            const url = params.toString() ? `${API_BASE_URL}/users?${params}` : `${API_BASE_URL}/users`;
+
+            const response = await fetch(url, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -235,9 +237,12 @@ const adminService = {
 
     // ========== TASK MANAGEMENT ==========
 
+    // ✅ POPRAWIONA METODA - przekazuje assignedToMe=false dla admina, żeby widział WSZYSTKIE zadania
     getAllTasks: async (): Promise<TaskDto[]> => {
         try {
-            const response = await fetch(`${TASK_API_URL}`, {
+            // KLUCZOWA ZMIANA: dodajemy parametr assignedToMe=false
+            // To sprawi, że SUPER_ADMIN zobaczy wszystkie zadania z całego systemu
+            const response = await fetch(`${TASK_API_URL}?assignedToMe=false`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

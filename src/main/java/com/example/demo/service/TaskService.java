@@ -38,8 +38,14 @@ public class TaskService {
     public List<Task> getTasksByProject(Project project) {
         return taskRepository.findByProject(project);
     }
+
     public List<Task> getTasksByAssignedUser(User user) {
         return taskRepository.findByAssignedUsersContaining(user);
+    }
+
+    // ✅ NOWA METODA - Pobiera WSZYSTKIE zadania z systemu (dla SUPER_ADMIN)
+    public List<Task> getAllTasks() {
+        return taskRepository.findAll();
     }
 
     public Task saveTask(Task task) {
@@ -60,13 +66,11 @@ public class TaskService {
         taskRepository.delete(task);
     }
 
-    // POPRAW TĘ METODĘ - zmień parametr
     @Transactional
     public void deleteCommentsForTask(Task task) {
         commentRepository.deleteByTask(task);
     }
 
-    // DODAJ TĘ METODĘ
     public List<Task> findAllByProject(Project project) {
         return taskRepository.findByProject(project);
     }

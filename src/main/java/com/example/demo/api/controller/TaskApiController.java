@@ -114,7 +114,7 @@ public class TaskApiController {
     }
 
     // GET /api/v1/tasks - Get all tasks (with optional filters)
-    // ✅ KLUCZOWA ZMIANA: domyślnie pokazuje TYLKO zadania przypisane do zalogowanego użytkownika
+    // ✅ POPRAWIONA LOGIKA: SUPER_ADMIN widzi WSZYSTKIE zadania z systemu
     @GetMapping
     public ResponseEntity<Map<String, Object>> getAllTasks(
             @RequestParam(value = "projectId", required = false) Long projectId,
@@ -128,16 +128,31 @@ public class TaskApiController {
 
             List<Task> tasks;
 
-            // ✅ KLUCZOWA LOGIKA:
-            // - assignedToMe=true LUB brak parametru → tylko zadania przypisane do użytkownika
-            // - assignedToMe=false → wszystkie zadania z projektów użytkownika
-            if (assignedToMe == null || assignedToMe) {
+            // ✅ NOWA LOGIKA DLA SUPER_ADMIN
+            // Jeśli użytkownik jest SUPER_ADMIN i assignedToMe=false, zwróć WSZYSTKIE zadania z systemu
+            if (currentUser.getSystemRole() == SystemRole.SUPER_ADMIN && Boolean.FALSE.equals(assignedToMe)) {
+                System.out.println("🔥 SUPER_ADMIN requesting ALL system tasks");
+
+                if (projectId != null) {
+                    // SUPER_ADMIN + projectId: wszystkie zadania z konkretnego projektu
+                    Project project = projectService.getProjectById(projectId)
+                            .orElseThrow(() -> new RuntimeException("Project with ID " + projectId + " not found"));
+                    tasks = taskService.getTasksByProject(project);
+                    System.out.println("✅ Found " + tasks.size() + " tasks in project " + projectId);
+                } else {
+                    // SUPER_ADMIN bez projectId: WSZYSTKIE zadania z CAŁEGO systemu
+                    tasks = taskService.getAllTasks();
+                    System.out.println("✅ Found " + tasks.size() + " TOTAL tasks in system");
+                }
+            }
+            // ✅ ISTNIEJĄCA LOGIKA DLA ZWYKŁYCH UŻYTKOWNIKÓW (bez zmian)
+            else if (assignedToMe == null || assignedToMe) {
                 // Domyślnie: pokaż TYLKO zadania gdzie użytkownik jest w assignedUsers
-                System.out.println("📋 Filtruję zadania: TYLKO przypisane do użytkownika " + currentUser.getUsername());
+                System.out.println("📋 Filtering tasks: ONLY assigned to user " + currentUser.getUsername());
                 tasks = taskService.getTasksByAssignedUser(currentUser);
-                System.out.println("✅ Znaleziono " + tasks.size() + " zadań przypisanych do użytkownika");
+                System.out.println("✅ Found " + tasks.size() + " tasks assigned to user");
             } else if (projectId != null) {
-                // assignedToMe=false + projectId: wszystkie zadania z konkretnego projektu
+                // assignedToMe=false + projectId: wszystkie zadania z konkretnego projektu (tylko dla członków)
                 Project project = projectService.getProjectById(projectId)
                         .orElseThrow(() -> new RuntimeException("Project with ID " + projectId + " not found"));
                 checkProjectAccess(project, currentUser);
@@ -305,96 +320,38 @@ public class TaskApiController {
             task.setTitle(request.getTitle());
             task.setDescription(request.getDescription());
             task.setPriority(request.getPriority() != null ? request.getPriority() : "MEDIUM");
-            task.setStatus("NEW");
-            task.setDeadline(request.getDeadline());
+            task.setStatus("TODO"); // Default status for new tasks
             task.setProject(project);
             task.setCreatedBy(creator);
+            task.setDeadline(request.getDeadline());
 
-            // Handle assignments
+            // Handle assignment
             if (request.getAssignedToId() != null) {
                 User assignedUser = userService.getUserById(request.getAssignedToId())
                         .orElseThrow(() -> new RuntimeException("User with ID " + request.getAssignedToId() + " not found"));
                 task.setAssignedTo(assignedUser);
             }
 
+            // Obsługa wielu użytkowników
             if (request.getAssignedUserIds() != null && !request.getAssignedUserIds().isEmpty()) {
+                Set<User> assignedUsers = new HashSet<>();
                 for (Long userId : request.getAssignedUserIds()) {
                     User assignedUser = userService.getUserById(userId)
                             .orElseThrow(() -> new RuntimeException("User with ID " + userId + " not found"));
-                    task.getAssignedUsers().add(assignedUser);
+                    assignedUsers.add(assignedUser);
                 }
+                task.setAssignedUsers(assignedUsers);
             }
 
             Task savedTask = taskService.saveTask(task);
-
-            System.out.println("\n========================================");
-            System.out.println("🔵 Zadanie zapisane - rozpoczynam wysyłanie powiadomień");
-            System.out.println("Zadanie: " + savedTask.getTitle() + " (ID: " + savedTask.getId() + ")");
-            System.out.println("Twórca: " + creator.getUsername() + " (ID: " + creator.getId() + ")");
-            System.out.println("Projekt: " + project.getName() + " (ID: " + project.getId() + ")");
-
-            // Sprawdź przypisanych użytkowników
-            Set<User> assignedUsers = savedTask.getAssignedUsers();
-            System.out.println("📋 Przypisanych użytkowników: " + (assignedUsers != null ? assignedUsers.size() : 0));
-            if (assignedUsers != null && !assignedUsers.isEmpty()) {
-                for (User u : assignedUsers) {
-                    System.out.println("  - " + u.getUsername() + " (ID: " + u.getId() + ")");
-                }
-            }
-
-            // ✅ WYSYŁANIE POWIADOMIEŃ - nowe zadanie w projekcie
-            try {
-                System.out.println("\n🔔 Pobieram członków projektu...");
-                List<ProjectMember> projectMembers = projectMemberService.getProjectMembers(project);
-                System.out.println("Członków projektu: " + projectMembers.size());
-
-                int notificationsSent = 0;
-                for (ProjectMember member : projectMembers) {
-                    User memberUser = member.getUser();
-                    System.out.println("\n  👤 Sprawdzam członka: " + memberUser.getUsername() +
-                            " (ID: " + memberUser.getId() + ", rola: " + member.getRole() + ")");
-
-                    // Powiadom tylko członków projektu (nie twórcy zadania)
-                    if (memberUser.equals(creator)) {
-                        System.out.println("  ⏭️ Pomijam - to twórca zadania");
-                        continue;
-                    }
-
-                    System.out.println("  📤 Wysyłam powiadomienie...");
-                    try {
-                        Notification notification = notificationService.createNotification(
-                                memberUser,
-                                "📋 Nowe zadanie w projekcie",
-                                creator.getUsername() + " utworzył zadanie \"" + task.getTitle() +
-                                        "\" w projekcie \"" + project.getName() + "\"",
-                                NotificationType.TASK_ASSIGNED,
-                                savedTask.getId(),
-                                "/tasks/view/" + savedTask.getId()
-                        );
-                        System.out.println("  ✅ Powiadomienie wysłane (ID: " + notification.getId() + ")");
-                        notificationsSent++;
-                    } catch (Exception e) {
-                        System.err.println("  ❌ Błąd wysyłania powiadomienia: " + e.getMessage());
-                        e.printStackTrace();
-                    }
-                }
-                System.out.println("\n✅ Wysłano łącznie " + notificationsSent + " powiadomień o nowym zadaniu");
-            } catch (Exception e) {
-                System.err.println("❌ KRYTYCZNY BŁĄD w sekcji powiadomień: " + e.getMessage());
-                e.printStackTrace();
-            }
-
-            System.out.println("========================================\n");
-
             TaskDto taskDto = taskMapper.toDtoWithStats(savedTask);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Task created successfully");
             response.put("data", taskDto);
-            response.put("currentUser", creator.getUsername());
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            return ResponseEntity.ok(response);
 
         } catch (IllegalArgumentException e) {
             return createErrorResponse(e.getMessage(), HttpStatus.FORBIDDEN);
@@ -419,57 +376,32 @@ public class TaskApiController {
         try {
             User currentUser = getCurrentUser(userDetails);
 
-            // Validate request
-            String validationError = request.getValidationError();
-            if (validationError != null) {
-                return createErrorResponse(validationError, HttpStatus.BAD_REQUEST);
-            }
-
-            if (!request.hasUpdates()) {
-                return createErrorResponse("No updates provided", HttpStatus.BAD_REQUEST);
-            }
-
             Task task = taskService.getTaskById(id)
                     .orElseThrow(() -> new RuntimeException("Task with ID " + id + " not found"));
 
-            // Check user access to project
-            checkProjectAccess(task.getProject(), currentUser);
+            checkTaskAccess(task, currentUser);
 
-            // Check if user can modify tasks
-            ProjectMember membership = projectMemberService.getProjectMember(task.getProject(), currentUser)
-                    .orElseThrow(() -> new RuntimeException("User is not a member of this project"));
+            ProjectRole userRole = getUserRoleInProject(task.getProject(), currentUser);
 
-            if (membership.getRole() == ProjectRole.VIEWER) {
-                return createErrorResponse("Viewers cannot modify tasks", HttpStatus.FORBIDDEN);
-            }
-
-            // ✅ NOWA LOGIKA: Sprawdź, czy próbuje się zmienić status
+            // Check permissions for status changes
             if (request.getStatus() != null && !request.getStatus().equals(task.getStatus())) {
-                // Tylko ADMIN może bezpośrednio zmieniać status
-                if (membership.getRole() != ProjectRole.ADMIN) {
+                if (userRole == ProjectRole.VIEWER) {
                     return createErrorResponse(
-                            "Members cannot change task status directly. Please use status change request endpoint: POST /api/v1/status-requests",
+                            "Viewers cannot change task status. Please use status change request endpoint: POST /api/v1/status-requests",
                             HttpStatus.FORBIDDEN
                     );
                 }
             }
 
-            // Update task fields
+            // Update fields
             if (request.getTitle() != null) {
                 task.setTitle(request.getTitle());
             }
             if (request.getDescription() != null) {
                 task.setDescription(request.getDescription());
             }
-            // ⚠️ WAŻNE: Status może być zmieniony tylko przez ADMIN (sprawdzono wyżej)
-            // ✅ Blokuj zmianę statusu dla MEMBER
-            if (request.getStatus() != null && !request.getStatus().equals(task.getStatus())) {
-                if (membership.getRole() != ProjectRole.ADMIN) {
-                    return createErrorResponse(
-                            "Members cannot change task status directly. Please use status change request endpoint: POST /api/v1/status-requests",
-                            HttpStatus.FORBIDDEN
-                    );
-                }
+            if (request.getStatus() != null) {
+                task.setStatus(request.getStatus());
             }
             if (request.getPriority() != null) {
                 task.setPriority(request.getPriority());
@@ -516,6 +448,7 @@ public class TaskApiController {
             return createErrorResponse("Failed to update task: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
     // ============================================================================
     // DELETE ENDPOINT - Delete task
     // ============================================================================
@@ -531,13 +464,11 @@ public class TaskApiController {
             Task task = taskService.getTaskById(id)
                     .orElseThrow(() -> new RuntimeException("Task with ID " + id + " not found"));
 
-            checkProjectAccess(task.getProject(), currentUser);
+            checkTaskAccess(task, currentUser);
 
-            ProjectMember membership = projectMemberService.getProjectMember(task.getProject(), currentUser)
-                    .orElseThrow(() -> new RuntimeException("User is not a member of this project"));
-
-            if (membership.getRole() != ProjectRole.ADMIN) {
-                return createErrorResponse("Only admins can delete tasks", HttpStatus.FORBIDDEN);
+            ProjectRole userRole = getUserRoleInProject(task.getProject(), currentUser);
+            if (userRole == ProjectRole.VIEWER) {
+                return createErrorResponse("Viewers cannot delete tasks", HttpStatus.FORBIDDEN);
             }
 
             taskService.deleteTask(id);
@@ -545,7 +476,6 @@ public class TaskApiController {
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Task deleted successfully");
-            response.put("currentUser", currentUser.getUsername());
 
             return ResponseEntity.ok(response);
 

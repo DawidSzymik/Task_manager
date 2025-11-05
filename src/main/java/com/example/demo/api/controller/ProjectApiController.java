@@ -386,10 +386,18 @@ public class ProjectApiController {
     }
 
     // PUT /api/v1/projects/{projectId}/members/{memberId}/role - Change member role
-    @PutMapping("/{projectId}/members/{memberId}/role")
+    // ============================================================================
+// POPRAWIONA METODA changeMemberRole w ProjectApiController
+// Wklej tę metodę do src/main/java/com/example/demo/api/controller/ProjectApiController.java
+// Zastąp istniejącą metodę changeMemberRole
+// ============================================================================
+
+    // PUT /api/v1/projects/{projectId}/members/{userId}/role - Change member role
+    // ✅ POPRAWIONE: Teraz przyjmuje userId zamiast memberId
+    @PutMapping("/{projectId}/members/{userId}/role")
     public ResponseEntity<Map<String, Object>> changeMemberRole(
             @PathVariable Long projectId,
-            @PathVariable Long memberId,
+            @PathVariable Long userId,  // ✅ ZMIENIONE z memberId na userId
             @RequestBody Map<String, String> request,
             @AuthenticationPrincipal UserDetails userDetails) {
 
@@ -399,17 +407,42 @@ public class ProjectApiController {
             Project project = projectService.getProjectById(projectId)
                     .orElseThrow(() -> new RuntimeException("Project with ID " + projectId + " not found"));
 
-            checkProjectAccess(project, currentUser);
+            // ✅ POPRAWIONE: SUPER_ADMIN może zmieniać role w dowolnym projekcie
+            boolean isSuperAdmin = currentUser.getSystemRole() == SystemRole.SUPER_ADMIN;
 
-            if (!isProjectAdmin(project, currentUser)) {
-                return createErrorResponse("Only project administrators can change member roles", HttpStatus.FORBIDDEN);
+            if (!isSuperAdmin) {
+                // Zwykli użytkownicy muszą być członkami projektu
+                checkProjectAccess(project, currentUser);
+
+                // I muszą być adminami projektu
+                if (!isProjectAdmin(project, currentUser)) {
+                    return createErrorResponse("Only project administrators can change member roles", HttpStatus.FORBIDDEN);
+                }
             }
 
             String newRoleStr = request.get("role");
             ProjectRole newRole = ProjectRole.valueOf(newRoleStr);
 
-            ProjectMember updatedMember = projectMemberService.changeMemberRole(memberId, newRole);
+            // ✅ NOWA LOGIKA: Znajdź użytkownika
+            User userToUpdate = userService.getUserById(userId)
+                    .orElseThrow(() -> new RuntimeException("User with ID " + userId + " not found"));
+
+            // Znajdź członkostwo
+            ProjectMember memberToUpdate = projectMemberService.getProjectMember(project, userToUpdate)
+                    .orElseThrow(() -> new RuntimeException("User is not a member of this project"));
+
+            // Sprawdź czy to nie twórca projektu próbujący zmienić swoją rolę na nie-admin
+            if (project.getCreatedBy().equals(userToUpdate) && newRole != ProjectRole.ADMIN) {
+                return createErrorResponse("Cannot change project creator's role from ADMIN", HttpStatus.FORBIDDEN);
+            }
+
+            // Zaktualizuj rolę używając istniejącej metody
+            ProjectMember updatedMember = projectMemberService.changeMemberRole(memberToUpdate.getId(), newRole);
             ProjectMemberDto memberDto = projectMapper.toMemberDto(updatedMember);
+
+            // Log dla debugowania
+            System.out.println("✅ Role of " + userToUpdate.getUsername() + " changed to " + newRole +
+                    " in project " + project.getName() + " by " + currentUser.getUsername());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -434,6 +467,13 @@ public class ProjectApiController {
     // ============================================================================
 
     // DELETE /api/v1/projects/{id} - Delete project
+    // ============================================================================
+// POPRAWIONA METODA deleteProject w ProjectApiController
+// Wklej tę metodę do src/main/java/com/example/demo/api/controller/ProjectApiController.java
+// Zastąp istniejącą metodę deleteProject
+// ============================================================================
+
+    // DELETE /api/v1/projects/{id} - Delete project
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, Object>> deleteProject(
             @PathVariable Long id,
@@ -445,11 +485,25 @@ public class ProjectApiController {
             Project project = projectService.getProjectById(id)
                     .orElseThrow(() -> new RuntimeException("Project with ID " + id + " not found"));
 
-            checkProjectAccess(project, currentUser);
+            // ✅ POPRAWIONA LOGIKA: SUPER_ADMIN może usuwać dowolne projekty
+            // Sprawdzamy czy użytkownik jest SUPER_ADMIN lub adminem projektu
+            boolean isSuperAdmin = currentUser.getSystemRole() == SystemRole.SUPER_ADMIN;
+            boolean isProjectAdministrator = isProjectAdmin(project, currentUser);
 
-            // Only admins can delete projects
-            if (!isProjectAdmin(project, currentUser)) {
-                return createErrorResponse("Only project administrators can delete projects", HttpStatus.FORBIDDEN);
+            if (!isSuperAdmin && !isProjectAdministrator) {
+                // Jeśli użytkownik nie jest ani SUPER_ADMIN ani adminem projektu
+                if (projectMemberService.getProjectMember(project, currentUser).isEmpty()) {
+                    return createErrorResponse("You are not a member of this project", HttpStatus.FORBIDDEN);
+                } else {
+                    return createErrorResponse("Only project administrators can delete projects", HttpStatus.FORBIDDEN);
+                }
+            }
+
+            // Log dla debugowania
+            if (isSuperAdmin) {
+                System.out.println("🔥 SUPER_ADMIN " + currentUser.getUsername() + " deleting project: " + project.getName());
+            } else {
+                System.out.println("👨‍💼 Project admin " + currentUser.getUsername() + " deleting project: " + project.getName());
             }
 
             projectService.deleteProject(id);
@@ -470,12 +524,19 @@ public class ProjectApiController {
             return createErrorResponse("Failed to delete project: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-
     // DELETE /api/v1/projects/{projectId}/members/{memberId} - Remove member from project
-    @DeleteMapping("/{projectId}/members/{memberId}")
+    // ============================================================================
+// POPRAWIONA METODA removeMemberFromProject w ProjectApiController
+// Wklej tę metodę do src/main/java/com/example/demo/api/controller/ProjectApiController.java
+// Zastąp istniejącą metodę removeMemberFromProject
+// ============================================================================
+
+    // DELETE /api/v1/projects/{projectId}/members/{userId} - Remove member from project
+    // ✅ POPRAWIONE: Teraz przyjmuje userId zamiast memberId
+    @DeleteMapping("/{projectId}/members/{userId}")
     public ResponseEntity<Map<String, Object>> removeMemberFromProject(
             @PathVariable Long projectId,
-            @PathVariable Long memberId,
+            @PathVariable Long userId,  // ✅ ZMIENIONE z memberId na userId
             @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
@@ -484,13 +545,40 @@ public class ProjectApiController {
             Project project = projectService.getProjectById(projectId)
                     .orElseThrow(() -> new RuntimeException("Project with ID " + projectId + " not found"));
 
-            checkProjectAccess(project, currentUser);
+            // ✅ POPRAWIONE: SUPER_ADMIN może usuwać członków z dowolnego projektu
+            boolean isSuperAdmin = currentUser.getSystemRole() == SystemRole.SUPER_ADMIN;
 
-            if (!isProjectAdmin(project, currentUser)) {
-                return createErrorResponse("Only project administrators can remove members", HttpStatus.FORBIDDEN);
+            if (!isSuperAdmin) {
+                // Zwykli użytkownicy muszą być członkami projektu
+                checkProjectAccess(project, currentUser);
+
+                // I muszą być adminami projektu
+                if (!isProjectAdmin(project, currentUser)) {
+                    return createErrorResponse("Only project administrators can remove members", HttpStatus.FORBIDDEN);
+                }
             }
 
-            projectMemberService.removeMember(memberId);
+            // ✅ NOWA LOGIKA: Znajdź użytkownika do usunięcia
+            User userToRemove = userService.getUserById(userId)
+                    .orElseThrow(() -> new RuntimeException("User with ID " + userId + " not found"));
+
+            // Sprawdź czy użytkownik jest członkiem projektu
+            Optional<ProjectMember> membershipOpt = projectMemberService.getProjectMember(project, userToRemove);
+            if (membershipOpt.isEmpty()) {
+                return createErrorResponse("User is not a member of this project", HttpStatus.NOT_FOUND);
+            }
+
+            // Nie można usunąć twórcy projektu
+            if (project.getCreatedBy().equals(userToRemove)) {
+                return createErrorResponse("Cannot remove project creator", HttpStatus.FORBIDDEN);
+            }
+
+            // Usuń członka używając istniejącej metody
+            projectMemberService.removeMemberFromProject(project, userToRemove);
+
+            // Log dla debugowania
+            System.out.println("✅ User " + userToRemove.getUsername() + " removed from project " + project.getName() +
+                    " by " + currentUser.getUsername());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
