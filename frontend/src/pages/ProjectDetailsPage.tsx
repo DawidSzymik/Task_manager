@@ -8,6 +8,7 @@ import projectService from '../services/projectService';
 import userService from '../services/userService';
 import taskService from '../services/taskService';
 import type { Project, ProjectMember, User, ProjectRole, Task, CreateTaskRequest } from '../types';
+import UserAvatar from "../components/UserAvatar.tsx";
 
 const ProjectDetailsPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -461,9 +462,16 @@ const ProjectDetailsPage: React.FC = () => {
                                                     {task.assignedUsers && task.assignedUsers.length > 0 && (
                                                         <>
                                                             <span className="text-gray-600">•</span>
-                                                            <span className="text-gray-400">
-                                                                👤 {task.assignedUsers.map((u: User) => u.username).join(', ')}
-                                                            </span>
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="flex -space-x-2">
+                                                                    {task.assignedUsers.slice(0, 2).map((u: User) => (
+                                                                        <UserAvatar key={u.id} user={u} size="xs" />
+                                                                    ))}
+                                                                </div>
+                                                                <span className="text-gray-400">
+                {task.assignedUsers.map((u: User) => u.username).join(', ')}
+            </span>
+                                                            </div>
                                                         </>
                                                     )}
                                                 </div>
@@ -503,9 +511,13 @@ const ProjectDetailsPage: React.FC = () => {
                         <div className="space-y-3">
                             {members.map((member: ProjectMember) => (
                                 <div key={member.id} className="bg-gray-800 border border-gray-700 rounded-lg p-4 flex items-center justify-between">
-                                    <div>
-                                        <p className="text-white font-medium">{member.user.username}</p>
-                                        <p className="text-gray-400 text-sm">{member.user.email}</p>
+                                    <div className="flex items-center gap-3">
+                                        {/* ✅ DODANY AVATAR */}
+                                        <UserAvatar user={member.user} size="md" />
+                                        <div>
+                                            <p className="text-white font-medium">{member.user.username}</p>
+                                            <p className="text-gray-400 text-sm">{member.user.email}</p>
+                                        </div>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <span className={`px-3 py-1 rounded-full text-xs font-medium text-white ${getRoleColor(member.role)}`}>

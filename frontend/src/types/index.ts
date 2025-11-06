@@ -12,6 +12,8 @@ export interface User {
     createdAt?: string;
     teamNames?: string[];
     teams?: SimpleTeam[];
+    avatarUrl?: string;      // ✅ DODANE - URL do avatara
+    hasAvatar?: boolean;     // ✅ DODANE - czy użytkownik ma avatar
 }
 
 // Team Types - DODANE projectCount i taskCount
@@ -70,6 +72,7 @@ export interface Project {
     members?: ProjectMember[];
     memberCount?: number;
     taskCount?: number;
+    completedTaskCount?: number;  // ✅ DODANE - liczba ukończonych zadań
 }
 
 export interface ProjectMember {

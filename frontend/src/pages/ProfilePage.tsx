@@ -1,430 +1,257 @@
-// src/pages/ProfilePage.tsx
+// frontend/src/pages/ProfilePage.tsx - KOMPLETNA DZIAŁAJĄCA WERSJA ✅
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
+import UserAvatar from '../components/UserAvatar';
 import { useAuth } from '../context/AuthContext';
 
 const ProfilePage: React.FC = () => {
+    // ✅ Używamy AuthContext
     const { user, refreshUser } = useAuth();
-    const navigate = useNavigate();
-    const [isEditing, setIsEditing] = useState(false);
-    const [loading, setLoading] = useState(false);
+
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
-    const [formData, setFormData] = useState({
-        fullName: user?.fullName || '',
-        email: user?.email || '',
-    });
+    // ✅ HANDLER UPLOADU AVATARA
+    const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
 
-    const [passwordData, setPasswordData] = useState({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-    });
-
-    const [showPasswordChange, setShowPasswordChange] = useState(false);
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value,
-        });
-    };
-
-    const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setPasswordData({
-            ...passwordData,
-            [e.target.name]: e.target.value,
-        });
-    };
-
-    const handleUpdateProfile = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
-        setSuccess(null);
-
-        try {
-            // TODO: Implement update profile API call
-            // await userService.updateProfile(formData);
-
-            // Symulacja dla demonstracji
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            await refreshUser();
-            setSuccess('Profil został zaktualizowany!');
-            setIsEditing(false);
-        } catch (err: any) {
-            setError(err.message || 'Nie udało się zaktualizować profilu');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleChangePassword = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
-        setSuccess(null);
-
-        if (passwordData.newPassword !== passwordData.confirmPassword) {
-            setError('Nowe hasła nie są identyczne');
-            setLoading(false);
+        // Walidacja rozmiaru (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            setError('Plik jest za duży! Maksymalny rozmiar to 5MB.');
             return;
         }
 
-        if (passwordData.newPassword.length < 6) {
-            setError('Nowe hasło musi mieć co najmniej 6 znaków');
-            setLoading(false);
+        // Walidacja typu
+        if (!file.type.startsWith('image/')) {
+            setError('Można uploadować tylko obrazy (JPG, PNG, GIF)');
             return;
         }
 
         try {
-            // TODO: Implement change password API call
-            // await authService.changePassword(passwordData);
+            setUploadingAvatar(true);
+            setError(null);
+            setSuccess(null);
 
-            // Symulacja dla demonstracji
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            console.log('📤 Uploading avatar...', file.name);
 
-            setSuccess('Hasło zostało zmienione!');
-            setPasswordData({
-                currentPassword: '',
-                newPassword: '',
-                confirmPassword: '',
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/v1/users/avatar', {
+                method: 'POST',
+                credentials: 'include',
+                body: formData,
             });
-            setShowPasswordChange(false);
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Upload failed');
+            }
+
+            console.log('✅ Avatar uploaded successfully!');
+
+            // ✅ KLUCZOWE: Odśwież globalny AuthContext!
+            await refreshUser();
+
+            console.log('✅ AuthContext refreshed!');
+
+            setSuccess('✅ Avatar został zaktualizowany!');
+
+            // Clear success message po 3 sekundach
+            setTimeout(() => setSuccess(null), 3000);
+
+            // Clear file input
+            e.target.value = '';
         } catch (err: any) {
-            setError(err.message || 'Nie udało się zmienić hasła');
+            console.error('❌ Avatar upload error:', err);
+            setError(err.message || 'Nie udało się zaktualizować avatara');
         } finally {
-            setLoading(false);
+            setUploadingAvatar(false);
         }
     };
 
-    const getRoleBadgeColor = (role?: string) => {
-        if (role === 'SUPER_ADMIN') return 'bg-red-500';
-        return 'bg-blue-500';
-    };
-
-    const getRoleLabel = (role?: string) => {
-        if (role === 'SUPER_ADMIN') return '👑 Super Administrator';
-        return 'Użytkownik';
-    };
-
-    const getInitials = (username?: string) => {
-        if (!username) return 'U';
-        return username.charAt(0).toUpperCase();
-    };
-
-    const formatDate = (dateString?: string) => {
-        if (!dateString) return 'Brak danych';
-        return new Date(dateString).toLocaleString('pl-PL', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-    };
+    if (!user) {
+        return (
+            <MainLayout>
+                <div className="flex items-center justify-center h-96">
+                    <div className="text-gray-400">Ładowanie profilu...</div>
+                </div>
+            </MainLayout>
+        );
+    }
 
     return (
         <MainLayout>
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header */}
-                <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-white">👤 Mój Profil</h1>
-                    <p className="text-gray-400 mt-1">Zarządzaj swoim kontem i ustawieniami</p>
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-white">👤 Twój profil</h1>
+                    <p className="text-gray-400 mt-1">Zarządzaj swoimi ustawieniami</p>
                 </div>
 
-                {/* Success/Error Messages */}
+                {/* Success Message */}
                 {success && (
-                    <div className="mb-6 p-4 bg-green-500 bg-opacity-20 border border-green-500 rounded-lg text-green-400">
-                        ✅ {success}
+                    <div className="mb-6 p-4 bg-green-500 bg-opacity-20 border border-green-500 rounded-lg text-green-400 flex items-center gap-3">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        {success}
                     </div>
                 )}
+
+                {/* Error Message */}
                 {error && (
-                    <div className="mb-6 p-4 bg-red-500 bg-opacity-20 border border-red-500 rounded-lg text-red-400">
-                        ❌ {error}
+                    <div className="mb-6 p-4 bg-red-500 bg-opacity-20 border border-red-500 rounded-lg text-red-400 flex items-center gap-3">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {error}
                     </div>
                 )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Profile Card */}
+                    {/* ✅ Sekcja Avatara */}
                     <div className="lg:col-span-1">
-                        <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
-                            {/* Avatar */}
+                        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
                             <div className="flex flex-col items-center">
-                                <div className={`w-24 h-24 ${getRoleBadgeColor(user?.systemRole)} rounded-full flex items-center justify-center mb-4`}>
-                                    <span className="text-white font-bold text-3xl">
-                                        {getInitials(user?.username)}
-                                    </span>
-                                </div>
-                                <h2 className="text-xl font-bold text-white mb-1">{user?.username}</h2>
-                                <span className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${getRoleBadgeColor(user?.systemRole)}`}>
-                                    {getRoleLabel(user?.systemRole)}
-                                </span>
-                            </div>
+                                {/* Avatar z przyciskiem zmiany */}
+                                <div className="relative mb-4 group">
+                                    <UserAvatar user={user} size="xl" />
 
-                            {/* Stats */}
-                            <div className="mt-6 pt-6 border-t border-gray-800 space-y-3">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-400">Status:</span>
-                                    <span className={`font-semibold ${user?.active ? 'text-green-400' : 'text-red-400'}`}>
-                                        {user?.active ? '✅ Aktywny' : '❌ Nieaktywny'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-400">Data utworzenia:</span>
-                                    <span className="text-white font-semibold">
-                                        {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('pl-PL') : 'Brak danych'}
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-400">Ostatnie logowanie:</span>
-                                    <span className="text-white font-semibold">
-                                        {user?.lastLogin ? new Date(user.lastLogin).toLocaleDateString('pl-PL') : 'Brak danych'}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Admin Panel Button */}
-                            {user?.systemRole === 'SUPER_ADMIN' && (
-                                <div className="mt-6">
-                                    <button
-                                        onClick={() => navigate('/admin')}
-                                        className="w-full px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                                    {/* Overlay z ikoną kamery przy hover */}
+                                    <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                                         </svg>
-                                        Panel Admina
-                                    </button>
+                                    </div>
+
+                                    {/* Przycisk do zmiany avatara */}
+                                    <label
+                                        htmlFor="avatar-upload"
+                                        className="absolute bottom-0 right-0 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full p-2 cursor-pointer transition-colors shadow-lg"
+                                        title="Zmień avatar"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                    </label>
+                                    <input
+                                        id="avatar-upload"
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleAvatarUpload}
+                                        className="hidden"
+                                        disabled={uploadingAvatar}
+                                    />
                                 </div>
-                            )}
+
+                                {/* Loading indicator */}
+                                {uploadingAvatar && (
+                                    <div className="flex items-center gap-2 text-sm text-emerald-400 mb-2">
+                                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Uploading...
+                                    </div>
+                                )}
+
+                                {/* User info */}
+                                <h2 className="text-xl font-bold text-white mb-1">{user.username}</h2>
+                                <span className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${
+                                    user.systemRole === 'SUPER_ADMIN' ? 'bg-red-500' : 'bg-blue-500'
+                                }`}>
+                                    {user.systemRole === 'SUPER_ADMIN' ? '👑 Super Administrator' : 'Użytkownik'}
+                                </span>
+
+                                {/* Stats */}
+                                <div className="mt-6 pt-6 border-t border-gray-800 space-y-3 w-full">
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-gray-400">Status:</span>
+                                        <span className={`font-semibold ${user.active ? 'text-emerald-400' : 'text-red-400'}`}>
+                                            {user.active ? 'Aktywny' : 'Nieaktywny'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-gray-400">Email:</span>
+                                        <span className="text-white truncate ml-2">{user.email || 'Brak'}</span>
+                                    </div>
+                                </div>
+
+                                {/* Upload hint */}
+                                <div className="mt-4 p-3 bg-gray-800 rounded-lg text-xs text-gray-400 text-center">
+                                    💡 Kliknij ikonę, żeby zmienić avatar
+                                    <br />
+                                    <span className="text-gray-500">Max 5MB (JPG, PNG, GIF)</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Profile Details & Settings */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Profile Information */}
-                        <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-xl font-bold text-white">Informacje Profilu</h3>
-                                {!isEditing && (
-                                    <button
-                                        onClick={() => setIsEditing(true)}
-                                        className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors flex items-center gap-2"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                        </svg>
-                                        Edytuj
-                                    </button>
+                    {/* ✅ Informacje podstawowe */}
+                    <div className="lg:col-span-2">
+                        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
+                            <h3 className="text-lg font-semibold text-white mb-6">Informacje podstawowe</h3>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-2">Nazwa użytkownika</label>
+                                    <div className="flex items-center gap-3 p-3 bg-gray-800 rounded-lg">
+                                        <UserAvatar user={user} size="sm" />
+                                        <span className="text-white font-medium">{user.username}</span>
+                                    </div>
+                                </div>
+
+                                {user.fullName && (
+                                    <div>
+                                        <label className="block text-sm text-gray-400 mb-2">Pełna nazwa</label>
+                                        <div className="p-3 bg-gray-800 rounded-lg text-white">
+                                            {user.fullName}
+                                        </div>
+                                    </div>
                                 )}
-                            </div>
 
-                            {isEditing ? (
-                                <form onSubmit={handleUpdateProfile} className="space-y-4">
+                                {user.email && (
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-2">
-                                            Nazwa użytkownika
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={user?.username}
-                                            disabled
-                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-500 cursor-not-allowed"
-                                        />
-                                        <p className="text-xs text-gray-500 mt-1">Nazwa użytkownika nie może być zmieniona</p>
+                                        <label className="block text-sm text-gray-400 mb-2">Email</label>
+                                        <div className="p-3 bg-gray-800 rounded-lg text-white">
+                                            {user.email}
+                                        </div>
                                     </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-2">
-                                            Imię i nazwisko
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="fullName"
-                                            value={formData.fullName}
-                                            onChange={handleInputChange}
-                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                                            placeholder="Podaj swoje imię i nazwisko"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-2">
-                                            Email
-                                        </label>
-                                        <input
-                                            type="email"
-                                            name="email"
-                                            value={formData.email}
-                                            onChange={handleInputChange}
-                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                                            placeholder="twoj@email.com"
-                                        />
-                                    </div>
-
-                                    <div className="flex gap-3">
-                                        <button
-                                            type="submit"
-                                            disabled={loading}
-                                            className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            {loading ? 'Zapisywanie...' : 'Zapisz zmiany'}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setIsEditing(false);
-                                                setFormData({
-                                                    fullName: user?.fullName || '',
-                                                    email: user?.email || '',
-                                                });
-                                            }}
-                                            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
-                                        >
-                                            Anuluj
-                                        </button>
-                                    </div>
-                                </form>
-                            ) : (
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-1">
-                                            Nazwa użytkownika
-                                        </label>
-                                        <p className="text-white">{user?.username || 'Brak danych'}</p>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-1">
-                                            Imię i nazwisko
-                                        </label>
-                                        <p className="text-white">{user?.fullName || 'Nie podano'}</p>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-1">
-                                            Email
-                                        </label>
-                                        <p className="text-white">{user?.email || 'Nie podano'}</p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Change Password */}
-                        <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-xl font-bold text-white">Zmiana Hasła</h3>
-                                {!showPasswordChange && (
-                                    <button
-                                        onClick={() => setShowPasswordChange(true)}
-                                        className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors flex items-center gap-2"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                                        </svg>
-                                        Zmień hasło
-                                    </button>
                                 )}
-                            </div>
 
-                            {showPasswordChange ? (
-                                <form onSubmit={handleChangePassword} className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-2">
-                                            Obecne hasło
-                                        </label>
-                                        <input
-                                            type="password"
-                                            name="currentPassword"
-                                            value={passwordData.currentPassword}
-                                            onChange={handlePasswordChange}
-                                            required
-                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                                            placeholder="Wpisz obecne hasło"
-                                        />
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-2">Rola systemowa</label>
+                                    <div className="p-3 bg-gray-800 rounded-lg">
+                                        <span className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${
+                                            user.systemRole === 'SUPER_ADMIN' ? 'bg-red-500' : 'bg-blue-500'
+                                        }`}>
+                                            {user.systemRole === 'SUPER_ADMIN' ? '👑 SUPER ADMINISTRATOR' : 'USER'}
+                                        </span>
                                     </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-2">
-                                            Nowe hasło
-                                        </label>
-                                        <input
-                                            type="password"
-                                            name="newPassword"
-                                            value={passwordData.newPassword}
-                                            onChange={handlePasswordChange}
-                                            required
-                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                                            placeholder="Wpisz nowe hasło"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-2">
-                                            Potwierdź nowe hasło
-                                        </label>
-                                        <input
-                                            type="password"
-                                            name="confirmPassword"
-                                            value={passwordData.confirmPassword}
-                                            onChange={handlePasswordChange}
-                                            required
-                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                                            placeholder="Powtórz nowe hasło"
-                                        />
-                                    </div>
-
-                                    <div className="flex gap-3">
-                                        <button
-                                            type="submit"
-                                            disabled={loading}
-                                            className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            {loading ? 'Zmienianie...' : 'Zmień hasło'}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setShowPasswordChange(false);
-                                                setPasswordData({
-                                                    currentPassword: '',
-                                                    newPassword: '',
-                                                    confirmPassword: '',
-                                                });
-                                            }}
-                                            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
-                                        >
-                                            Anuluj
-                                        </button>
-                                    </div>
-                                </form>
-                            ) : (
-                                <p className="text-gray-400">
-                                    Kliknij "Zmień hasło" aby zaktualizować swoje hasło
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Account Info */}
-                        <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
-                            <h3 className="text-xl font-bold text-white mb-4">Informacje o Koncie</h3>
-                            <div className="space-y-3 text-sm">
-                                <div className="flex items-center justify-between py-2 border-b border-gray-800">
-                                    <span className="text-gray-400">Data utworzenia:</span>
-                                    <span className="text-white">{formatDate(user?.createdAt)}</span>
                                 </div>
-                                <div className="flex items-center justify-between py-2 border-b border-gray-800">
-                                    <span className="text-gray-400">Ostatnie logowanie:</span>
-                                    <span className="text-white">{formatDate(user?.lastLogin)}</span>
-                                </div>
-                                <div className="flex items-center justify-between py-2">
-                                    <span className="text-gray-400">ID Użytkownika:</span>
-                                    <span className="text-white font-mono">#{user?.id}</span>
+
+                                {/* Account dates */}
+                                <div className="pt-4 border-t border-gray-800 grid grid-cols-2 gap-4">
+                                    {user.createdAt && (
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-1">Dołączył</label>
+                                            <div className="text-white text-sm">
+                                                {new Date(user.createdAt).toLocaleDateString('pl-PL')}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {user.lastLogin && (
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-1">Ostatnie logowanie</label>
+                                            <div className="text-white text-sm">
+                                                {new Date(user.lastLogin).toLocaleDateString('pl-PL')}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

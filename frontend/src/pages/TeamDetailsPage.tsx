@@ -1,7 +1,8 @@
-// src/pages/TeamDetailsPage.tsx - ZAKTUALIZOWANA WERSJA
+// src/pages/TeamDetailsPage.tsx - Z AVATARAMI UŻYTKOWNIKÓW ✅
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/MainLayout';
+import UserAvatar from '../components/UserAvatar'; // ✅ DODANY IMPORT
 import teamService from '../services/teamService';
 import userService from '../services/userService';
 import type { Team, User } from '../types';
@@ -202,7 +203,7 @@ const TeamDetailsPage: React.FC = () => {
                         )}
                     </div>
 
-                    {/* ✅ NOWA SEKCJA: Statystyki zespołu */}
+                    {/* Statystyki zespołu */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                         {/* Członkowie */}
                         <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
@@ -251,7 +252,7 @@ const TeamDetailsPage: React.FC = () => {
                     </div>
                 )}
 
-                {/* Members Section */}
+                {/* Members Section - ✅ Z AVATARAMI */}
                 <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 mb-8">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-xl font-bold text-white">Członkowie zespołu</h2>
@@ -272,20 +273,27 @@ const TeamDetailsPage: React.FC = () => {
                                     key={member.id}
                                     className="bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-emerald-500 transition-colors"
                                 >
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="font-semibold text-white">{member.username}</p>
+                                    {/* ✅ ZMIENIONE - Dodano avatar i zmieniono layout */}
+                                    <div className="flex items-center gap-3">
+                                        {/* ✅ Avatar użytkownika */}
+                                        <UserAvatar user={member} size="lg" />
+
+                                        {/* Informacje o użytkowniku */}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-semibold text-white truncate">{member.username}</p>
                                             {member.fullName && (
-                                                <p className="text-sm text-gray-400">{member.fullName}</p>
+                                                <p className="text-sm text-gray-400 truncate">{member.fullName}</p>
                                             )}
                                             {member.email && (
-                                                <p className="text-xs text-gray-500">{member.email}</p>
+                                                <p className="text-xs text-gray-500 truncate">{member.email}</p>
                                             )}
                                         </div>
+
+                                        {/* Przycisk usuwania */}
                                         {team.canEdit && (
                                             <button
                                                 onClick={() => handleRemoveMember(member.id, member.username)}
-                                                className="text-red-500 hover:text-red-400"
+                                                className="text-red-500 hover:text-red-400 flex-shrink-0"
                                                 disabled={actionInProgress}
                                                 title="Usuń z zespołu"
                                             >

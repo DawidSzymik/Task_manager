@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/api/dto/response/UserDto.java
+// src/main/java/com/example/demo/api/dto/response/UserDto.java - Z AVATAREM
 package com.example.demo.api.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -17,13 +17,17 @@ public class UserDto {
     private String systemRole;
     private boolean active;
 
+    // ✅ NOWE POLE - URL do avatara
+    private String avatarUrl;
+    private boolean hasAvatar;
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime lastLogin;
-    private List<SimpleTeamDto> teams; // DODANE - uproszczone obiekty zespołów
 
+    private List<SimpleTeamDto> teams;
     private List<String> teamNames;
     private int projectCount;
 
@@ -56,6 +60,13 @@ public class UserDto {
 
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+
+    // ✅ NOWE - Avatar getters/setters
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+
+    public boolean isHasAvatar() { return hasAvatar; }
+    public void setHasAvatar(boolean hasAvatar) { this.hasAvatar = hasAvatar; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

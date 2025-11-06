@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/model/User.java
+// src/main/java/com/example/demo/model/User.java - Z AVATAREM
 package com.example.demo.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -26,6 +26,15 @@ public class User {
 
     private String email;
     private String fullName;
+
+    // ✅ NOWE POLE - Avatar użytkownika
+    @Lob
+    @Column(name = "avatar", columnDefinition = "LONGBLOB")
+    private byte[] avatar;
+
+    @Column(name = "avatar_content_type")
+    private String avatarContentType;
+
     private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime lastLogin;
     private boolean isActive = true;
@@ -66,6 +75,12 @@ public class User {
         return SystemRole.USER.equals(this.systemRole);
     }
 
+    // ✅ NOWE - Helper do sprawdzania czy ma avatar
+    public boolean hasAvatar() {
+        return avatar != null && avatar.length > 0;
+    }
+
+    // Getters and setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -83,6 +98,13 @@ public class User {
 
     public String getFullName() { return fullName; }
     public void setFullName(String fullName) { this.fullName = fullName; }
+
+    // ✅ NOWE - Avatar getters/setters
+    public byte[] getAvatar() { return avatar; }
+    public void setAvatar(byte[] avatar) { this.avatar = avatar; }
+
+    public String getAvatarContentType() { return avatarContentType; }
+    public void setAvatarContentType(String avatarContentType) { this.avatarContentType = avatarContentType; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
