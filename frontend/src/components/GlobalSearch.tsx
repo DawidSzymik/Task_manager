@@ -1,6 +1,7 @@
-// frontend/src/components/GlobalSearch.tsx
+// frontend/src/components/GlobalSearch.tsx - Z AVATARAMI ✅
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import UserAvatar from './UserAvatar'; // ✅ DODANY IMPORT
 
 interface SearchResult {
     id: number;
@@ -9,6 +10,8 @@ interface SearchResult {
     // User fields
     username?: string;
     email?: string;
+    avatarUrl?: string;      // ✅ DODANE
+    hasAvatar?: boolean;     // ✅ DODANE
     // Task fields
     title?: string;
     description?: string;
@@ -163,6 +166,7 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
                             </div>
                         )}
 
+                        {/* ✅ ZMIENIONA SEKCJA - Użytkownicy z avatarami */}
                         {results && results.users && results.users.length > 0 && (
                             <div className="mb-4">
                                 <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase">
@@ -174,11 +178,11 @@ const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) => {
                                         onClick={() => handleResultClick(user)}
                                         className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-800 rounded-lg transition text-left"
                                     >
-                                        <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
-                                            <span className="text-white text-sm font-semibold">
-                                                {user.username?.charAt(0).toUpperCase()}
-                                            </span>
-                                        </div>
+                                        {/* ✅ NAPRAWIONE - przekazujemy cały obiekt user z SearchResult */}
+                                        <UserAvatar
+                                            user={user as any}
+                                            size="sm"
+                                        />
                                         <div>
                                             <div className="text-white font-medium">{user.username}</div>
                                             <div className="text-sm text-gray-400">{user.email}</div>

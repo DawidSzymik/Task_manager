@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/api/mapper/UserMapper.java
+// src/main/java/com/example/demo/api/mapper/UserMapper.java - Z AVATAREM
 package com.example.demo.api.mapper;
 
 import com.example.demo.api.dto.request.CreateUserRequest;
@@ -28,6 +28,14 @@ public class UserMapper {
         dto.setCreatedAt(user.getCreatedAt());
         dto.setLastLogin(user.getLastLogin());
 
+        // ✅ NOWE - Ustawianie avatarUrl
+        if (user.hasAvatar()) {
+            dto.setAvatarUrl("/api/v1/users/" + user.getId() + "/avatar");
+            dto.setHasAvatar(true);
+        } else {
+            dto.setHasAvatar(false);
+        }
+
         // Map team names
         if (user.getTeams() != null) {
             List<String> teamNames = user.getTeams().stream()
@@ -35,13 +43,15 @@ public class UserMapper {
                     .collect(Collectors.toList());
             dto.setTeamNames(teamNames);
         }
-// Mapuj na uproszczone obiekty zespołów
+
+        // Map na uproszczone obiekty zespołów
         if (user.getTeams() != null) {
             List<SimpleTeamDto> teams = user.getTeams().stream()
                     .map(team -> new SimpleTeamDto(team.getId(), team.getName()))
                     .collect(Collectors.toList());
             dto.setTeams(teams);
         }
+
         return dto;
     }
 
@@ -60,7 +70,7 @@ public class UserMapper {
         user.setEmail(request.getEmail());
         user.setFullName(request.getFullName());
         user.setSystemRole(request.getSystemRole());
-        user.setActive(true); // New users are active by default
+        user.setActive(true);
         return user;
     }
 

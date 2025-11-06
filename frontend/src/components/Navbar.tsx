@@ -1,9 +1,10 @@
-// src/components/Navbar.tsx
+// src/components/Navbar.tsx - Z AVATAREM UŻYTKOWNIKA
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import NotificationDropdown from './NotificationDropdown';
 import GlobalSearch from './GlobalSearch';
+import UserAvatar from './UserAvatar'; // ✅ DODANE
 
 const Navbar: React.FC = () => {
     const navigate = useNavigate();
@@ -34,7 +35,7 @@ const Navbar: React.FC = () => {
                                 </h1>
                             </div>
 
-                            {/* Search Button - BEZ Command+K */}
+                            {/* Search Button */}
                             <button
                                 onClick={() => setShowSearch(true)}
                                 className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-400 hover:text-white transition"
@@ -51,29 +52,34 @@ const Navbar: React.FC = () => {
                             {/* Notifications */}
                             <NotificationDropdown />
 
-                            {/* User profile dropdown */}
+                            {/* ✅ ZMIENIONE - User profile dropdown z UserAvatar */}
                             <div className="relative">
                                 <button
                                     onClick={() => setShowDropdown(!showDropdown)}
                                     className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-800 transition"
                                 >
-                                    <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
-                                        <span className="text-white font-semibold text-sm">
-                                            {user?.username?.charAt(0).toUpperCase() || 'U'}
-                                        </span>
-                                    </div>
+                                    {/* ✅ UserAvatar zamiast kółka z literą */}
+                                    <UserAvatar
+                                        user={user || { id: 0, username: 'User' }}
+                                        size="sm"
+                                    />
                                     <div className="text-left hidden sm:block">
                                         <p className="text-sm font-medium text-white">{user?.username || 'User'}</p>
                                         <p className="text-xs text-gray-400">{user?.systemRole || 'USER'}</p>
                                     </div>
-                                    <svg className={`w-4 h-4 text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg
+                                        className={`w-4 h-4 text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                     </svg>
                                 </button>
 
-                                {/* Dropdown menu */}
+                                {/* Dropdown Menu */}
                                 {showDropdown && (
-                                    <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg py-1 border border-gray-700">
+                                    <div className="absolute right-0 mt-2 w-56 bg-gray-800 rounded-lg shadow-lg border border-gray-700 py-1 z-50">
                                         <button
                                             onClick={() => {
                                                 setShowDropdown(false);
@@ -84,7 +90,7 @@ const Navbar: React.FC = () => {
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                                             </svg>
-                                            Profil
+                                            Mój Profil
                                         </button>
                                         <button
                                             onClick={() => {

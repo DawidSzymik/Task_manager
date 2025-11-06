@@ -16,6 +16,7 @@ import type {
     StatusChangeRequest,
     ProjectRole
 } from '../types';
+import UserAvatar from "../components/UserAvatar.tsx";
 
 const TaskDetailsPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -228,9 +229,9 @@ const TaskDetailsPage: React.FC = () => {
                     {chatItems.map((item, idx) => (
                         <div key={`${item.type}-${idx}`} className="flex items-start gap-3">
                             {item.type === 'comment' ? (
-                                // Komentarze bez zmian
+                                // ✅ Komentarze z avatarem
                                 <div className="flex gap-3 w-full">
-                                    <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">💬</div>
+                                    <UserAvatar user={item.data.author} size="sm" />
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className="text-sm font-semibold text-white">{item.data.author.username}</span>
@@ -260,7 +261,8 @@ const TaskDetailsPage: React.FC = () => {
                             ) : (
                                 // ⭐ ZAKTUALIZOWANA SEKCJA PLIKÓW z przyciskiem podglądu
                                 <div className="flex gap-3 w-full">
-                                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">📎</div>
+                                    {/* ✅ Avatar osoby uploadującej plik */}
+                                    <UserAvatar user={item.data.uploadedBy} size="sm" />
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className="text-sm font-semibold text-white">{item.data.uploadedBy.username}</span>
