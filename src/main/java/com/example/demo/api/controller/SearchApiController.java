@@ -89,6 +89,7 @@ public class SearchApiController {
 
     /**
      * Search users by username or email
+     * ✅ NAPRAWIONE - Dodano avatarUrl i hasAvatar
      */
     private List<Map<String, Object>> searchUsers(String query, int limit) {
         return userService.getAllUsers().stream()
@@ -103,7 +104,21 @@ public class SearchApiController {
                     userMap.put("email", user.getEmail());
                     userMap.put("systemRole", user.getSystemRole().name());
                     userMap.put("type", "user");
-                    userMap.put("url", "/users/" + user.getId()); // ✅ ZMIENIONE - pokazuje profil konkretnego użytkownika
+                    userMap.put("url", "/users/" + user.getId());
+
+                    // ✅ DODANE - Avatar URL i hasAvatar
+                    if (user.hasAvatar()) {
+                        userMap.put("avatarUrl", "/api/v1/users/" + user.getId() + "/avatar");
+                        userMap.put("hasAvatar", true);
+                    } else {
+                        userMap.put("hasAvatar", false);
+                    }
+
+                    // Opcjonalnie dodaj fullName jeśli istnieje
+                    if (user.getFullName() != null) {
+                        userMap.put("fullName", user.getFullName());
+                    }
+
                     return userMap;
                 })
                 .collect(Collectors.toList());
@@ -132,13 +147,14 @@ public class SearchApiController {
                     taskMap.put("description", task.getDescription() != null ?
                             (task.getDescription().length() > 100 ?
                                     task.getDescription().substring(0, 100) + "..." :
-                                    task.getDescription()) : "");
-                    taskMap.put("status", task.getStatus());  // ✅ POPRAWIONE - usunięto .name()
-                    taskMap.put("priority", task.getPriority());  // ✅ POPRAWIONE - usunięto .name()
+                                    task.getDescription()) :
+                            null);
+                    taskMap.put("status", task.getStatus());
+                    taskMap.put("priority", task.getPriority());
                     taskMap.put("projectName", task.getProject().getName());
                     taskMap.put("projectId", task.getProject().getId());
                     taskMap.put("type", "task");
-                    taskMap.put("url", "/tasks/" + task.getId());
+                    taskMap.put("url", "/projects/" + task.getProject().getId() + "/tasks/" + task.getId());
                     return taskMap;
                 })
                 .collect(Collectors.toList());
@@ -148,6 +164,7 @@ public class SearchApiController {
      * Search projects by name or description
      */
     private List<Map<String, Object>> searchProjects(User currentUser, String query, int limit) {
+        // Get all projects user has access to
         List<ProjectMember> userMemberships = projectMemberService.getUserProjects(currentUser);
 
         return userMemberships.stream()
@@ -162,16 +179,9 @@ public class SearchApiController {
                     projectMap.put("description", project.getDescription() != null ?
                             (project.getDescription().length() > 100 ?
                                     project.getDescription().substring(0, 100) + "..." :
-                                    project.getDescription()) : "");
-
-                    // Get member count
-                    List<ProjectMember> members = projectMemberService.getProjectMembers(project);
-                    projectMap.put("memberCount", members.size());
-
-                    // Get task count
-                    List<Task> tasks = taskService.getTasksByProject(project);
-                    projectMap.put("taskCount", tasks.size());
-
+                                    project.getDescription()) :
+                            null);
+                    projectMap.put("memberCount", project.getMembers() != null ? project.getMembers().size() : 0);
                     projectMap.put("type", "project");
                     projectMap.put("url", "/projects/" + project.getId());
                     return projectMap;
@@ -179,9 +189,6 @@ public class SearchApiController {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Helper method to create error response
-     */
     private ResponseEntity<Map<String, Object>> createErrorResponse(String message, HttpStatus status) {
         Map<String, Object> response = new HashMap<>();
         response.put("success", false);
