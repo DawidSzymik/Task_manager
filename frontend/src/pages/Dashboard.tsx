@@ -238,7 +238,7 @@ const Dashboard: React.FC = () => {
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-white">
-                        Witaj, {user?.username || 'Użytkowniku'}! 👋
+                        Witaj, {user?.username || 'Użytkowniku'}!
                     </h1>
                     <p className="text-gray-400">Oto przegląd Twoich projektów i zadań</p>
                 </div>

@@ -14,17 +14,14 @@ const AdminUsersPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
-    // Filters
     const [searchTerm, setSearchTerm] = useState('');
     const [filterActive, setFilterActive] = useState<boolean | undefined>(undefined);
 
-    // Modals
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [selectedUser, setSelectedUser] = useState<UserDto | null>(null);
 
-    // Forms
     const [createForm, setCreateForm] = useState<CreateUserRequest>({
         username: '',
         password: '',
@@ -41,7 +38,6 @@ const AdminUsersPage: React.FC = () => {
     });
 
     useEffect(() => {
-        // Check if user is super admin
         if (user?.systemRole !== 'SUPER_ADMIN') {
             navigate('/dashboard');
             return;
@@ -60,7 +56,7 @@ const AdminUsersPage: React.FC = () => {
             const data = await adminService.getAllUsers();
             setUsers(data);
         } catch (err: any) {
-            setError(err.message || 'Failed to load users');
+            setError(err.message || 'Nie udało się załadować użytkowników');
         } finally {
             setLoading(false);
         }
@@ -69,7 +65,6 @@ const AdminUsersPage: React.FC = () => {
     const filterUsers = () => {
         let filtered = [...users];
 
-        // Search filter
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
             filtered = filtered.filter(
@@ -80,7 +75,6 @@ const AdminUsersPage: React.FC = () => {
             );
         }
 
-        // Active filter
         if (filterActive !== undefined) {
             filtered = filtered.filter((u) => u.active === filterActive);
         }
@@ -93,7 +87,7 @@ const AdminUsersPage: React.FC = () => {
         try {
             setError(null);
             await adminService.createUser(createForm);
-            setSuccess('User created successfully!');
+            setSuccess('Użytkownik utworzony pomyślnie!');
             setShowCreateModal(false);
             setCreateForm({
                 username: '',
@@ -105,24 +99,24 @@ const AdminUsersPage: React.FC = () => {
             loadUsers();
             setTimeout(() => setSuccess(null), 3000);
         } catch (err: any) {
-            setError(err.message || 'Failed to create user');
+            setError(err.message || 'Nie udało się utworzyć użytkownika');
         }
     };
 
-    const handleEditUser = async (e: React.FormEvent) => {
+    const handleUpdateUser = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedUser) return;
 
         try {
             setError(null);
             await adminService.updateUser(selectedUser.id, editForm);
-            setSuccess('User updated successfully!');
+            setSuccess('Użytkownik zaktualizowany pomyślnie!');
             setShowEditModal(false);
             setSelectedUser(null);
             loadUsers();
             setTimeout(() => setSuccess(null), 3000);
         } catch (err: any) {
-            setError(err.message || 'Failed to update user');
+            setError(err.message || 'Nie udało się zaktualizować użytkownika');
         }
     };
 
@@ -132,13 +126,13 @@ const AdminUsersPage: React.FC = () => {
         try {
             setError(null);
             await adminService.deleteUser(selectedUser.id);
-            setSuccess('User deleted successfully!');
+            setSuccess('Użytkownik usunięty pomyślnie!');
             setShowDeleteConfirm(false);
             setSelectedUser(null);
             loadUsers();
             setTimeout(() => setSuccess(null), 3000);
         } catch (err: any) {
-            setError(err.message || 'Failed to delete user');
+            setError(err.message || 'Nie udało się usunąć użytkownika');
         }
     };
 
@@ -147,8 +141,8 @@ const AdminUsersPage: React.FC = () => {
         setEditForm({
             email: user.email || '',
             fullName: user.fullName || '',
-            systemRole: user.systemRole || 'USER',
-            active: user.active ?? true,
+            systemRole: user.systemRole,
+            active: user.active,
         });
         setShowEditModal(true);
     };
@@ -159,15 +153,19 @@ const AdminUsersPage: React.FC = () => {
     };
 
     const getRoleBadgeColor = (role?: string) => {
-        return role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800';
+        return role === 'SUPER_ADMIN'
+            ? 'bg-purple-900/50 text-purple-300 border border-purple-600'
+            : 'bg-blue-900/50 text-blue-300 border border-blue-600';
     };
 
     const getStatusBadgeColor = (active?: boolean) => {
-        return active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
+        return active
+            ? 'bg-green-900/50 text-green-300 border border-green-600'
+            : 'bg-red-900/50 text-red-300 border border-red-600';
     };
 
     const formatDate = (dateString?: string) => {
-        if (!dateString) return 'Never';
+        if (!dateString) return 'Nigdy';
         return new Date(dateString).toLocaleDateString('pl-PL', {
             year: 'numeric',
             month: 'short',
@@ -181,7 +179,7 @@ const AdminUsersPage: React.FC = () => {
         return (
             <MainLayout>
                 <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
                 </div>
             </MainLayout>
         );
@@ -193,174 +191,165 @@ const AdminUsersPage: React.FC = () => {
                 {/* Header */}
                 <div className="flex justify-between items-center">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-                        <p className="text-gray-600 mt-1">Manage system users and permissions</p>
+                        <h1 className="text-3xl font-bold text-white">👥 Zarządzanie Użytkownikami</h1>
+                        <p className="text-gray-400 mt-1">Zarządzaj użytkownikami i uprawnieniami systemu</p>
                     </div>
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                        className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
-                        Create User
+                        Utwórz Użytkownika
                     </button>
                 </div>
 
                 {/* Alerts */}
                 {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+                    <div className="bg-red-900/50 border border-red-500 text-red-300 px-4 py-3 rounded-lg">
                         {error}
                     </div>
                 )}
                 {success && (
-                    <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+                    <div className="bg-green-900/50 border border-green-500 text-green-300 px-4 py-3 rounded-lg">
                         {success}
                     </div>
                 )}
 
                 {/* Filters */}
-                <div className="bg-white rounded-lg shadow p-4">
-                    <div className="flex flex-wrap gap-4">
-                        <div className="flex-1 min-w-[200px]">
-                            <input
-                                type="text"
-                                placeholder="Search by username, email, or name..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                        </div>
+                <div className="bg-gray-900 border border-gray-700 rounded-lg shadow p-4">
+                    <div className="space-y-4">
+                        <input
+                            type="text"
+                            placeholder="Szukaj po nazwie użytkownika, emailu lub imieniu i nazwisku..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        />
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setFilterActive(undefined)}
-                                className={`px-4 py-2 rounded-lg transition-colors ${
+                                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                                     filterActive === undefined
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        ? 'bg-emerald-500 text-white'
+                                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                                 }`}
                             >
-                                All
+                                Wszystkie
                             </button>
                             <button
                                 onClick={() => setFilterActive(true)}
-                                className={`px-4 py-2 rounded-lg transition-colors ${
+                                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                                     filterActive === true
-                                        ? 'bg-green-600 text-white'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        ? 'bg-green-500 text-white'
+                                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                                 }`}
                             >
-                                Active
+                                Aktywni
                             </button>
                             <button
                                 onClick={() => setFilterActive(false)}
-                                className={`px-4 py-2 rounded-lg transition-colors ${
+                                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                                     filterActive === false
-                                        ? 'bg-gray-600 text-white'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        ? 'bg-gray-500 text-white'
+                                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                                 }`}
                             >
-                                Inactive
+                                Nieaktywni
                             </button>
                         </div>
                     </div>
                 </div>
 
                 {/* Users Table */}
-                <div className="bg-white rounded-lg shadow overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                <div className="bg-gray-900 border border-gray-700 rounded-lg shadow overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-700">
+                        <thead className="bg-gray-800">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                User
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                Użytkownik
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                                 Email
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Role
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                Rola
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                                 Status
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Last Login
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                Ostatnie Logowanie
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Created
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                Utworzono
                             </th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Actions
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                Akcje
                             </th>
                         </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-gray-900 divide-y divide-gray-800">
                         {filteredUsers.length === 0 ? (
                             <tr>
                                 <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                                    No users found
+                                    Nie znaleziono użytkowników
                                 </td>
                             </tr>
                         ) : (
-                            filteredUsers.map((user) => (
-                                <tr key={user.id} className="hover:bg-gray-50">
+                            filteredUsers.map((userItem) => (
+                                <tr key={userItem.id} className="hover:bg-gray-800 transition-colors">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
-                                            <div className="flex-shrink-0 h-10 w-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-                                                {user.username.charAt(0).toUpperCase()}
+                                            <div className="flex-shrink-0 h-10 w-10 bg-emerald-600 rounded-full flex items-center justify-center text-white font-semibold">
+                                                {userItem.username.charAt(0).toUpperCase()}
                                             </div>
                                             <div className="ml-4">
-                                                <div className="text-sm font-medium text-gray-900">
-                                                    {user.username}
+                                                <div className="text-sm font-medium text-white">
+                                                    {userItem.username}
                                                 </div>
-                                                <div className="text-sm text-gray-500">
-                                                    {user.fullName || 'No name'}
+                                                <div className="text-sm text-gray-400">
+                                                    {userItem.fullName || 'Brak imienia'}
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm text-gray-900">{user.email || 'N/A'}</div>
+                                        <div className="text-sm text-gray-300">{userItem.email || 'Brak'}</div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                            <span
-                                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getRoleBadgeColor(
-                                                    user.systemRole
-                                                )}`}
-                                            >
-                                                {user.systemRole}
-                                            </span>
+                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getRoleBadgeColor(userItem.systemRole)}`}>
+                                            {userItem.systemRole}
+                                        </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                            <span
-                                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(
-                                                    user.active
-                                                )}`}
-                                            >
-                                                {user.active ? 'Active' : 'Inactive'}
-                                            </span>
+                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(userItem.active)}`}>
+                                            {userItem.active ? 'Aktywny' : 'Nieaktywny'}
+                                        </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {formatDate(user.lastLogin)}
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                        {formatDate(userItem.lastLogin)}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {formatDate(user.createdAt)}
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                        {formatDate(userItem.createdAt)}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button
-                                            onClick={() => openEditModal(user)}
-                                            className="text-blue-600 hover:text-blue-900 mr-4"
-                                        >
-                                            Edit
-                                        </button>
-                                        {user.systemRole !== 'SUPER_ADMIN' && (
+                                        <div className="flex justify-end gap-2">
                                             <button
-                                                onClick={() => openDeleteConfirm(user)}
-                                                className="text-red-600 hover:text-red-900"
+                                                onClick={() => openEditModal(userItem)}
+                                                className="px-3 py-1 bg-blue-900/50 hover:bg-blue-800 text-blue-300 rounded border border-blue-600 transition-colors"
                                             >
-                                                Delete
+                                                Edytuj
                                             </button>
-                                        )}
+                                            <button
+                                                onClick={() => openDeleteConfirm(userItem)}
+                                                disabled={userItem.id === user?.id}
+                                                className="px-3 py-1 bg-red-900/50 hover:bg-red-800 text-red-300 rounded border border-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                Usuń
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))
@@ -368,95 +357,85 @@ const AdminUsersPage: React.FC = () => {
                         </tbody>
                     </table>
                 </div>
-
-                {/* Stats Footer */}
-                <div className="bg-white rounded-lg shadow p-4">
-                    <div className="text-sm text-gray-600">
-                        Showing <span className="font-semibold text-gray-900">{filteredUsers.length}</span> of{' '}
-                        <span className="font-semibold text-gray-900">{users.length}</span> users
-                    </div>
-                </div>
             </div>
 
             {/* Create User Modal */}
             {showCreateModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full">
-                        <h2 className="text-2xl font-bold mb-4">Create New User</h2>
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 max-w-md w-full">
+                        <h2 className="text-xl font-bold text-white mb-4">Utwórz Nowego Użytkownika</h2>
                         <form onSubmit={handleCreateUser} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Username *
-                                </label>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">Nazwa użytkownika *</label>
                                 <input
                                     type="text"
                                     required
                                     value={createForm.username}
                                     onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Password *
-                                </label>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">Hasło *</label>
                                 <input
                                     type="password"
                                     required
                                     value={createForm.password}
                                     onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
                                 <input
                                     type="email"
                                     value={createForm.email}
                                     onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Full Name
-                                </label>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">Imię i nazwisko</label>
                                 <input
                                     type="text"
                                     value={createForm.fullName}
                                     onChange={(e) => setCreateForm({ ...createForm, fullName: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">Rola systemowa</label>
                                 <select
                                     value={createForm.systemRole}
-                                    onChange={(e) =>
-                                        setCreateForm({
-                                            ...createForm,
-                                            systemRole: e.target.value as 'SUPER_ADMIN' | 'USER',
-                                        })
-                                    }
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    onChange={(e) => setCreateForm({ ...createForm, systemRole: e.target.value as 'SUPER_ADMIN' | 'USER' })}
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                 >
-                                    <option value="USER">User</option>
-                                    <option value="SUPER_ADMIN">Super Admin</option>
+                                    <option value="USER">USER</option>
+                                    <option value="SUPER_ADMIN">SUPER_ADMIN</option>
                                 </select>
                             </div>
-                            <div className="flex gap-3 pt-4">
+                            <div className="flex gap-3">
                                 <button
                                     type="button"
-                                    onClick={() => setShowCreateModal(false)}
-                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                                    onClick={() => {
+                                        setShowCreateModal(false);
+                                        setCreateForm({
+                                            username: '',
+                                            password: '',
+                                            email: '',
+                                            fullName: '',
+                                            systemRole: 'USER',
+                                        });
+                                    }}
+                                    className="flex-1 px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-800 transition-colors"
                                 >
-                                    Cancel
+                                    Anuluj
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors"
                                 >
-                                    Create User
+                                    Utwórz
                                 </button>
                             </div>
                         </form>
@@ -466,86 +445,64 @@ const AdminUsersPage: React.FC = () => {
 
             {/* Edit User Modal */}
             {showEditModal && selectedUser && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full">
-                        <h2 className="text-2xl font-bold mb-4">Edit User</h2>
-                        <form onSubmit={handleEditUser} className="space-y-4">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 max-w-md w-full">
+                        <h2 className="text-xl font-bold text-white mb-4">Edytuj Użytkownika: {selectedUser.username}</h2>
+                        <form onSubmit={handleUpdateUser} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Username (read-only)
-                                </label>
-                                <input
-                                    type="text"
-                                    value={selectedUser.username}
-                                    disabled
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
                                 <input
                                     type="email"
                                     value={editForm.email}
                                     onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Full Name
-                                </label>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">Imię i nazwisko</label>
                                 <input
                                     type="text"
                                     value={editForm.fullName}
                                     onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                                <label className="block text-sm font-medium text-gray-300 mb-1">Rola systemowa</label>
                                 <select
                                     value={editForm.systemRole}
-                                    onChange={(e) =>
-                                        setEditForm({
-                                            ...editForm,
-                                            systemRole: e.target.value as 'SUPER_ADMIN' | 'USER',
-                                        })
-                                    }
-                                    disabled={selectedUser.systemRole === 'SUPER_ADMIN'}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+                                    onChange={(e) => setEditForm({ ...editForm, systemRole: e.target.value as 'SUPER_ADMIN' | 'USER' })}
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                                 >
-                                    <option value="USER">User</option>
-                                    <option value="SUPER_ADMIN">Super Admin</option>
+                                    <option value="USER">USER</option>
+                                    <option value="SUPER_ADMIN">SUPER_ADMIN</option>
                                 </select>
                             </div>
                             <div className="flex items-center">
                                 <input
                                     type="checkbox"
-                                    id="active"
                                     checked={editForm.active}
                                     onChange={(e) => setEditForm({ ...editForm, active: e.target.checked })}
-                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-600 rounded bg-gray-800"
                                 />
-                                <label htmlFor="active" className="ml-2 block text-sm text-gray-900">
-                                    Active
-                                </label>
+                                <label className="ml-2 block text-sm text-gray-300">Aktywny</label>
                             </div>
-                            <div className="flex gap-3 pt-4">
+                            <div className="flex gap-3">
                                 <button
                                     type="button"
                                     onClick={() => {
                                         setShowEditModal(false);
                                         setSelectedUser(null);
                                     }}
-                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                                    className="flex-1 px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-800 transition-colors"
                                 >
-                                    Cancel
+                                    Anuluj
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors"
                                 >
-                                    Save Changes
+                                    Zaktualizuj
                                 </button>
                             </div>
                         </form>
@@ -555,13 +512,12 @@ const AdminUsersPage: React.FC = () => {
 
             {/* Delete Confirmation Modal */}
             {showDeleteConfirm && selectedUser && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full">
-                        <h2 className="text-2xl font-bold mb-4 text-red-600">Delete User</h2>
-                        <p className="text-gray-700 mb-6">
-                            Are you sure you want to delete user{' '}
-                            <span className="font-semibold">{selectedUser.username}</span>? This action cannot
-                            be undone.
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 max-w-md w-full">
+                        <h2 className="text-xl font-bold text-red-400 mb-4">Potwierdź Usunięcie</h2>
+                        <p className="text-gray-300 mb-6">
+                            Czy na pewno chcesz usunąć użytkownika <strong>{selectedUser.username}</strong>?
+                            Ta akcja nie może być cofnięta.
                         </p>
                         <div className="flex gap-3">
                             <button
@@ -569,15 +525,15 @@ const AdminUsersPage: React.FC = () => {
                                     setShowDeleteConfirm(false);
                                     setSelectedUser(null);
                                 }}
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                                className="flex-1 px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-800 transition-colors"
                             >
-                                Cancel
+                                Anuluj
                             </button>
                             <button
                                 onClick={handleDeleteUser}
-                                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                             >
-                                Delete
+                                Usuń
                             </button>
                         </div>
                     </div>
