@@ -14,12 +14,10 @@ const AdminTasksPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
-    // Filters
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [filterPriority, setFilterPriority] = useState<string>('all');
 
-    // Modals
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [selectedTask, setSelectedTask] = useState<TaskDto | null>(null);
 
@@ -42,7 +40,7 @@ const AdminTasksPage: React.FC = () => {
             const data = await adminService.getAllTasks();
             setTasks(data);
         } catch (err: any) {
-            setError(err.message || 'Failed to load tasks');
+            setError(err.message || 'Nie udało się załadować zadań');
         } finally {
             setLoading(false);
         }
@@ -51,7 +49,6 @@ const AdminTasksPage: React.FC = () => {
     const filterTasks = () => {
         let filtered = [...tasks];
 
-        // Search filter
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
             filtered = filtered.filter(
@@ -63,12 +60,10 @@ const AdminTasksPage: React.FC = () => {
             );
         }
 
-        // Status filter
         if (filterStatus !== 'all') {
             filtered = filtered.filter((t) => t.status === filterStatus);
         }
 
-        // Priority filter
         if (filterPriority !== 'all') {
             filtered = filtered.filter((t) => t.priority === filterPriority);
         }
@@ -82,13 +77,13 @@ const AdminTasksPage: React.FC = () => {
         try {
             setError(null);
             await adminService.deleteTask(selectedTask.id);
-            setSuccess('Task deleted successfully!');
+            setSuccess('Zadanie usunięte pomyślnie!');
             setShowDeleteConfirm(false);
             setSelectedTask(null);
             loadTasks();
             setTimeout(() => setSuccess(null), 3000);
         } catch (err: any) {
-            setError(err.message || 'Failed to delete task');
+            setError(err.message || 'Nie udało się usunąć zadania');
         }
     };
 
@@ -99,27 +94,26 @@ const AdminTasksPage: React.FC = () => {
 
     const getStatusBadgeColor = (status: string) => {
         const colors: Record<string, string> = {
-            NEW: 'bg-gray-100 text-gray-800',
-            IN_PROGRESS: 'bg-blue-100 text-blue-800',
-            REVIEW: 'bg-yellow-100 text-yellow-800',
-            DONE: 'bg-green-100 text-green-800',
-            BLOCKED: 'bg-red-100 text-red-800',
+            NEW: 'bg-blue-900/50 text-blue-300 border-blue-600',
+            IN_PROGRESS: 'bg-yellow-900/50 text-yellow-300 border-yellow-600',
+            COMPLETED: 'bg-green-900/50 text-green-300 border-green-600',
+            CANCELLED: 'bg-red-900/50 text-red-300 border-red-600',
         };
-        return colors[status] || 'bg-gray-100 text-gray-800';
+        return colors[status] || 'bg-gray-900/50 text-gray-300 border-gray-600';
     };
 
     const getPriorityBadgeColor = (priority: string) => {
         const colors: Record<string, string> = {
-            LOW: 'bg-gray-100 text-gray-800',
-            MEDIUM: 'bg-blue-100 text-blue-800',
-            HIGH: 'bg-orange-100 text-orange-800',
-            URGENT: 'bg-red-100 text-red-800',
+            LOW: 'bg-blue-900/50 text-blue-300 border-blue-600',
+            MEDIUM: 'bg-yellow-900/50 text-yellow-300 border-yellow-600',
+            HIGH: 'bg-orange-900/50 text-orange-300 border-orange-600',
+            URGENT: 'bg-red-900/50 text-red-300 border-red-600',
         };
-        return colors[priority] || 'bg-gray-100 text-gray-800';
+        return colors[priority] || 'bg-gray-900/50 text-gray-300 border-gray-600';
     };
 
     const formatDate = (dateString?: string) => {
-        if (!dateString) return 'No deadline';
+        if (!dateString) return 'Brak';
         return new Date(dateString).toLocaleDateString('pl-PL', {
             year: 'numeric',
             month: 'short',
@@ -131,7 +125,7 @@ const AdminTasksPage: React.FC = () => {
         return (
             <MainLayout>
                 <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
                 </div>
             </MainLayout>
         );
@@ -143,157 +137,150 @@ const AdminTasksPage: React.FC = () => {
                 {/* Header */}
                 <div className="flex justify-between items-center">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Task Management</h1>
-                        <p className="text-gray-600 mt-1">View and manage all tasks</p>
+                        <h1 className="text-3xl font-bold text-white">📋 Zarządzanie Zadaniami</h1>
+                        <p className="text-gray-400 mt-1">Przeglądaj i zarządzaj wszystkimi zadaniami</p>
                     </div>
                 </div>
 
                 {/* Alerts */}
                 {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+                    <div className="bg-red-900/50 border border-red-500 text-red-300 px-4 py-3 rounded-lg">
                         {error}
                     </div>
                 )}
                 {success && (
-                    <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+                    <div className="bg-green-900/50 border border-green-500 text-green-300 px-4 py-3 rounded-lg">
                         {success}
                     </div>
                 )}
 
                 {/* Filters */}
-                <div className="bg-white rounded-lg shadow p-4">
-                    <div className="flex flex-wrap gap-4">
-                        <div className="flex-1 min-w-[200px]">
-                            <input
-                                type="text"
-                                placeholder="Search by title, description, project, or assignee..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                        </div>
-                        <div>
-                            <select
-                                value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
-                                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="all">All Status</option>
-                                <option value="NEW">New</option>
-                                <option value="IN_PROGRESS">In Progress</option>
-                                <option value="REVIEW">Review</option>
-                                <option value="DONE">Done</option>
-                                <option value="BLOCKED">Blocked</option>
-                            </select>
-                        </div>
-                        <div>
-                            <select
-                                value={filterPriority}
-                                onChange={(e) => setFilterPriority(e.target.value)}
-                                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="all">All Priority</option>
-                                <option value="LOW">Low</option>
-                                <option value="MEDIUM">Medium</option>
-                                <option value="HIGH">High</option>
-                                <option value="URGENT">Urgent</option>
-                            </select>
+                <div className="bg-gray-900 border border-gray-700 rounded-lg shadow p-4">
+                    <div className="space-y-4">
+                        <input
+                            type="text"
+                            placeholder="Szukaj po tytule zadania, opisie, projekcie lub osobie przypisanej..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        />
+                        <div className="flex gap-4">
+                            <div className="flex-1">
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Status</label>
+                                <select
+                                    value={filterStatus}
+                                    onChange={(e) => setFilterStatus(e.target.value)}
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                >
+                                    <option value="all">Wszystkie Statusy</option>
+                                    <option value="NEW">Nowe</option>
+                                    <option value="IN_PROGRESS">W trakcie</option>
+                                    <option value="COMPLETED">Ukończone</option>
+                                    <option value="CANCELLED">Anulowane</option>
+                                </select>
+                            </div>
+                            <div className="flex-1">
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Priorytet</label>
+                                <select
+                                    value={filterPriority}
+                                    onChange={(e) => setFilterPriority(e.target.value)}
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                >
+                                    <option value="all">Wszystkie Priorytety</option>
+                                    <option value="LOW">Niski</option>
+                                    <option value="MEDIUM">Średni</option>
+                                    <option value="HIGH">Wysoki</option>
+                                    <option value="URGENT">Pilne</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Tasks Table */}
-                <div className="bg-white rounded-lg shadow overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                <div className="bg-gray-900 border border-gray-700 rounded-lg shadow overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-700">
+                        <thead className="bg-gray-800">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Task Title
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                Tytuł Zadania
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Project
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                Projekt
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                                 Status
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Priority
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                Priorytet
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Assigned To
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                Przypisane do
                             </th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Deadline
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                Termin
                             </th>
-                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Actions
+                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                                Akcje
                             </th>
                         </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-gray-900 divide-y divide-gray-800">
                         {filteredTasks.length === 0 ? (
                             <tr>
                                 <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
-                                    No tasks found
+                                    Nie znaleziono zadań
                                 </td>
                             </tr>
                         ) : (
                             filteredTasks.map((task) => (
-                                <tr key={task.id} className="hover:bg-gray-50">
+                                <tr key={task.id} className="hover:bg-gray-800 transition-colors">
                                     <td className="px-6 py-4">
-                                        <div className="text-sm font-medium text-gray-900">
+                                        <div
+                                            onClick={() => navigate(`/tasks/${task.id}`)}
+                                            className="text-sm font-medium text-emerald-400 hover:text-emerald-300 cursor-pointer max-w-xs truncate"
+                                        >
                                             {task.title}
                                         </div>
-                                        {task.description && (
-                                            <div className="text-sm text-gray-500 max-w-xs truncate">
-                                                {task.description}
-                                            </div>
-                                        )}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm text-gray-900">
-                                            {task.project?.name || 'No project'}
+                                        <div className="text-sm text-gray-300">
+                                            {task.project?.name || 'Brak projektu'}
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                            <span
-                                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(
-                                                    task.status
-                                                )}`}
-                                            >
-                                                {task.status.replace('_', ' ')}
-                                            </span>
+                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full border ${getStatusBadgeColor(task.status)}`}>
+                                            {task.status}
+                                        </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                            <span
-                                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityBadgeColor(
-                                                    task.priority
-                                                )}`}
-                                            >
-                                                {task.priority}
-                                            </span>
+                                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full border ${getPriorityBadgeColor(task.priority)}`}>
+                                            {task.priority}
+                                        </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm text-gray-900">
-                                            {task.assignedTo?.username || 'Unassigned'}
+                                        <div className="text-sm text-gray-300">
+                                            {task.assignedTo?.username || 'Nieprzypisane'}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                                         {formatDate(task.deadline)}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                                        <button
-                                            onClick={() => navigate(`/tasks/${task.id}`)}
-                                            className="text-blue-600 hover:text-blue-900"
-                                        >
-                                            View
-                                        </button>
-                                        <button
-                                            onClick={() => openDeleteConfirm(task)}
-                                            className="text-red-600 hover:text-red-900"
-                                        >
-                                            Delete
-                                        </button>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <div className="flex justify-end gap-2">
+                                            <button
+                                                onClick={() => navigate(`/tasks/${task.id}`)}
+                                                className="px-3 py-1 bg-emerald-900/50 hover:bg-emerald-800 text-emerald-300 rounded border border-emerald-600 transition-colors"
+                                            >
+                                                Wyświetl
+                                            </button>
+                                            <button
+                                                onClick={() => openDeleteConfirm(task)}
+                                                className="px-3 py-1 bg-red-900/50 hover:bg-red-800 text-red-300 rounded border border-red-600 transition-colors"
+                                            >
+                                                Usuń
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))
@@ -301,28 +288,19 @@ const AdminTasksPage: React.FC = () => {
                         </tbody>
                     </table>
                 </div>
-
-                {/* Stats Footer */}
-                <div className="bg-white rounded-lg shadow p-4">
-                    <div className="text-sm text-gray-600">
-                        Showing <span className="font-semibold text-gray-900">{filteredTasks.length}</span> of{' '}
-                        <span className="font-semibold text-gray-900">{tasks.length}</span> tasks
-                    </div>
-                </div>
             </div>
 
             {/* Delete Confirmation Modal */}
             {showDeleteConfirm && selectedTask && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg p-6 max-w-md w-full">
-                        <h2 className="text-2xl font-bold mb-4 text-red-600">Delete Task</h2>
-                        <p className="text-gray-700 mb-6">
-                            Are you sure you want to delete task{' '}
-                            <span className="font-semibold">{selectedTask.title}</span>?
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 max-w-md w-full">
+                        <h2 className="text-xl font-bold text-red-400 mb-4">Potwierdź Usunięcie</h2>
+                        <p className="text-gray-300 mb-6">
+                            Czy na pewno chcesz usunąć zadanie <strong>{selectedTask.title}</strong>?
                             <br /><br />
-                            <span className="text-red-600 font-semibold">⚠️ This will also delete all associated comments and files!</span>
+                            <span className="text-red-400 font-semibold">⚠️ To usunie również wszystkie powiązane komentarze i pliki!</span>
                             <br /><br />
-                            This action cannot be undone.
+                            Ta akcja nie może być cofnięta.
                         </p>
                         <div className="flex gap-3">
                             <button
@@ -330,15 +308,15 @@ const AdminTasksPage: React.FC = () => {
                                     setShowDeleteConfirm(false);
                                     setSelectedTask(null);
                                 }}
-                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                                className="flex-1 px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-800 transition-colors"
                             >
-                                Cancel
+                                Anuluj
                             </button>
                             <button
                                 onClick={handleDeleteTask}
-                                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                             >
-                                Delete
+                                Usuń
                             </button>
                         </div>
                     </div>
