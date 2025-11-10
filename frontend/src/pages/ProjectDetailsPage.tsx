@@ -223,7 +223,7 @@ const ProjectDetailsPage: React.FC = () => {
         return (
             <MainLayout>
                 <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500" />
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500" />
                 </div>
             </MainLayout>
         );
@@ -236,7 +236,7 @@ const ProjectDetailsPage: React.FC = () => {
                     <p className="text-gray-400 text-lg">Projekt nie został znaleziony</p>
                     <button
                         onClick={() => navigate('/projects')}
-                        className="mt-4 px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition"
+                        className="mt-4 px-6 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition"
                     >
                         Wróć do projektów
                     </button>
@@ -371,7 +371,7 @@ const ProjectDetailsPage: React.FC = () => {
                             onClick={() => setActiveTab('tasks')}
                             className={`pb-4 px-2 font-medium transition ${
                                 activeTab === 'tasks'
-                                    ? 'text-emerald-500 border-b-2 border-emerald-500'
+                                    ? 'text-primary-500 border-b-2 border-primary-500'
                                     : 'text-gray-400 hover:text-white'
                             }`}
                         >
@@ -381,7 +381,7 @@ const ProjectDetailsPage: React.FC = () => {
                             onClick={() => setActiveTab('members')}
                             className={`pb-4 px-2 font-medium transition ${
                                 activeTab === 'members'
-                                    ? 'text-emerald-500 border-b-2 border-emerald-500'
+                                    ? 'text-primary-500 border-b-2 border-primary-500'
                                     : 'text-gray-400 hover:text-white'
                             }`}
                         >
@@ -392,7 +392,7 @@ const ProjectDetailsPage: React.FC = () => {
                                 onClick={() => setActiveTab('requests')}
                                 className={`pb-4 px-2 font-medium transition ${
                                     activeTab === 'requests'
-                                        ? 'text-emerald-500 border-b-2 border-emerald-500'
+                                        ? 'text-primary-500 border-b-2 border-primary-500'
                                         : 'text-gray-400 hover:text-white'
                                 }`}
                             >
@@ -410,7 +410,7 @@ const ProjectDetailsPage: React.FC = () => {
                             {(currentUserRole === 'ADMIN' || currentUserRole === 'MEMBER') && (
                                 <button
                                     onClick={() => setShowCreateTaskModal(true)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition text-sm"
+                                    className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition text-sm"
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -498,7 +498,7 @@ const ProjectDetailsPage: React.FC = () => {
                             {currentUserRole === 'ADMIN' && (
                                 <button
                                     onClick={() => setShowAddMemberModal(true)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition text-sm"
+                                    className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition text-sm"
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -548,7 +548,7 @@ const ProjectDetailsPage: React.FC = () => {
                 {/* Create Task Modal */}
                 {showCreateTaskModal && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto transition-all duration-200 shadow-button hover:shadow-button-hover hover:-translate-y-0.5">
                             <h3 className="text-xl font-bold text-white mb-4">Utwórz nowe zadanie</h3>
 
                             <form onSubmit={handleCreateTask} className="space-y-4">
@@ -560,7 +560,7 @@ const ProjectDetailsPage: React.FC = () => {
                                         type="text"
                                         value={taskFormData.title}
                                         onChange={(e) => setTaskFormData({ ...taskFormData, title: e.target.value })}
-                                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
                                         placeholder="Np. Implementacja nowej funkcji"
                                         required
                                     />
@@ -573,7 +573,7 @@ const ProjectDetailsPage: React.FC = () => {
                                     <textarea
                                         value={taskFormData.description}
                                         onChange={(e) => setTaskFormData({ ...taskFormData, description: e.target.value })}
-                                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
                                         placeholder="Szczegółowy opis zadania..."
                                         rows={4}
                                     />
@@ -587,7 +587,7 @@ const ProjectDetailsPage: React.FC = () => {
                                         <select
                                             value={taskFormData.priority}
                                             onChange={(e) => setTaskFormData({ ...taskFormData, priority: e.target.value as any })}
-                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
                                         >
                                             <option value="LOW">Niski</option>
                                             <option value="MEDIUM">Średni</option>
@@ -604,7 +604,7 @@ const ProjectDetailsPage: React.FC = () => {
                                             type="datetime-local"
                                             value={taskFormData.deadline}
                                             onChange={(e) => setTaskFormData({ ...taskFormData, deadline: e.target.value })}
-                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
                                         />
                                     </div>
                                 </div>
@@ -620,7 +620,7 @@ const ProjectDetailsPage: React.FC = () => {
                                             const selectedOptions = Array.from(e.target.selectedOptions, option => parseInt(option.value));
                                             setTaskFormData({ ...taskFormData, assignedUserIds: selectedOptions });
                                         }}
-                                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
                                         size={5}
                                     >
                                         {availableMemberUsers.map((member: ProjectMember) => (
@@ -653,7 +653,7 @@ const ProjectDetailsPage: React.FC = () => {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition disabled:opacity-50"
+                                        className="flex-1 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition disabled:opacity-50"
                                         disabled={actionInProgress}
                                     >
                                         {actionInProgress ? 'Tworzenie...' : 'Utwórz zadanie'}
@@ -678,7 +678,7 @@ const ProjectDetailsPage: React.FC = () => {
                                     <select
                                         value={selectedUserId || ''}
                                         onChange={(e) => setSelectedUserId(parseInt(e.target.value))}
-                                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
                                         required
                                         size={8}
                                     >
@@ -747,7 +747,7 @@ const ProjectDetailsPage: React.FC = () => {
                                     <select
                                         value={selectedRole}
                                         onChange={(e) => setSelectedRole(e.target.value as ProjectRole)}
-                                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
                                     >
                                         <option value="VIEWER">Obserwator</option>
                                         <option value="MEMBER">Członek</option>
@@ -770,7 +770,7 @@ const ProjectDetailsPage: React.FC = () => {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition disabled:opacity-50"
+                                        className="flex-1 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition disabled:opacity-50"
                                         disabled={actionInProgress}
                                     >
                                         {actionInProgress ? 'Dodawanie...' : 'Dodaj członka'}
@@ -796,7 +796,7 @@ const ProjectDetailsPage: React.FC = () => {
                                         type="text"
                                         value={editFormData.name}
                                         onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
                                         required
                                     />
                                 </div>
@@ -808,7 +808,7 @@ const ProjectDetailsPage: React.FC = () => {
                                     <textarea
                                         value={editFormData.description}
                                         onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
-                                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                                        className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
                                         rows={4}
                                     />
                                 </div>
@@ -824,7 +824,7 @@ const ProjectDetailsPage: React.FC = () => {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="flex-1 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition disabled:opacity-50"
+                                        className="flex-1 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition disabled:opacity-50"
                                         disabled={actionInProgress}
                                     >
                                         {actionInProgress ? 'Zapisywanie...' : 'Zapisz'}

@@ -79,7 +79,7 @@ const TaskStatusManager: React.FC<TaskStatusManagerProps> = ({ task, userRole, o
                     value={selectedStatus}
                     onChange={(e) => setSelectedStatus(e.target.value as TaskStatus)}
                     disabled={isChanging || !canChangeStatus}
-                    className="px-3 py-1.5 bg-gray-800 border border-gray-700 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="px-3 py-1.5 bg-gray-800 border border-gray-700 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                     {statusOptions.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -92,7 +92,7 @@ const TaskStatusManager: React.FC<TaskStatusManagerProps> = ({ task, userRole, o
                     <button
                         onClick={handleStatusChange}
                         disabled={isChanging}
-                        className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 text-white rounded-lg text-xs font-medium transition"
+                        className="px-3 py-1.5 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-600 text-white rounded-lg text-xs font-medium transition"
                     >
                         {isChanging ? (
                             <span className="flex items-center gap-1">

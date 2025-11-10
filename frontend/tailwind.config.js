@@ -10,6 +10,22 @@ export default {
             fontFamily: {
                 sans: ['Inter', 'system-ui', 'sans-serif'],
             },
+            boxShadow: {
+                // Karty
+                'card': '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+                'card-hover': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+
+                // Przyciski
+                'button': '0 2px 4px rgba(0, 0, 0, 0.1)',
+                'button-hover': '0 4px 8px rgba(0, 0, 0, 0.15)',
+
+                // Modale i dropdowny
+                'dropdown': '0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1)',
+                'modal': '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)',
+
+                // Inputy w focus
+                'input-focus': '0 0 0 3px rgba(16, 185, 129, 0.1)',
+            },
             colors: {
                 primary: {
                     50: '#ecfdf5',

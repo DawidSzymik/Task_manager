@@ -1,4 +1,4 @@
-// frontend/src/pages/LoginPage.tsx - FINAL FIX
+// frontend/src/pages/LoginPage.tsx - Z NOWYM LOGO
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -18,7 +18,7 @@ interface FormErrors {
 const LoginPage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { login, isAuthenticated } = useAuth(); // ✅ Używamy login z AuthContext!
+    const { login, isAuthenticated } = useAuth();
 
     const [formData, setFormData] = useState<FormData>({
         username: '',
@@ -28,20 +28,17 @@ const LoginPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-    // ✅ Sprawdzamy auth tylko raz przy montażu
     useEffect(() => {
         if (isAuthenticated) {
             navigate('/dashboard', { replace: true });
             return;
         }
 
-        // Show success message from registration
         if (location.state?.message) {
             setSuccessMessage(location.state.message);
             window.history.replaceState({}, document.title);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Pusty array - tylko przy montażu!
+    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -66,12 +63,8 @@ const LoginPage: React.FC = () => {
         setErrors({});
 
         try {
-            // ✅ Używamy login() z AuthContext - to zaktualizuje state!
             await login(formData.username, formData.password);
-
             console.log('Login successful!');
-
-            // ✅ Nawigujemy DOPIERO po zaktualizowaniu Context
             navigate('/dashboard', { replace: true });
 
         } catch (error) {
@@ -89,13 +82,27 @@ const LoginPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center px-4 py-12">
             <div className="w-full max-w-md">
-                {/* Logo */}
-                <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold mb-2">
-                        <span className="text-emerald-500">TASK</span>
-                        <span className="text-white">MANAGER</span>
-                    </h1>
-                    <p className="text-gray-400">Zaloguj się do swojego konta</p>
+                {/* Logo - NOWY DESIGN */}
+                <div className="flex justify-center mb-8">
+                    <div className="inline-flex flex-col items-center gap-3">
+                        <div className="inline-flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-blue-500 to-emerald-500 shadow-[0_4px_16px_rgba(16,185,129,0.6)]">
+                                <svg
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                    className="w-7 h-7 text-white stroke-[3]"
+                                >
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+
+                            <div className="text-3xl font-extrabold bg-gradient-to-br from-blue-500 to-emerald-500 bg-clip-text text-transparent tracking-tight">
+                                TaskManager
+                            </div>
+                        </div>
+                        <p className="text-gray-400 text-center">Zaloguj się do swojego konta</p>
+                    </div>
                 </div>
 
                 {/* Success Message */}
@@ -128,11 +135,8 @@ const LoginPage: React.FC = () => {
                                 disabled={isLoading}
                                 className={`w-full px-4 py-3 bg-gray-900/50 border ${
                                     errors.username ? 'border-red-500' : 'border-gray-600'
-                                } rounded-lg text-white placeholder-gray-400 
-                                focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 
-                                transition disabled:opacity-50 disabled:cursor-not-allowed`}
+                                } rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition disabled:opacity-50`}
                                 placeholder="Wprowadź nazwę użytkownika"
-                                autoFocus
                             />
                             {errors.username && (
                                 <p className="mt-2 text-sm text-red-400">{errors.username}</p>
@@ -152,9 +156,7 @@ const LoginPage: React.FC = () => {
                                 disabled={isLoading}
                                 className={`w-full px-4 py-3 bg-gray-900/50 border ${
                                     errors.password ? 'border-red-500' : 'border-gray-600'
-                                } rounded-lg text-white placeholder-gray-400 
-                                focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 
-                                transition disabled:opacity-50 disabled:cursor-not-allowed`}
+                                } rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition disabled:opacity-50`}
                                 placeholder="Wprowadź hasło"
                             />
                             {errors.password && (
@@ -166,11 +168,7 @@ const LoginPage: React.FC = () => {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600
-                            hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold
-                            py-3 px-4 rounded-lg transition duration-200
-                            disabled:opacity-50 disabled:cursor-not-allowed
-                            flex items-center justify-center gap-2"
+                            className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             {isLoading ? (
                                 <>
@@ -204,7 +202,7 @@ const LoginPage: React.FC = () => {
                 {/* Footer */}
                 <div className="mt-8 text-center">
                     <p className="text-gray-500 text-sm">
-                        TaskManager © 2024. Wszystkie prawa zastrzeżone.
+                        TaskManager © 2025. Wszystkie prawa zastrzeżone.
                     </p>
                 </div>
             </div>

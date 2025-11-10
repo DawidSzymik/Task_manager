@@ -89,7 +89,7 @@ const StatusRequestsPanel: React.FC<StatusRequestsPanelProps> = ({ projectId, on
         return (
             <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
                 <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" />
                 </div>
             </div>
         );

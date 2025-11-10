@@ -241,7 +241,7 @@ const TaskDetailsPage: React.FC = () => {
                                             <div className="space-y-2">
                                                 <textarea value={editingCommentText} onChange={(e) => setEditingCommentText(e.target.value)} className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white" rows={3} />
                                                 <div className="flex gap-2">
-                                                    <button onClick={() => handleUpdateComment(item.data.id)} className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 rounded text-white text-sm">Zapisz</button>
+                                                    <button onClick={() => handleUpdateComment(item.data.id)} className="px-3 py-1 bg-primary-500 hover:bg-primary-600 rounded text-white text-sm">Zapisz</button>
                                                     <button onClick={() => { setEditingCommentId(null); setEditingCommentText(''); }} className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm">Anuluj</button>
                                                 </div>
                                             </div>
@@ -279,7 +279,7 @@ const TaskDetailsPage: React.FC = () => {
                                                     {fileService.isPreviewableContentType(item.data.contentType) && (
                                                         <button
                                                             onClick={() => handlePreviewFile(item.data)}
-                                                            className="p-2 bg-emerald-500 hover:bg-emerald-600 rounded text-white transition-colors"
+                                                            className="p-2 bg-primary-500 hover:bg-primary-600 rounded text-white transition-colors"
                                                             title="Podgląd pliku"
                                                         >
                                                             👁️
@@ -367,7 +367,7 @@ const TaskDetailsPage: React.FC = () => {
                                     <button
                                         type="submit"
                                         disabled={!commentText.trim()}
-                                        className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg"
+                                        className="px-4 py-2 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg"
                                     >
                                         Wyślij
                                     </button>

@@ -179,7 +179,7 @@ const AdminUsersPage: React.FC = () => {
         return (
             <MainLayout>
                 <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
                 </div>
             </MainLayout>
         );
@@ -196,7 +196,7 @@ const AdminUsersPage: React.FC = () => {
                     </div>
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                        className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -225,14 +225,14 @@ const AdminUsersPage: React.FC = () => {
                             placeholder="Szukaj po nazwie użytkownika, emailu lub imieniu i nazwisku..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         />
                         <div className="flex gap-2">
                             <button
                                 onClick={() => setFilterActive(undefined)}
                                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                                     filterActive === undefined
-                                        ? 'bg-emerald-500 text-white'
+                                        ? 'bg-primary-500 text-white'
                                         : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                                 }`}
                             >
@@ -302,7 +302,7 @@ const AdminUsersPage: React.FC = () => {
                                 <tr key={userItem.id} className="hover:bg-gray-800 transition-colors">
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
-                                            <div className="flex-shrink-0 h-10 w-10 bg-emerald-600 rounded-full flex items-center justify-center text-white font-semibold">
+                                            <div className="flex-shrink-0 h-10 w-10 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold">
                                                 {userItem.username.charAt(0).toUpperCase()}
                                             </div>
                                             <div className="ml-4">
@@ -372,7 +372,7 @@ const AdminUsersPage: React.FC = () => {
                                     required
                                     value={createForm.username}
                                     onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
-                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                 />
                             </div>
                             <div>
@@ -382,7 +382,7 @@ const AdminUsersPage: React.FC = () => {
                                     required
                                     value={createForm.password}
                                     onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                 />
                             </div>
                             <div>
@@ -391,7 +391,7 @@ const AdminUsersPage: React.FC = () => {
                                     type="email"
                                     value={createForm.email}
                                     onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
-                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                 />
                             </div>
                             <div>
@@ -400,7 +400,7 @@ const AdminUsersPage: React.FC = () => {
                                     type="text"
                                     value={createForm.fullName}
                                     onChange={(e) => setCreateForm({ ...createForm, fullName: e.target.value })}
-                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                 />
                             </div>
                             <div>
@@ -408,7 +408,7 @@ const AdminUsersPage: React.FC = () => {
                                 <select
                                     value={createForm.systemRole}
                                     onChange={(e) => setCreateForm({ ...createForm, systemRole: e.target.value as 'SUPER_ADMIN' | 'USER' })}
-                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                 >
                                     <option value="USER">USER</option>
                                     <option value="SUPER_ADMIN">SUPER_ADMIN</option>
@@ -433,7 +433,7 @@ const AdminUsersPage: React.FC = () => {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors"
+                                    className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
                                 >
                                     Utwórz
                                 </button>
@@ -455,7 +455,7 @@ const AdminUsersPage: React.FC = () => {
                                     type="email"
                                     value={editForm.email}
                                     onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                 />
                             </div>
                             <div>
@@ -464,7 +464,7 @@ const AdminUsersPage: React.FC = () => {
                                     type="text"
                                     value={editForm.fullName}
                                     onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
-                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                 />
                             </div>
                             <div>
@@ -472,7 +472,7 @@ const AdminUsersPage: React.FC = () => {
                                 <select
                                     value={editForm.systemRole}
                                     onChange={(e) => setEditForm({ ...editForm, systemRole: e.target.value as 'SUPER_ADMIN' | 'USER' })}
-                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                 >
                                     <option value="USER">USER</option>
                                     <option value="SUPER_ADMIN">SUPER_ADMIN</option>
@@ -483,7 +483,7 @@ const AdminUsersPage: React.FC = () => {
                                     type="checkbox"
                                     checked={editForm.active}
                                     onChange={(e) => setEditForm({ ...editForm, active: e.target.checked })}
-                                    className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-600 rounded bg-gray-800"
+                                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-600 rounded bg-gray-800"
                                 />
                                 <label className="ml-2 block text-sm text-gray-300">Aktywny</label>
                             </div>
@@ -500,7 +500,7 @@ const AdminUsersPage: React.FC = () => {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors"
+                                    className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
                                 >
                                     Zaktualizuj
                                 </button>

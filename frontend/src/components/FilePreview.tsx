@@ -99,7 +99,7 @@ const FilePreview: React.FC<FilePreviewProps> = ({ fileId, fileName, contentType
                 <div className="bg-gray-900 rounded-xl p-8 max-w-md" onClick={e => e.stopPropagation()}>
                     <p className="text-red-400 mb-4">{error}</p>
                     <div className="flex gap-3">
-                        <a href={downloadUrl} className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg" download>Pobierz</a>
+                        <a href={downloadUrl} className="px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white rounded-lg" download>Pobierz</a>
                         <button onClick={onClose} className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg">Zamknij</button>
                     </div>
                 </div>
@@ -111,9 +111,9 @@ const FilePreview: React.FC<FilePreviewProps> = ({ fileId, fileName, contentType
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-5" onClick={onClose}>
             <div className="bg-gray-900 rounded-xl w-full h-full max-w-[95vw] max-h-[95vh] flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center p-5 border-b-2 border-gray-700 bg-gray-800 rounded-t-xl">
-                    <h2 className="text-emerald-500 font-semibold text-lg truncate max-w-[60%]">{fileName}</h2>
+                    <h2 className="text-primary-500 font-semibold text-lg truncate max-w-[60%]">{fileName}</h2>
                     <div className="flex gap-3">
-                        <a href={downloadUrl} className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-medium rounded-lg" download>⬇ Pobierz</a>
+                        <a href={downloadUrl} className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white font-medium rounded-lg" download>⬇ Pobierz</a>
                         <button onClick={onClose} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg text-lg">✕</button>
                     </div>
                 </div>
@@ -123,9 +123,9 @@ const FilePreview: React.FC<FilePreviewProps> = ({ fileId, fileName, contentType
                         <div className="flex flex-col h-full">
                             <div className="flex justify-between items-center bg-gray-800 rounded-lg p-4 mb-4 flex-wrap gap-4">
                                 <div className="flex items-center gap-3 bg-gray-700 rounded-lg px-4 py-2">
-                                    <button onClick={goToPrevPage} disabled={pageNumber <= 1} className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 text-white rounded">◀</button>
+                                    <button onClick={goToPrevPage} disabled={pageNumber <= 1} className="px-3 py-1 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-600 text-white rounded">◀</button>
                                     <span className="text-white font-medium">Strona {pageNumber} z {numPages}</span>
-                                    <button onClick={goToNextPage} disabled={pageNumber >= numPages} className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 text-white rounded">▶</button>
+                                    <button onClick={goToNextPage} disabled={pageNumber >= numPages} className="px-3 py-1 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-600 text-white rounded">▶</button>
                                 </div>
                                 <div className="flex items-center gap-2 bg-gray-700 rounded-lg px-4 py-2">
                                     <button onClick={zoomOut} className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg">🔍−</button>
@@ -147,9 +147,9 @@ const FilePreview: React.FC<FilePreviewProps> = ({ fileId, fileName, contentType
                             <div className="flex justify-between items-center bg-gray-800 rounded-lg p-4 mb-4 gap-4">
                                 {excelSheets.length > 1 && (
                                     <div className="flex items-center gap-3 bg-gray-700 rounded-lg px-4 py-2">
-                                        <button onClick={goToPrevSheet} disabled={currentSheetIndex <= 0} className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 text-white rounded">◀</button>
+                                        <button onClick={goToPrevSheet} disabled={currentSheetIndex <= 0} className="px-3 py-1 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-600 text-white rounded">◀</button>
                                         <span className="text-white font-medium">{excelSheets[currentSheetIndex].name} ({currentSheetIndex + 1} z {excelSheets.length})</span>
-                                        <button onClick={goToNextSheet} disabled={currentSheetIndex >= excelSheets.length - 1} className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-600 text-white rounded">▶</button>
+                                        <button onClick={goToNextSheet} disabled={currentSheetIndex >= excelSheets.length - 1} className="px-3 py-1 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-600 text-white rounded">▶</button>
                                     </div>
                                 )}
                                 <div className="text-white text-sm bg-gray-700 rounded-lg px-4 py-2">Wierszy: {excelSheets[currentSheetIndex].data.length}</div>
@@ -189,9 +189,9 @@ const FilePreview: React.FC<FilePreviewProps> = ({ fileId, fileName, contentType
                         <div className="flex items-center justify-center h-full">
                             <div className="text-center">
                                 <span className="text-8xl block mb-6">📄</span>
-                                <h3 className="text-2xl font-bold text-emerald-500 mb-2">Podgląd niedostępny</h3>
+                                <h3 className="text-2xl font-bold text-primary-500 mb-2">Podgląd niedostępny</h3>
                                 <p className="text-white font-semibold mb-6">{fileName}</p>
-                                <a href={downloadUrl} className="inline-block px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-lg" download>⬇ Pobierz plik</a>
+                                <a href={downloadUrl} className="inline-block px-6 py-3 bg-primary-500 hover:bg-primary-600 text-white font-semibold rounded-lg" download>⬇ Pobierz plik</a>
                             </div>
                         </div>
                     )}

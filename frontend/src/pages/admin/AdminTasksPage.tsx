@@ -125,7 +125,7 @@ const AdminTasksPage: React.FC = () => {
         return (
             <MainLayout>
                 <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
                 </div>
             </MainLayout>
         );
@@ -162,7 +162,7 @@ const AdminTasksPage: React.FC = () => {
                             placeholder="Szukaj po tytule zadania, opisie, projekcie lub osobie przypisanej..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                            className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         />
                         <div className="flex gap-4">
                             <div className="flex-1">
@@ -170,7 +170,7 @@ const AdminTasksPage: React.FC = () => {
                                 <select
                                     value={filterStatus}
                                     onChange={(e) => setFilterStatus(e.target.value)}
-                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                 >
                                     <option value="all">Wszystkie Statusy</option>
                                     <option value="NEW">Nowe</option>
@@ -184,7 +184,7 @@ const AdminTasksPage: React.FC = () => {
                                 <select
                                     value={filterPriority}
                                     onChange={(e) => setFilterPriority(e.target.value)}
-                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                                 >
                                     <option value="all">Wszystkie Priorytety</option>
                                     <option value="LOW">Niski</option>
@@ -238,7 +238,7 @@ const AdminTasksPage: React.FC = () => {
                                     <td className="px-6 py-4">
                                         <div
                                             onClick={() => navigate(`/tasks/${task.id}`)}
-                                            className="text-sm font-medium text-emerald-400 hover:text-emerald-300 cursor-pointer max-w-xs truncate"
+                                            className="text-sm font-medium text-primary-400 hover:text-primary-300 cursor-pointer max-w-xs truncate"
                                         >
                                             {task.title}
                                         </div>
@@ -270,7 +270,7 @@ const AdminTasksPage: React.FC = () => {
                                         <div className="flex justify-end gap-2">
                                             <button
                                                 onClick={() => navigate(`/tasks/${task.id}`)}
-                                                className="px-3 py-1 bg-emerald-900/50 hover:bg-emerald-800 text-emerald-300 rounded border border-emerald-600 transition-colors"
+                                                className="px-3 py-1 bg-primary-900/50 hover:bg-primary-800 text-primary-300 rounded border border-primary-600 transition-colors"
                                             >
                                                 Wyświetl
                                             </button>

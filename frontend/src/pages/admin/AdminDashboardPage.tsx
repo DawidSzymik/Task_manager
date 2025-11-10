@@ -35,7 +35,7 @@ const AdminDashboardPage: React.FC = () => {
         return (
             <MainLayout>
                 <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
                 </div>
             </MainLayout>
         );
@@ -89,15 +89,15 @@ const AdminDashboardPage: React.FC = () => {
                     </div>
 
                     {/* Active Users */}
-                    <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-xl p-6 border border-gray-700 hover:border-emerald-500 transition-all">
+                    <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-xl p-6 border border-gray-700 hover:border-primary-500 transition-all">
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-gray-400">Aktywni Użytkownicy</p>
                                 <p className="text-3xl font-bold text-white mt-2">{stats?.active || 0}</p>
                             </div>
-                            <div className="bg-emerald-900/50 rounded-full p-3 border border-emerald-600">
+                            <div className="bg-primary-900/50 rounded-full p-3 border border-primary-600">
                                 <svg
-                                    className="w-8 h-8 text-emerald-400"
+                                    className="w-8 h-8 text-primary-400"
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
@@ -115,7 +115,7 @@ const AdminDashboardPage: React.FC = () => {
                             <div className="flex items-center">
                                 <div className="flex-1 bg-gray-700 rounded-full h-2">
                                     <div
-                                        className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+                                        className="bg-primary-500 h-2 rounded-full transition-all duration-300"
                                         style={{ width: `${stats?.activePercentage || 0}%` }}
                                     ></div>
                                 </div>
@@ -168,7 +168,7 @@ const AdminDashboardPage: React.FC = () => {
                 {/* Quick Actions */}
                 <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg shadow-xl p-6 border border-gray-700">
                     <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                        <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-6 h-6 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                         Szybkie Akcje
@@ -201,11 +201,11 @@ const AdminDashboardPage: React.FC = () => {
 
                         <button
                             onClick={() => navigate('/admin/projects')}
-                            className="flex items-center gap-3 p-4 bg-gray-900 border-2 border-gray-700 rounded-lg hover:border-emerald-500 hover:bg-gray-800 transition-all group"
+                            className="flex items-center gap-3 p-4 bg-gray-900 border-2 border-gray-700 rounded-lg hover:border-primary-500 hover:bg-gray-800 transition-all group"
                         >
-                            <div className="bg-emerald-900/50 rounded-full p-2 group-hover:bg-emerald-800 transition-colors border border-emerald-600">
+                            <div className="bg-primary-900/50 rounded-full p-2 group-hover:bg-primary-800 transition-colors border border-primary-600">
                                 <svg
-                                    className="w-6 h-6 text-emerald-400"
+                                    className="w-6 h-6 text-primary-400"
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"

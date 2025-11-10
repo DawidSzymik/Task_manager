@@ -187,7 +187,7 @@ const ReportsPage: React.FC = () => {
                                 onClick={() => setSelectedPeriod('week')}
                                 className={`px-4 py-2 rounded-lg transition-colors ${
                                     selectedPeriod === 'week'
-                                        ? 'bg-emerald-500 text-white'
+                                        ? 'bg-primary-500 text-white'
                                         : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                 }`}
                             >
@@ -197,7 +197,7 @@ const ReportsPage: React.FC = () => {
                                 onClick={() => setSelectedPeriod('month')}
                                 className={`px-4 py-2 rounded-lg transition-colors ${
                                     selectedPeriod === 'month'
-                                        ? 'bg-emerald-500 text-white'
+                                        ? 'bg-primary-500 text-white'
                                         : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                 }`}
                             >
@@ -207,7 +207,7 @@ const ReportsPage: React.FC = () => {
                                 onClick={() => setSelectedPeriod('all')}
                                 className={`px-4 py-2 rounded-lg transition-colors ${
                                     selectedPeriod === 'all'
-                                        ? 'bg-emerald-500 text-white'
+                                        ? 'bg-primary-500 text-white'
                                         : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                 }`}
                             >
@@ -410,7 +410,7 @@ const ReportsPage: React.FC = () => {
                                             <div className="flex items-center gap-3">
                                                 <div className="flex-1 bg-gray-800 rounded-full h-2">
                                                     <div
-                                                        className="bg-emerald-500 h-2 rounded-full transition-all"
+                                                        className="bg-primary-500 h-2 rounded-full transition-all"
                                                         style={{ width: `${project.completionRate}%` }}
                                                     />
                                                 </div>
