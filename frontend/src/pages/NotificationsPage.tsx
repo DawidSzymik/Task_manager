@@ -121,7 +121,7 @@ const NotificationsPage: React.FC = () => {
             TASK_DUE_SOON: 'border-yellow-500',
             TASK_OVERDUE: 'border-red-500',
             COMMENT_ADDED: 'border-purple-500',
-            STATUS_CHANGED: 'border-emerald-500',
+            STATUS_CHANGED: 'border-primary-500',
             PRIORITY_CHANGED: 'border-orange-500',
             TEAM_MENTION: 'border-pink-500',
         };
@@ -195,7 +195,7 @@ const NotificationsPage: React.FC = () => {
                 {/* Loading State */}
                 {loading ? (
                     <div className="text-center py-16 bg-gray-800/30 backdrop-blur-sm rounded-xl border border-gray-700">
-                        <div className="animate-spin h-12 w-12 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                        <div className="animate-spin h-12 w-12 border-4 border-primary-500 border-t-transparent rounded-full mx-auto mb-4"></div>
                         <p className="text-xl text-gray-400">Ładowanie powiadomień...</p>
                     </div>
                 ) : (
@@ -256,7 +256,7 @@ const NotificationsPage: React.FC = () => {
                                             {!notification.isRead && (
                                                 <button
                                                     onClick={(e) => handleMarkAsRead(notification.id, e)}
-                                                    className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+                                                    className="px-3 py-1.5 bg-primary-500/20 hover:bg-primary-500/30 text-primary-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

@@ -131,7 +131,7 @@ const ProfilePage: React.FC = () => {
                                     {/* Przycisk do zmiany avatara */}
                                     <label
                                         htmlFor="avatar-upload"
-                                        className="absolute bottom-0 right-0 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full p-2 cursor-pointer transition-colors shadow-lg"
+                                        className="absolute bottom-0 right-0 bg-primary-500 hover:bg-primary-600 text-white rounded-full p-2 cursor-pointer transition-colors shadow-lg"
                                         title="Zmień avatar"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -150,7 +150,7 @@ const ProfilePage: React.FC = () => {
 
                                 {/* Loading indicator */}
                                 {uploadingAvatar && (
-                                    <div className="flex items-center gap-2 text-sm text-emerald-400 mb-2">
+                                    <div className="flex items-center gap-2 text-sm text-primary-400 mb-2">
                                         <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -171,7 +171,7 @@ const ProfilePage: React.FC = () => {
                                 <div className="mt-6 pt-6 border-t border-gray-800 space-y-3 w-full">
                                     <div className="flex items-center justify-between text-sm">
                                         <span className="text-gray-400">Status:</span>
-                                        <span className={`font-semibold ${user.active ? 'text-emerald-400' : 'text-red-400'}`}>
+                                        <span className={`font-semibold ${user.active ? 'text-primary-400' : 'text-red-400'}`}>
                                             {user.active ? 'Aktywny' : 'Nieaktywny'}
                                         </span>
                                     </div>
@@ -182,11 +182,7 @@ const ProfilePage: React.FC = () => {
                                 </div>
 
                                 {/* Upload hint */}
-                                <div className="mt-4 p-3 bg-gray-800 rounded-lg text-xs text-gray-400 text-center">
-                                    💡 Kliknij ikonę, żeby zmienić avatar
-                                    <br />
-                                    <span className="text-gray-500">Max 5MB (JPG, PNG, GIF)</span>
-                                </div>
+
                             </div>
                         </div>
                     </div>

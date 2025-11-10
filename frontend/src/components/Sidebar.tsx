@@ -72,7 +72,7 @@ const Sidebar: React.FC = () => {
                             onClick={() => navigate(item.path)}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                                 isActive(item.path)
-                                    ? 'bg-emerald-500 text-white'
+                                    ? 'bg-primary-500 text-white'
                                     : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                             }`}
                         >
@@ -87,7 +87,7 @@ const Sidebar: React.FC = () => {
                         onClick={() => navigate('/calendar')}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                             isActive('/calendar')
-                                ? 'bg-emerald-500 text-white'
+                                ? 'bg-primary-500 text-white'
                                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                         }`}
                     >
@@ -100,7 +100,7 @@ const Sidebar: React.FC = () => {
                         onClick={() => navigate('/reports')}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                             isActive('/reports')
-                                ? 'bg-emerald-500 text-white'
+                                ? 'bg-primary-500 text-white'
                                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                         }`}
                     >

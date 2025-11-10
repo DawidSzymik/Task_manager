@@ -130,7 +130,7 @@ const TeamDetailsPage: React.FC = () => {
             <MainLayout>
                 <div className="flex items-center justify-center h-96">
                     <div className="flex flex-col items-center">
-                        <svg className="animate-spin h-12 w-12 text-emerald-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <svg className="animate-spin h-12 w-12 text-primary-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
@@ -148,7 +148,7 @@ const TeamDetailsPage: React.FC = () => {
                     <p className="text-red-500 text-lg mb-4">{error}</p>
                     <button
                         onClick={() => navigate('/teams')}
-                        className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                        className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
                     >
                         Powrót do listy zespołów
                     </button>
@@ -223,7 +223,7 @@ const TeamDetailsPage: React.FC = () => {
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-gray-400 text-sm mb-1">Aktywnych projektów</p>
-                                    <p className="text-3xl font-bold text-emerald-500">
+                                    <p className="text-3xl font-bold text-primary-500">
                                         {team.projectCount || 0}
                                     </p>
                                 </div>
@@ -259,7 +259,7 @@ const TeamDetailsPage: React.FC = () => {
                         {team.canEdit && (
                             <button
                                 onClick={() => setShowAddMemberModal(true)}
-                                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                             >
                                 + Dodaj członka
                             </button>
@@ -271,7 +271,7 @@ const TeamDetailsPage: React.FC = () => {
                             {members.map((member) => (
                                 <div
                                     key={member.id}
-                                    className="bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-emerald-500 transition-colors"
+                                    className="bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-primary-500 transition-colors"
                                 >
                                     {/* ✅ ZMIENIONE - Dodano avatar i zmieniono layout */}
                                     <div className="flex items-center gap-3">
@@ -333,7 +333,7 @@ const TeamDetailsPage: React.FC = () => {
                                 <select
                                     value={selectedUserId || ''}
                                     onChange={(e) => setSelectedUserId(parseInt(e.target.value))}
-                                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500"
+                                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-primary-500"
                                     required
                                 >
                                     <option value="">-- Wybierz użytkownika --</option>
@@ -348,7 +348,7 @@ const TeamDetailsPage: React.FC = () => {
                                 <button
                                     type="submit"
                                     disabled={actionInProgress}
-                                    className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {actionInProgress ? 'Dodawanie...' : 'Dodaj'}
                                 </button>
@@ -380,7 +380,7 @@ const TeamDetailsPage: React.FC = () => {
                                     type="text"
                                     value={editFormData.name}
                                     onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500"
+                                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-primary-500"
                                     required
                                 />
                             </div>
@@ -389,7 +389,7 @@ const TeamDetailsPage: React.FC = () => {
                                 <textarea
                                     value={editFormData.description}
                                     onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
-                                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500"
+                                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-primary-500"
                                     rows={3}
                                 />
                             </div>
@@ -397,7 +397,7 @@ const TeamDetailsPage: React.FC = () => {
                                 <button
                                     type="submit"
                                     disabled={actionInProgress}
-                                    className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {actionInProgress ? 'Zapisywanie...' : 'Zapisz'}
                                 </button>

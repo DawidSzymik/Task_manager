@@ -130,7 +130,7 @@ const TasksPage: React.FC = () => {
                             <select
                                 value={assignedToMe ? 'my' : 'all'}
                                 onChange={(e) => setAssignedToMe(e.target.value === 'my')}
-                                className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                                className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
                             >
                                 <option value="my">Tylko moje zadania</option>
                                 <option value="all">Wszystkie zadania</option>
@@ -145,7 +145,7 @@ const TasksPage: React.FC = () => {
                             <select
                                 value={selectedProject || ''}
                                 onChange={(e) => setSelectedProject(e.target.value ? Number(e.target.value) : null)}
-                                className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                                className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
                             >
                                 <option value="">Wszystkie projekty</option>
                                 {projects.map((project) => (
@@ -164,7 +164,7 @@ const TasksPage: React.FC = () => {
                             <select
                                 value={selectedStatus}
                                 onChange={(e) => setSelectedStatus(e.target.value as TaskStatus | '')}
-                                className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                                className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
                             >
                                 <option value="">Wszystkie statusy</option>
                                 <option value="NEW">Nowe</option>
@@ -182,7 +182,7 @@ const TasksPage: React.FC = () => {
                             <select
                                 value={selectedPriority}
                                 onChange={(e) => setSelectedPriority(e.target.value as TaskPriority | '')}
-                                className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                                className="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:border-primary-500"
                             >
                                 <option value="">Wszystkie priorytety</option>
                                 <option value="LOW">Niski</option>
@@ -230,7 +230,7 @@ const TasksPage: React.FC = () => {
                         {tasks.map((task) => (
                             <div
                                 key={task.id}
-                                className="bg-gray-900 rounded-lg p-6 border border-gray-800 hover:border-emerald-500 transition cursor-pointer"
+                                className="bg-gray-900 rounded-lg p-6 border border-gray-800 hover:border-primary-500 transition cursor-pointer"
                                 onClick={() => navigate(`/tasks/${task.id}`)}
                             >
                                 {/* Task Header */}

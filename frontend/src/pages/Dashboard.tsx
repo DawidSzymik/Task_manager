@@ -90,7 +90,7 @@ const Dashboard: React.FC = () => {
         switch (type) {
             case 'TASK_CREATED':
                 return (
-                    <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center flex-shrink-0">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
@@ -106,7 +106,7 @@ const Dashboard: React.FC = () => {
                 );
             default:
                 return (
-                    <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-card hover:shadow-card-hover transition-all duration-200">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -147,7 +147,7 @@ const Dashboard: React.FC = () => {
             title: 'Moje Zadania',
             value: stats.userTasks,
             subtitle: 'Przypisane zadania',
-            color: 'emerald',
+            color: 'primary',
             icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -188,7 +188,7 @@ const Dashboard: React.FC = () => {
             key: 'projects',
             title: 'Projekty',
             subtitle: 'Przeglądaj projekty',
-            color: 'emerald',
+            color: 'primary',
             onClick: () => navigate('/projects'),
             icon: (
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -254,7 +254,7 @@ const Dashboard: React.FC = () => {
                 {stats && statsCards.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {statsCards.map((card) => (
-                            <div key={card.key} className="bg-gray-900 border border-gray-800 rounded-lg p-6">
+                            <div key={card.key} className="bg-gray-900 border border-gray-800 rounded-lg p-6 shadow-card hover:shadow-card-hover transition-all duration-200">
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-gray-400 text-sm font-medium">{card.title}</h3>
                                     <div className={`w-10 h-10 bg-${card.color}-500/10 rounded-lg flex items-center justify-center`}>
@@ -269,7 +269,7 @@ const Dashboard: React.FC = () => {
                                 {/* Progress Bar (tylko dla ukończonych zadań) */}
                                 {card.showProgress && (
                                     <div className="mt-2">
-                                        <div className="w-full bg-gray-700 rounded-full h-2">
+                                        <div className="w-full bg-gray-700 rounded-full h-2 shadow-card hover:shadow-card-hover transition-all duration-200">
                                             <div
                                                 className="bg-green-500 h-2 rounded-full transition-all"
                                                 style={{ width: `${card.progressValue}%` }}
@@ -283,14 +283,14 @@ const Dashboard: React.FC = () => {
                 )}
 
                 {/* Quick Actions - ✅ Z KEY PROP */}
-                <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
+                <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 shadow-card hover:shadow-card-hover transition-all duration-200">
                     <h2 className="text-xl font-bold text-white mb-4">Szybkie akcje</h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         {quickActions.map((action) => (
                             <button
                                 key={action.key}
                                 onClick={action.onClick}
-                                className="flex items-center gap-3 p-4 bg-gray-800 hover:bg-gray-750 border border-gray-700 hover:border-emerald-500 rounded-lg transition-all"
+                                className="flex items-center gap-3 p-4 bg-gray-800 hover:bg-gray-750 border border-gray-700 hover:border-primary-500 rounded-lg transition-all"
                             >
                                 <div className={`w-10 h-10 bg-${action.color}-500 rounded-lg flex items-center justify-center`}>
                                     {action.icon}
@@ -306,7 +306,7 @@ const Dashboard: React.FC = () => {
 
                 {/* Recent Activity - ✅ JUŻ MA KEY PROP */}
                 {activities.length > 0 && (
-                    <div className="bg-gray-900 border border-gray-800 rounded-lg p-6">
+                    <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 shadow-card hover:shadow-card-hover transition-all duration-200">
                         <h2 className="text-xl font-bold text-white mb-4">Ostatnia aktywność</h2>
                         <div className="space-y-4">
                             {activities.map((activity) => (

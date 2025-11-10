@@ -188,7 +188,7 @@ const NotificationDropdown: React.FC = () => {
                         <h3 className="text-white font-semibold">Powiadomienia</h3>
                         <button
                             onClick={() => navigate('/notifications')}
-                            className="text-emerald-500 hover:text-emerald-400 text-sm"
+                            className="text-primary-500 hover:text-primary-400 text-sm"
                         >
                             Zobacz wszystkie
                         </button>
@@ -210,7 +210,7 @@ const NotificationDropdown: React.FC = () => {
                     <div className="max-h-96 overflow-y-auto">
                         {loading ? (
                             <div className="p-8 text-center text-gray-400">
-                                <div className="animate-spin h-8 w-8 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto"></div>
+                                <div className="animate-spin h-8 w-8 border-4 border-primary-500 border-t-transparent rounded-full mx-auto"></div>
                                 <p className="mt-2">Ładowanie...</p>
                             </div>
                         ) : notifications.length === 0 ? (
@@ -234,7 +234,7 @@ const NotificationDropdown: React.FC = () => {
                                                     {notification.title}
                                                 </h4>
                                                 {!notification.isRead && (
-                                                    <span className="w-2 h-2 bg-emerald-500 rounded-full flex-shrink-0 mt-1"></span>
+                                                    <span className="w-2 h-2 bg-primary-500 rounded-full flex-shrink-0 mt-1"></span>
                                                 )}
                                             </div>
                                             <p className="text-xs text-gray-400 mt-1 line-clamp-2">
@@ -247,7 +247,7 @@ const NotificationDropdown: React.FC = () => {
                                                 {!notification.isRead && (
                                                     <button
                                                         onClick={(e) => handleMarkAsRead(notification.id, e)}
-                                                        className="text-xs text-emerald-500 hover:text-emerald-400"
+                                                        className="text-xs text-primary-500 hover:text-primary-400"
                                                     >
                                                         Oznacz jako przeczytane
                                                     </button>
@@ -268,7 +268,7 @@ const NotificationDropdown: React.FC = () => {
                                     setShowDropdown(false);
                                     navigate('/notifications');
                                 }}
-                                className="text-sm text-emerald-500 hover:text-emerald-400"
+                                className="text-sm text-primary-500 hover:text-primary-400"
                             >
                                 Zobacz wszystkie powiadomienia
                             </button>

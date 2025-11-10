@@ -1,7 +1,8 @@
-// frontend/src/pages/RegisterPage.tsx
-import React, { useEffect, useState } from 'react';
+// frontend/src/pages/RegisterPage.tsx - Z NOWYM LOGO
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import authService, { type ApiError } from '../services/authService';
+import authService from '../services/authService';
+import type { ApiError } from '../services/authService';
 
 interface FormData {
     username: string;
@@ -22,6 +23,7 @@ interface FormErrors {
 
 const RegisterPage: React.FC = () => {
     const navigate = useNavigate();
+
     const [formData, setFormData] = useState<FormData>({
         username: '',
         email: '',
@@ -32,14 +34,6 @@ const RegisterPage: React.FC = () => {
     const [errors, setErrors] = useState<FormErrors>({});
     const [isLoading, setIsLoading] = useState(false);
     const [acceptTerms, setAcceptTerms] = useState(false);
-
-    // ✅ FIX: Uruchamiamy tylko RAZ przy montażu
-    useEffect(() => {
-        if (authService.isAuthenticated()) {
-            navigate('/dashboard', { replace: true });
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // ✅ Pusty array - uruchom tylko raz przy montażu!
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -55,7 +49,11 @@ const RegisterPage: React.FC = () => {
         if (!formData.username.trim()) {
             newErrors.username = 'Nazwa użytkownika jest wymagana';
         } else if (formData.username.length < 3) {
-            newErrors.username = 'Nazwa musi mieć minimum 3 znaki';
+            newErrors.username = 'Nazwa użytkownika musi mieć minimum 3 znaki';
+        }
+
+        if (!formData.fullName.trim()) {
+            newErrors.fullName = 'Imię i nazwisko jest wymagane';
         }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -99,7 +97,6 @@ const RegisterPage: React.FC = () => {
                 fullName: formData.fullName,
             });
 
-            // Navigate to login with success message
             navigate('/login', {
                 state: { message: 'Rejestracja zakończona sukcesem! Możesz się teraz zalogować.' },
             });
@@ -119,13 +116,27 @@ const RegisterPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center px-4 py-12">
             <div className="w-full max-w-md">
-                {/* Logo */}
-                <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold mb-2">
-                        <span className="text-emerald-500">TASK</span>
-                        <span className="text-white">MANAGER</span>
-                    </h1>
-                    <p className="text-gray-400">Utwórz nowe konto</p>
+                {/* Logo - NOWY DESIGN */}
+                <div className="flex justify-center mb-8">
+                    <div className="inline-flex flex-col items-center gap-3">
+                        <div className="inline-flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br from-blue-500 to-emerald-500 shadow-[0_4px_16px_rgba(16,185,129,0.6)]">
+                                <svg
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                    className="w-7 h-7 text-white stroke-[3]"
+                                >
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+
+                            <div className="text-3xl font-extrabold bg-gradient-to-br from-blue-500 to-emerald-500 bg-clip-text text-transparent tracking-tight">
+                                TaskManager
+                            </div>
+                        </div>
+                        <p className="text-gray-400 text-center">Utwórz nowe konto</p>
+                    </div>
                 </div>
 
                 {/* Register Form */}
@@ -151,11 +162,8 @@ const RegisterPage: React.FC = () => {
                                 disabled={isLoading}
                                 className={`w-full px-4 py-3 bg-gray-900/50 border ${
                                     errors.fullName ? 'border-red-500' : 'border-gray-600'
-                                } rounded-lg text-white placeholder-gray-400 
-                                focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 
-                                transition disabled:opacity-50`}
+                                } rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition disabled:opacity-50`}
                                 placeholder="Jan Kowalski"
-                                autoFocus
                             />
                             {errors.fullName && (
                                 <p className="mt-2 text-sm text-red-400">{errors.fullName}</p>
@@ -175,9 +183,7 @@ const RegisterPage: React.FC = () => {
                                 disabled={isLoading}
                                 className={`w-full px-4 py-3 bg-gray-900/50 border ${
                                     errors.username ? 'border-red-500' : 'border-gray-600'
-                                } rounded-lg text-white placeholder-gray-400 
-                                focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 
-                                transition disabled:opacity-50`}
+                                } rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition disabled:opacity-50`}
                                 placeholder="jankowalski"
                             />
                             {errors.username && (
@@ -198,10 +204,8 @@ const RegisterPage: React.FC = () => {
                                 disabled={isLoading}
                                 className={`w-full px-4 py-3 bg-gray-900/50 border ${
                                     errors.email ? 'border-red-500' : 'border-gray-600'
-                                } rounded-lg text-white placeholder-gray-400 
-                                focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 
-                                transition disabled:opacity-50`}
-                                placeholder="jan@przykład.pl"
+                                } rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition disabled:opacity-50`}
+                                placeholder="jan@example.com"
                             />
                             {errors.email && (
                                 <p className="mt-2 text-sm text-red-400">{errors.email}</p>
@@ -221,9 +225,7 @@ const RegisterPage: React.FC = () => {
                                 disabled={isLoading}
                                 className={`w-full px-4 py-3 bg-gray-900/50 border ${
                                     errors.password ? 'border-red-500' : 'border-gray-600'
-                                } rounded-lg text-white placeholder-gray-400 
-                                focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 
-                                transition disabled:opacity-50`}
+                                } rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition disabled:opacity-50`}
                                 placeholder="Minimum 6 znaków"
                             />
                             {errors.password && (
@@ -244,9 +246,7 @@ const RegisterPage: React.FC = () => {
                                 disabled={isLoading}
                                 className={`w-full px-4 py-3 bg-gray-900/50 border ${
                                     errors.confirmPassword ? 'border-red-500' : 'border-gray-600'
-                                } rounded-lg text-white placeholder-gray-400 
-                                focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 
-                                transition disabled:opacity-50`}
+                                } rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition disabled:opacity-50`}
                                 placeholder="Powtórz hasło"
                             />
                             {errors.confirmPassword && (
@@ -255,23 +255,22 @@ const RegisterPage: React.FC = () => {
                         </div>
 
                         {/* Terms Checkbox */}
-                        <div className="flex items-start">
+                        <div className="flex items-start gap-3">
                             <input
                                 type="checkbox"
-                                id="acceptTerms"
+                                id="terms"
                                 checked={acceptTerms}
                                 onChange={(e) => setAcceptTerms(e.target.checked)}
                                 disabled={isLoading}
-                                className="mt-1 w-4 h-4 text-emerald-500 bg-gray-900 border-gray-600
-                                rounded focus:ring-emerald-500 focus:ring-2 disabled:opacity-50"
+                                className="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-900/50 text-emerald-500 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-0 disabled:opacity-50"
                             />
-                            <label htmlFor="acceptTerms" className="ml-2 text-sm text-gray-400">
+                            <label htmlFor="terms" className="text-sm text-gray-400">
                                 Akceptuję{' '}
-                                <a href="#" className="text-emerald-400 hover:text-emerald-300">
+                                <a href="/regulamin" className="text-emerald-400 hover:text-emerald-300">
                                     regulamin
                                 </a>
                                 {' '}i{' '}
-                                <a href="#" className="text-emerald-400 hover:text-emerald-300">
+                                <a href="/polityka-prywatnosci" className="text-emerald-400 hover:text-emerald-300">
                                     politykę prywatności
                                 </a>
                             </label>
@@ -280,12 +279,8 @@ const RegisterPage: React.FC = () => {
                         {/* Submit Button */}
                         <button
                             type="submit"
-                            disabled={isLoading || !acceptTerms}
-                            className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600
-                            hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold
-                            py-3 px-4 rounded-lg transition duration-200
-                            disabled:opacity-50 disabled:cursor-not-allowed
-                            flex items-center justify-center gap-2"
+                            disabled={isLoading}
+                            className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             {isLoading ? (
                                 <>
@@ -319,7 +314,7 @@ const RegisterPage: React.FC = () => {
                 {/* Footer */}
                 <div className="mt-8 text-center">
                     <p className="text-gray-500 text-sm">
-                        TaskManager © 2024. Wszystkie prawa zastrzeżone.
+                        TaskManager © 2025. Wszystkie prawa zastrzeżone.
                     </p>
                 </div>
             </div>

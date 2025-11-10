@@ -37,7 +37,7 @@ const UserProfilePage: React.FC = () => {
             <MainLayout>
                 <div className="flex items-center justify-center h-96">
                     <div className="flex flex-col items-center">
-                        <svg className="animate-spin h-12 w-12 text-emerald-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <svg className="animate-spin h-12 w-12 text-primary-500 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
@@ -97,7 +97,7 @@ const UserProfilePage: React.FC = () => {
                         <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
                             {/* Avatar */}
                             <div className="flex flex-col items-center mb-6">
-                                <div className="w-32 h-32 bg-emerald-500 rounded-full flex items-center justify-center mb-4">
+                                <div className="w-32 h-32 bg-primary-500 rounded-full flex items-center justify-center mb-4">
                                     <span className="text-white text-5xl font-bold">
                                         {user.username.charAt(0).toUpperCase()}
                                     </span>
@@ -113,7 +113,7 @@ const UserProfilePage: React.FC = () => {
                                 </span>
                                 <span className={`mt-2 px-3 py-1 rounded-full text-xs font-semibold ${
                                     user.active
-                                        ? 'bg-emerald-500/20 text-emerald-400'
+                                        ? 'bg-primary-500/20 text-primary-400'
                                         : 'bg-gray-500/20 text-gray-400'
                                 }`}>
                                     {user.active ? 'Aktywny' : 'Nieaktywny'}
@@ -170,7 +170,7 @@ const UserProfilePage: React.FC = () => {
 
                                 <div className="border-b border-gray-800 pb-4">
                                     <label className="text-sm text-gray-400 block mb-1">Status konta</label>
-                                    <p className={`font-medium ${user.active ? 'text-emerald-400' : 'text-gray-400'}`}>
+                                    <p className={`font-medium ${user.active ? 'text-primary-400' : 'text-gray-400'}`}>
                                         {user.active ? 'Aktywne' : 'Nieaktywne'}
                                     </p>
                                 </div>

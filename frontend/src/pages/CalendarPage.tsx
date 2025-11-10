@@ -193,15 +193,15 @@ const CalendarPage: React.FC = () => {
                                         className={`
                                             min-h-[100px] p-2 rounded-lg border-2 transition-all
                                             ${day.isCurrentMonth ? 'bg-gray-800' : 'bg-gray-900 opacity-50'}
-                                            ${isToday(day.date) ? 'border-emerald-500' : 'border-gray-700'}
-                                            ${isSelected ? 'ring-2 ring-emerald-500' : ''}
-                                            hover:border-emerald-500
+                                            ${isToday(day.date) ? 'border-primary-500' : 'border-gray-700'}
+                                            ${isSelected ? 'ring-2 ring-primary-500' : ''}
+                                            hover:border-primary-500
                                         `}
                                     >
                                         <div className={`
                                             text-sm font-semibold mb-1
                                             ${day.isCurrentMonth ? 'text-white' : 'text-gray-600'}
-                                            ${isToday(day.date) ? 'text-emerald-500' : ''}
+                                            ${isToday(day.date) ? 'text-primary-500' : ''}
                                         `}>
                                             {day.date.getDate()}
                                         </div>
