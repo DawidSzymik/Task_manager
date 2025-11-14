@@ -25,6 +25,9 @@ public class UploadedFile {
     @Column(name = "data", columnDefinition = "LONGBLOB")
     private byte[] data;
 
+    @Column(name = "blob_url", length = 500)
+    private String blobUrl;
+
     @Column(name = "uploaded_at", nullable = false)
     private LocalDateTime uploadedAt;
 
@@ -58,6 +61,14 @@ public class UploadedFile {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getBlobUrl() {
+        return blobUrl;
+    }
+
+    public void setBlobUrl(String blobUrl) {
+        this.blobUrl = blobUrl;
     }
 
     public String getOriginalName() {

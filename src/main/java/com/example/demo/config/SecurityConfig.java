@@ -44,6 +44,11 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // ✅ DODAJ TO NA POCZĄTKU - POZA authorizeHttpRequests!
+                .headers()
+                .frameOptions().disable() // Wyłącz X-Frame-Options
+                .and()
+
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints
                         .antMatchers("/registration", "/login", "/kontakt").permitAll()

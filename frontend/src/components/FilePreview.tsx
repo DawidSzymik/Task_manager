@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
 import * as XLSX from 'xlsx';
-import 'react-pdf/dist/Page/AnnotationLayer.css';
-import 'react-pdf/dist/Page/TextLayer.css';
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url
-).toString();
+import fileService from "../services/fileService.ts";
 
 interface FilePreviewProps {
     fileId: number;
@@ -22,17 +15,14 @@ interface ExcelSheet {
 }
 
 const FilePreview: React.FC<FilePreviewProps> = ({ fileId, fileName, contentType, onClose }) => {
-    const [numPages, setNumPages] = useState<number>(0);
-    const [pageNumber, setPageNumber] = useState<number>(1);
-    const [scale, setScale] = useState<number>(1.0);
     const [excelSheets, setExcelSheets] = useState<ExcelSheet[]>([]);
     const [currentSheetIndex, setCurrentSheetIndex] = useState<number>(0);
     const [excelLoading, setExcelLoading] = useState<boolean>(false);
-    const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
-    const previewUrl = `/api/v1/files/${fileId}/preview`;
-    const downloadUrl = `/api/v1/files/${fileId}/download`;
+    const previewUrl = fileService.getPreviewUrl(fileId);
+    const downloadUrl = fileService.getDownloadUrl(fileId);
+
     const isExcelFile = contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || contentType === 'application/vnd.ms-excel';
 
     useEffect(() => {
@@ -55,31 +45,14 @@ const FilePreview: React.FC<FilePreviewProps> = ({ fileId, fileName, contentType
                 return { name: sheetName, data: data as any[][] };
             });
             setExcelSheets(sheets);
-            setLoading(false);
             setExcelLoading(false);
         } catch (err) {
             console.error('Error loading Excel file:', err);
             setError('Nie udało się załadować pliku Excel');
-            setLoading(false);
             setExcelLoading(false);
         }
     };
 
-    const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
-        setNumPages(numPages);
-        setLoading(false);
-    };
-
-    const onDocumentLoadError = () => {
-        setError('Nie udało się załadować pliku PDF');
-        setLoading(false);
-    };
-
-    const goToPrevPage = () => setPageNumber(prev => Math.max(prev - 1, 1));
-    const goToNextPage = () => setPageNumber(prev => Math.min(prev + 1, numPages));
-    const zoomIn = () => setScale(prev => Math.min(prev + 0.25, 3.0));
-    const zoomOut = () => setScale(prev => Math.max(prev - 0.25, 0.5));
-    const resetZoom = () => setScale(1.0);
     const goToPrevSheet = () => setCurrentSheetIndex(prev => Math.max(prev - 1, 0));
     const goToNextSheet = () => setCurrentSheetIndex(prev => Math.min(prev + 1, excelSheets.length - 1));
 
@@ -118,30 +91,33 @@ const FilePreview: React.FC<FilePreviewProps> = ({ fileId, fileName, contentType
                     </div>
                 </div>
                 <div className="flex-1 overflow-hidden p-5">
-                    {loading && contentType === 'application/pdf' && <div className="flex items-center justify-center h-full"><div className="text-gray-400 text-lg">Ładowanie PDF...</div></div>}
-                    {contentType === 'application/pdf' && !loading && (
+                    {/* ✅ SEKCJA PDF - PROSTY IFRAME */}
+                    {contentType === 'application/pdf' && (
                         <div className="flex flex-col h-full">
-                            <div className="flex justify-between items-center bg-gray-800 rounded-lg p-4 mb-4 flex-wrap gap-4">
-                                <div className="flex items-center gap-3 bg-gray-700 rounded-lg px-4 py-2">
-                                    <button onClick={goToPrevPage} disabled={pageNumber <= 1} className="px-3 py-1 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-600 text-white rounded">◀</button>
-                                    <span className="text-white font-medium">Strona {pageNumber} z {numPages}</span>
-                                    <button onClick={goToNextPage} disabled={pageNumber >= numPages} className="px-3 py-1 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-600 text-white rounded">▶</button>
-                                </div>
-                                <div className="flex items-center gap-2 bg-gray-700 rounded-lg px-4 py-2">
-                                    <button onClick={zoomOut} className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg">🔍−</button>
-                                    <span className="text-white font-medium min-w-[60px] text-center">{Math.round(scale * 100)}%</span>
-                                    <button onClick={zoomIn} className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg">🔍+</button>
-                                    <button onClick={resetZoom} className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg">Reset</button>
-                                </div>
-                            </div>
-                            <div className="flex-1 overflow-auto bg-gray-950 rounded-lg p-4 flex justify-center">
-                                <Document file={previewUrl} onLoadSuccess={onDocumentLoadSuccess} onLoadError={onDocumentLoadError} loading={<div className="text-gray-400">Ładowanie...</div>}>
-                                    <Page pageNumber={pageNumber} scale={scale} renderTextLayer={true} renderAnnotationLayer={true} className="shadow-2xl" />
-                                </Document>
+                            <div className="flex-1 overflow-hidden bg-gray-950 rounded-lg">
+                                <iframe
+                                    src={previewUrl}
+                                    className="w-full h-full border-0"
+                                    title={fileName}
+                                    onLoad={() => console.log('✅ PDF loaded in iframe!')}
+                                    onError={() => setError('Nie udało się załadować PDF')}
+                                />
                             </div>
                         </div>
                     )}
-                    {contentType.startsWith('image/') && <div className="flex items-center justify-center h-full p-4"><img src={previewUrl} alt={fileName} className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" /></div>}
+
+                    {/* SEKCJA OBRAZY */}
+                    {contentType.startsWith('image/') && (
+                        <div className="flex items-center justify-center h-full p-4">
+                            <img
+                                src={previewUrl}
+                                alt={fileName}
+                                className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                            />
+                        </div>
+                    )}
+
+                    {/* SEKCJA EXCEL */}
                     {isExcelFile && !excelLoading && excelSheets.length > 0 && (
                         <div className="flex flex-col h-full">
                             <div className="flex justify-between items-center bg-gray-800 rounded-lg p-4 mb-4 gap-4">
@@ -184,7 +160,14 @@ const FilePreview: React.FC<FilePreviewProps> = ({ fileId, fileName, contentType
                             </div>
                         </div>
                     )}
-                    {isExcelFile && excelLoading && <div className="flex items-center justify-center h-full"><div className="text-gray-400 text-lg">Ładowanie Excel...</div></div>}
+
+                    {isExcelFile && excelLoading && (
+                        <div className="flex items-center justify-center h-full">
+                            <div className="text-gray-400 text-lg">Ładowanie Excel...</div>
+                        </div>
+                    )}
+
+                    {/* BRAK PODGLĄDU */}
                     {!contentType.startsWith('image/') && contentType !== 'application/pdf' && !isExcelFile && (
                         <div className="flex items-center justify-center h-full">
                             <div className="text-center">

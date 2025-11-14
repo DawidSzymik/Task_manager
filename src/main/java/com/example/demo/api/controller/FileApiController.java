@@ -5,6 +5,7 @@ import com.example.demo.api.dto.response.FileDto;
 import com.example.demo.api.mapper.FileMapper;
 import com.example.demo.model.*;
 import com.example.demo.service.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,6 +21,9 @@ import java.util.Map;
 @RequestMapping("/api/v1/files")
 @CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:5173"})
 public class FileApiController {
+
+    @Autowired
+    private AzureBlobService blobService;
 
     private final FileService fileService;
     private final TaskService taskService;
@@ -77,7 +81,7 @@ public class FileApiController {
     }
 
     @PostMapping("/tasks/{taskId}")
-    public ResponseEntity<Map<String, Object>> uploadFile(
+    public ResponseEntity<?> uploadFile(
             @PathVariable Long taskId,
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal UserDetails userDetails) {
@@ -85,42 +89,51 @@ public class FileApiController {
         try {
             User currentUser = getUserFromDetails(userDetails);
 
-            if (file.isEmpty()) {
-                return createErrorResponse("File is empty", HttpStatus.BAD_REQUEST);
-            }
-
-            long maxSize = 10 * 1024 * 1024;
-            if (file.getSize() > maxSize) {
-                return createErrorResponse("File size exceeds maximum limit of 10MB", HttpStatus.BAD_REQUEST);
-            }
-
             Task task = taskService.getTaskById(taskId)
-                    .orElseThrow(() -> new RuntimeException("Task with ID " + taskId + " not found"));
+                    .orElseThrow(() -> new RuntimeException("Task not found"));
 
             checkTaskAccess(task, currentUser);
 
-            ProjectRole userRole = getUserRoleInProject(task.getProject(), currentUser);
-            if (userRole == ProjectRole.VIEWER) {
-                return createErrorResponse("Viewers cannot upload files", HttpStatus.FORBIDDEN);
-            }
+            System.out.println("📤 Uploading file: " + file.getOriginalFilename());
+            System.out.println("📦 Size: " + file.getSize() + " bytes");
 
-            UploadedFile uploadedFile = fileService.storeFile(task, file, currentUser);
-            FileDto fileDto = fileMapper.toDtoWithPermissions(uploadedFile, currentUser, userRole);
+            Long projectId = task.getProject().getId();
+            String blobUrl = blobService.uploadFile(file, projectId);
 
+            UploadedFile uploadedFile = fileService.saveFile(task, file, currentUser, blobUrl);
+
+            System.out.println("✅ File metadata saved to database");
+
+            // ✅ ZMIENIONE - zwracamy pełny obiekt w "data"
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "File uploaded successfully");
-            response.put("data", fileDto);
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            // ✅ Pełny obiekt pliku w "data"
+            Map<String, Object> fileData = new HashMap<>();
+            fileData.put("id", uploadedFile.getId());
+            fileData.put("originalName", uploadedFile.getOriginalName());
+            fileData.put("contentType", uploadedFile.getContentType());
+            fileData.put("fileSize", uploadedFile.getFileSize());
+            fileData.put("blobUrl", blobUrl);
+            fileData.put("uploadedAt", uploadedFile.getUploadedAt());
+            fileData.put("uploadedBy", Map.of(
+                    "id", currentUser.getId(),
+                    "username", currentUser.getUsername(),
+                    "fullName", currentUser.getFullName()
+            ));
+
+            response.put("data", fileData); // ✅ KLUCZOWA ZMIANA!
+
+            return ResponseEntity.ok(response);
 
         } catch (IllegalArgumentException e) {
             return createErrorResponse(e.getMessage(), HttpStatus.FORBIDDEN);
-        } catch (RuntimeException e) {
-            return createErrorResponse(e.getMessage(), HttpStatus.NOT_FOUND);
         } catch (Exception e) {
+            System.err.println("❌ Upload error: " + e.getMessage());
             e.printStackTrace();
-            return createErrorResponse("Failed to upload file: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return createErrorResponse("Failed to upload file: " + e.getMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -170,16 +183,28 @@ public class FileApiController {
 
             checkTaskAccess(file.getTask(), currentUser);
 
-            if (file.getData() == null) {
+            byte[] fileData;
+
+            // ✅ NOWA LOGIKA - sprawdź czy plik jest w Blob Storage
+            if (file.getBlobUrl() != null && !file.getBlobUrl().isEmpty()) {
+                System.out.println("📥 Downloading from Azure Blob Storage");
+                fileData = blobService.downloadFile(file.getBlobUrl());
+            } else {
+                // Fallback dla starych plików (w bazie)
+                System.out.println("📥 Downloading from database (old file)");
+                fileData = file.getData();
+            }
+
+            if (fileData == null || fileData.length == 0) {
                 throw new RuntimeException("File data not found");
             }
 
-            ByteArrayResource resource = new ByteArrayResource(file.getData());
+            ByteArrayResource resource = new ByteArrayResource(fileData);
 
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getOriginalName() + "\"")
                     .contentType(MediaType.parseMediaType(file.getContentType()))
-                    .contentLength(file.getData().length)
+                    .contentLength(fileData.length)
                     .body(resource);
 
         } catch (IllegalArgumentException e) {
@@ -272,6 +297,14 @@ public class FileApiController {
      * Endpoint do podglądu pliku w przeglądarce (inline)
      * GET /api/v1/files/{id}/preview
      */
+    /**
+     * Endpoint do podglądu pliku w przeglądarce (inline)
+     * GET /api/v1/files/{id}/preview
+     */
+    /**
+     * Endpoint do podglądu pliku w przeglądarce (inline)
+     * GET /api/v1/files/{id}/preview
+     */
     @GetMapping("/{id}/preview")
     public ResponseEntity<ByteArrayResource> previewFile(
             @PathVariable Long id,
@@ -285,17 +318,29 @@ public class FileApiController {
 
             checkTaskAccess(file.getTask(), currentUser);
 
-            if (file.getData() == null) {
+            byte[] fileData;
+
+            // ✅ Sprawdź czy plik jest w Blob Storage
+            if (file.getBlobUrl() != null && !file.getBlobUrl().isEmpty()) {
+                System.out.println("📥 Preview from Azure Blob Storage");
+                fileData = blobService.downloadFile(file.getBlobUrl());
+            } else {
+                // Fallback dla starych plików (w bazie)
+                System.out.println("📥 Preview from database (old file)");
+                fileData = file.getData();
+            }
+
+            if (fileData == null || fileData.length == 0) {
                 throw new RuntimeException("File data not found");
             }
 
-            ByteArrayResource resource = new ByteArrayResource(file.getData());
+            ByteArrayResource resource = new ByteArrayResource(fileData);
 
-            // KLUCZOWA RÓŻNICA: Content-Disposition = "inline" zamiast "attachment"
+            // Content-Disposition = "inline" → otwiera w przeglądarce zamiast pobierać
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getOriginalName() + "\"")
                     .contentType(MediaType.parseMediaType(file.getContentType()))
-                    .contentLength(file.getData().length)
+                    .contentLength(fileData.length)
                     .cacheControl(CacheControl.maxAge(3600, java.util.concurrent.TimeUnit.SECONDS))
                     .body(resource);
 
@@ -330,8 +375,10 @@ public class FileApiController {
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("canPreview", canPreview);
-            response.put("contentType", file.getContentType());
+            response.put("data", Map.of(
+                    "canPreview", canPreview,
+                    "contentType", file.getContentType()
+            ));
 
             return ResponseEntity.ok(response);
 

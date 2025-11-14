@@ -175,6 +175,13 @@ const TaskDetailsPage: React.FC = () => {
 
     // ⭐ NOWA FUNKCJA - Otwórz podgląd pliku
     const handlePreviewFile = (file: UploadedFile) => {
+        console.log('🔍 Opening preview for file:', file); // ✅ DODAJ TO
+        console.log('📋 Preview data:', {
+            id: file.id,
+            name: file.originalName,
+            type: file.contentType
+        }); // ✅ DODAJ TO
+
         setPreviewFile({
             id: file.id,
             name: file.originalName,

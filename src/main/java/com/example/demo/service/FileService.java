@@ -146,4 +146,22 @@ public class FileService {
     public List<UploadedFile> getFilesByUser(User user) {
         return fileRepository.findByUploadedBy(user);
     }
+
+    /**
+     * Zapisz plik z Azure Blob URL
+     */
+    public UploadedFile saveFile(Task task, MultipartFile file, User user, String blobUrl) throws IOException {
+
+        UploadedFile uploadedFile = new UploadedFile();
+        uploadedFile.setOriginalName(file.getOriginalFilename());
+        uploadedFile.setContentType(file.getContentType());
+        uploadedFile.setFileSize(file.getSize()); // ✅ POPRAWIONE
+        uploadedFile.setBlobUrl(blobUrl);
+        // NIE ustawiamy setData() - pliki są w Azure!
+        uploadedFile.setTask(task);
+        uploadedFile.setUploadedBy(user);
+        uploadedFile.setUploadedAt(java.time.LocalDateTime.now());
+
+        return fileRepository.save(uploadedFile); // ✅ POPRAWIONE
+    }
 }
