@@ -39,3 +39,6 @@ build/
 
 ### Mac OS ###
 .DS_Store
+# Sensitive config files
+src/main/resources/application.properties
+application-*.properties
