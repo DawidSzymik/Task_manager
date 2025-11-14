@@ -1,7 +1,7 @@
 // src/services/fileService.ts
 import type { UploadedFile, ApiResponse } from '../types';
 
-const API_BASE_URL = '/api/v1/files';
+const API_BASE_URL = 'http://localhost:8080/api/v1/files';
 
 const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> => {
     const data = await response.json();
