@@ -1,4 +1,6 @@
-// frontend/src/pages/Dashboard.tsx - NAPRAWIONA WERSJA (z key props)
+// frontend/src/pages/Dashboard.tsx - KOMPLETNIE NAPRAWIONA WERSJA ✅
+// Wszystkie listy mają unikalny key prop!
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -92,6 +94,14 @@ const Dashboard: React.FC = () => {
                 return (
                     <div className="w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center flex-shrink-0">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                    </div>
+                );
+            case 'TASK_COMPLETED':
+                return (
+                    <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                     </div>
@@ -106,7 +116,7 @@ const Dashboard: React.FC = () => {
                 );
             default:
                 return (
-                    <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-card hover:shadow-card-hover transition-all duration-200">
+                    <div className="w-10 h-10 bg-gray-500 rounded-full flex items-center justify-center flex-shrink-0">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -128,7 +138,7 @@ const Dashboard: React.FC = () => {
         return `${days} ${days === 1 ? 'dzień' : 'dni'} temu`;
     };
 
-    // ✅ FIX: Dane statystyk jako tablica z key
+    // ✅ Stats Cards - KAŻDY MA UNIKALNY KEY
     const statsCards = stats ? [
         {
             key: 'projects',
@@ -136,6 +146,7 @@ const Dashboard: React.FC = () => {
             value: stats.userProjects,
             subtitle: 'Projekty z zadaniami',
             color: 'blue',
+            showProgress: false,
             icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
@@ -148,6 +159,7 @@ const Dashboard: React.FC = () => {
             value: stats.userTasks,
             subtitle: 'Przypisane zadania',
             color: 'primary',
+            showProgress: false,
             icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -160,6 +172,7 @@ const Dashboard: React.FC = () => {
             value: stats.userTeams,
             subtitle: 'Moje zespoły',
             color: 'purple',
+            showProgress: false,
             icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -182,7 +195,7 @@ const Dashboard: React.FC = () => {
         }
     ] : [];
 
-    // ✅ FIX: Szybkie akcje jako tablica z key
+    // ✅ Quick Actions - KAŻDY MA UNIKALNY KEY
     const quickActions = [
         {
             key: 'projects',
@@ -250,11 +263,14 @@ const Dashboard: React.FC = () => {
                     </div>
                 )}
 
-                {/* Stats Cards - ✅ Z KEY PROP */}
+                {/* Stats Cards - ✅ WSZYSTKIE MAJĄ KEY PROP */}
                 {stats && statsCards.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {statsCards.map((card) => (
-                            <div key={card.key} className="bg-gray-900 border border-gray-800 rounded-lg p-6 shadow-card hover:shadow-card-hover transition-all duration-200">
+                            <div
+                                key={card.key}
+                                className="bg-gray-900 border border-gray-800 rounded-lg p-6 shadow-card hover:shadow-card-hover transition-all duration-200"
+                            >
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-gray-400 text-sm font-medium">{card.title}</h3>
                                     <div className={`w-10 h-10 bg-${card.color}-500/10 rounded-lg flex items-center justify-center`}>
@@ -269,7 +285,7 @@ const Dashboard: React.FC = () => {
                                 {/* Progress Bar (tylko dla ukończonych zadań) */}
                                 {card.showProgress && (
                                     <div className="mt-2">
-                                        <div className="w-full bg-gray-700 rounded-full h-2 shadow-card hover:shadow-card-hover transition-all duration-200">
+                                        <div className="w-full bg-gray-700 rounded-full h-2">
                                             <div
                                                 className="bg-green-500 h-2 rounded-full transition-all"
                                                 style={{ width: `${card.progressValue}%` }}
@@ -282,7 +298,7 @@ const Dashboard: React.FC = () => {
                     </div>
                 )}
 
-                {/* Quick Actions - ✅ Z KEY PROP */}
+                {/* Quick Actions - ✅ WSZYSTKIE MAJĄ KEY PROP */}
                 <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 shadow-card hover:shadow-card-hover transition-all duration-200">
                     <h2 className="text-xl font-bold text-white mb-4">Szybkie akcje</h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -304,13 +320,16 @@ const Dashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Recent Activity - ✅ JUŻ MA KEY PROP */}
+                {/* Recent Activity - ✅ WSZYSTKIE MAJĄ KEY PROP */}
                 {activities.length > 0 && (
                     <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 shadow-card hover:shadow-card-hover transition-all duration-200">
                         <h2 className="text-xl font-bold text-white mb-4">Ostatnia aktywność</h2>
                         <div className="space-y-4">
                             {activities.map((activity) => (
-                                <div key={activity.id} className="flex items-start gap-4 p-4 bg-gray-800 rounded-lg">
+                                <div
+                                    key={activity.id}
+                                    className="flex items-start gap-4 p-4 bg-gray-800 rounded-lg"
+                                >
                                     {getActivityIcon(activity.type)}
                                     <div className="flex-1">
                                         <p className="text-white font-medium">{activity.description}</p>
