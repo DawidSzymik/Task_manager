@@ -22,7 +22,7 @@ public class UploadedFile {
     private Long fileSize;
 
     @Lob
-    @Column(name = "data", columnDefinition = "LONGBLOB")
+    @Column(name = "data")
     private byte[] data;
 
     @Column(name = "blob_url", length = 500)

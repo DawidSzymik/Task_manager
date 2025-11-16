@@ -1,7 +1,8 @@
-// src/components/MainLayout.tsx
+// frontend/src/components/MainLayout.tsx - ZMODYFIKOWANA WERSJA
 import React from 'react';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
+import AIAssistant from './AIAssistant'; // ✅ DODAJ IMPORT
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -17,6 +18,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                     {children}
                 </main>
             </div>
+
+            {/* ✅ DODAJ KOMPONENT AI ASSISTANT */}
+            <AIAssistant />
         </div>
     );
 };

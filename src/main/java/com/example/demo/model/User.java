@@ -29,7 +29,7 @@ public class User {
 
     // ✅ NOWE POLE - Avatar użytkownika
     @Lob
-    @Column(name = "avatar", columnDefinition = "LONGBLOB")
+    @Column(name = "avatar")
     private byte[] avatar;
 
     @Column(name = "avatar_content_type")
