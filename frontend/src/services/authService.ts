@@ -1,4 +1,4 @@
-// src/services/authService.ts
+// frontend/src/services/authService.ts - NAPRAWIONA WERSJA ✅
 
 const API_BASE_URL = '/api/v1/auth';
 
@@ -12,7 +12,7 @@ export interface RegisterRequest {
     username: string;
     email: string;
     password: string;
-    confirmPassword: string; // Backend requires this!
+    confirmPassword: string;
     fullName?: string;
 }
 
@@ -24,7 +24,9 @@ export interface UserDto {
     systemRole?: string;
     active?: boolean;
     lastLogin?: string;
-    createdAt?: string;  // ✅ DODANE
+    createdAt?: string;
+    avatarUrl?: string;  // ✅ DODANE
+    hasAvatar?: boolean; // ✅ DODANE
 }
 
 export interface AuthResponse {
@@ -149,25 +151,26 @@ const authService = {
         }
     },
 
-    // Get user profile from server
+    // ✅ NAPRAWIONE - Get user profile from server
     getProfile: async (): Promise<UserDto> => {
         try {
-            const response = await fetch(`${API_BASE_URL}/profile`, {
+            // ✅ ZMIENIONY ENDPOINT z /api/v1/auth/profile na /api/v1/users/profile
+            const response = await fetch('/api/v1/users/profile', {
                 method: 'GET',
                 credentials: 'include',
             });
 
-            const data = await handleResponse<AuthResponse>(response);
+            const data = await handleResponse<{ success: boolean; data: UserDto; message: string }>(response);
 
-            if (!data.data?.user) {
+            if (!data.data) {
                 throw new Error('No user data in response');
             }
 
             // Update localStorage with fresh data
-            localStorage.setItem('user', JSON.stringify(data.data.user));
-            console.log('👤 Profile refreshed:', data.data.user.username);
+            localStorage.setItem('user', JSON.stringify(data.data));
+            console.log('👤 Profile refreshed:', data.data.username);
 
-            return data.data.user;
+            return data.data;
         } catch (error) {
             console.error('Get profile error:', error);
             throw error;
