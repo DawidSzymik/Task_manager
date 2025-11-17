@@ -1,4 +1,3 @@
-// src/main/java/com/example/demo/api/config/CorsConfig.java
 package com.example.demo.api.config;
 
 import org.springframework.context.annotation.Bean;
@@ -16,30 +15,25 @@ public class CorsConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Allow specific origins (React development server)
+        // ✅ DODAJ localhost:5173 (Vite)
         configuration.setAllowedOriginPatterns(Arrays.asList(
-                "http://localhost:3000",  // React dev server
-                "http://localhost:3001",  // Alternative React port
+                "http://localhost:3000",
+                "http://localhost:3001",
+                "http://localhost:5173",  // ✅ DODANE
                 "http://127.0.0.1:3000",
-                "https://your-domain.com" // Production domain
+                "https://your-domain.com"
         ));
 
-        // Allow all headers
         configuration.setAllowedHeaders(Arrays.asList("*"));
-
-        // Allow specific HTTP methods
         configuration.setAllowedMethods(Arrays.asList(
                 "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
         ));
-
-        // Allow credentials (for JWT tokens)
         configuration.setAllowCredentials(true);
-
-        // How long the browser can cache preflight requests
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/api/**", configuration);
+        // ✅ ZMIEŃ z /api/** na /** (wszystkie endpointy)
+        source.registerCorsConfiguration("/**", configuration);
 
         return source;
     }

@@ -25,6 +25,9 @@ public class FileApiController {
     @Autowired
     private AzureBlobService blobService;
 
+    @Autowired
+    private DocumentProcessingService documentProcessingService;  // ✅ DODANE
+
     private final FileService fileService;
     private final TaskService taskService;
     private final ProjectMemberService projectMemberService;
@@ -104,6 +107,17 @@ public class FileApiController {
 
             System.out.println("✅ File metadata saved to database");
 
+            // ✅ DODANE - Przetwarzaj plik asynchronicznie (chunki + embeddingi)
+            new Thread(() -> {
+                try {
+                    documentProcessingService.processFile(uploadedFile);
+                } catch (Exception e) {
+                    System.err.println("❌ Error processing file embeddings: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }).start();
+            System.out.println("🔄 File processing started in background");
+
             // ✅ ZMIENIONE - zwracamy pełny obiekt w "data"
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -123,7 +137,7 @@ public class FileApiController {
                     "fullName", currentUser.getFullName()
             ));
 
-            response.put("data", fileData); // ✅ KLUCZOWA ZMIANA!
+            response.put("data", fileData);
 
             return ResponseEntity.ok(response);
 
@@ -185,12 +199,10 @@ public class FileApiController {
 
             byte[] fileData;
 
-            // ✅ NOWA LOGIKA - sprawdź czy plik jest w Blob Storage
             if (file.getBlobUrl() != null && !file.getBlobUrl().isEmpty()) {
                 System.out.println("📥 Downloading from Azure Blob Storage");
                 fileData = blobService.downloadFile(file.getBlobUrl());
             } else {
-                // Fallback dla starych plików (w bazie)
                 System.out.println("📥 Downloading from database (old file)");
                 fileData = file.getData();
             }
@@ -290,21 +302,7 @@ public class FileApiController {
             return createErrorResponse("Failed to retrieve user files: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-// src/main/java/com/example/demo/api/controller/FileApiController.java
-// DODAJ TEN ENDPOINT DO ISTNIEJĄCEGO FileApiController
 
-    /**
-     * Endpoint do podglądu pliku w przeglądarce (inline)
-     * GET /api/v1/files/{id}/preview
-     */
-    /**
-     * Endpoint do podglądu pliku w przeglądarce (inline)
-     * GET /api/v1/files/{id}/preview
-     */
-    /**
-     * Endpoint do podglądu pliku w przeglądarce (inline)
-     * GET /api/v1/files/{id}/preview
-     */
     @GetMapping("/{id}/preview")
     public ResponseEntity<ByteArrayResource> previewFile(
             @PathVariable Long id,
@@ -320,12 +318,10 @@ public class FileApiController {
 
             byte[] fileData;
 
-            // ✅ Sprawdź czy plik jest w Blob Storage
             if (file.getBlobUrl() != null && !file.getBlobUrl().isEmpty()) {
                 System.out.println("📥 Preview from Azure Blob Storage");
                 fileData = blobService.downloadFile(file.getBlobUrl());
             } else {
-                // Fallback dla starych plików (w bazie)
                 System.out.println("📥 Preview from database (old file)");
                 fileData = file.getData();
             }
@@ -336,7 +332,6 @@ public class FileApiController {
 
             ByteArrayResource resource = new ByteArrayResource(fileData);
 
-            // Content-Disposition = "inline" → otwiera w przeglądarce zamiast pobierać
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getOriginalName() + "\"")
                     .contentType(MediaType.parseMediaType(file.getContentType()))
@@ -354,10 +349,6 @@ public class FileApiController {
         }
     }
 
-    /**
-     * Sprawdź czy plik można wyświetlić w podglądzie
-     * GET /api/v1/files/{id}/can-preview
-     */
     @GetMapping("/{id}/can-preview")
     public ResponseEntity<Map<String, Object>> canPreview(
             @PathVariable Long id,
@@ -393,7 +384,6 @@ public class FileApiController {
         }
     }
 
-    // Helper method
     private boolean isPreviewable(String contentType) {
         if (contentType == null) return false;
 
@@ -402,6 +392,7 @@ public class FileApiController {
                 contentType.equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") ||
                 contentType.equals("application/vnd.ms-excel");
     }
+
     private User getUserFromDetails(UserDetails userDetails) {
         if (userDetails == null) {
             throw new RuntimeException("User not authenticated");

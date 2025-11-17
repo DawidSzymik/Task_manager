@@ -47,6 +47,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const logout = async () => {
         await authService.logout();
         setUser(null);
+        // ✅ DODANE - usuń token przy wylogowaniu
+        localStorage.removeItem('token');
     };
 
     const refreshUser = async () => {
