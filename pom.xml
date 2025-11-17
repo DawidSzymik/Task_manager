@@ -61,6 +61,50 @@
             <artifactId>azure-storage-blob</artifactId>
             <version>12.23.0</version>
         </dependency>
+        <!-- Azure OpenAI -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-ai-openai</artifactId>
+            <version>1.0.0-beta.8</version>
+        </dependency>
+        <!-- Apache POI - Excel (.xlsx, .xls) -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi</artifactId>
+            <version>5.2.3</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.3</version>
+        </dependency>
+
+        <!-- Apache PDFBox - PDF -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>2.0.29</version>
+        </dependency>
+        <!-- Azure AI OpenAI -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-ai-openai</artifactId>
+            <version>1.0.0-beta.8</version>
+        </dependency>
+
+        <!-- DODAJ TO: -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-core</artifactId>
+            <version>1.45.0</version>
+        </dependency>
+        <!-- Azure AI Vision (Computer Vision) -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-ai-vision-imageanalysis</artifactId>
+            <version>1.0.0-beta.1</version>
+        </dependency>
     </dependencies>
 
     <build>

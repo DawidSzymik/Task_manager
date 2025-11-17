@@ -35,6 +35,8 @@ export interface AuthResponse {
     data?: {
         user: UserDto;
         sessionId?: string;
+        token?: string;  // ✅ DODAJ TO!
+
     };
     error?: string;
     sessionId?: string;
@@ -76,9 +78,21 @@ const authService = {
 
             const data = await handleResponse<AuthResponse>(response);
 
+            // ✅ DODAJ TO - zobaczmy co zwraca backend!
+            console.log('🔍 Full login response:', data);
+            console.log('🔍 data.data:', data.data);
+
             if (data.data?.user) {
                 localStorage.setItem('user', JSON.stringify(data.data.user));
                 localStorage.setItem('username', data.data.user.username);
+
+                if (data.data.token) {
+                    localStorage.setItem('token', data.data.token);
+                    console.log('✅ Token saved:', data.data.token.substring(0, 20) + '...');
+                } else {
+                    console.log('❌ No token in response!');
+                }
+
                 if (data.data.sessionId) {
                     localStorage.setItem('sessionId', data.data.sessionId);
                 }

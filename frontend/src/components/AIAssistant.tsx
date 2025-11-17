@@ -43,28 +43,58 @@ const AIAssistant: React.FC = () => {
             id: Date.now(),
             role: 'user',
             content: inputValue,
-            timestamp: new Date(),
+            timestamp: new Date()
         };
 
         setMessages(prev => [...prev, userMessage]);
         setInputValue('');
         setIsLoading(true);
 
-        // TODO: Tutaj będzie wywołanie API do backendu
-        // Na razie mock response
-        setTimeout(() => {
+        try {
+            // ✅ ZMIENIONE - użyj credentials zamiast tokena!
+            const response = await fetch('http://localhost:8080/api/v1/chatbot/ask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                    // ❌ USUŃ: 'Authorization': `Bearer ${token}`
+                },
+                credentials: 'include',  // ✅ TO wysyła session cookie!
+                body: JSON.stringify({
+                    query: inputValue
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to get response from chatbot');
+            }
+
+            const data = await response.json();
+
             const assistantMessage: Message = {
                 id: Date.now() + 1,
                 role: 'assistant',
-                content: `Otrzymałem Twoje pytanie: "${userMessage.content}". Backend API będzie wkrótce gotowy! 🚀`,
+                content: data.answer,
                 timestamp: new Date(),
-                sources: ['projekt-plan.pdf', 'notatki.docx']
+                sources: data.sources || []
             };
-            setMessages(prev => [...prev, assistantMessage]);
-            setIsLoading(false);
-        }, 1000);
-    };
 
+            setMessages(prev => [...prev, assistantMessage]);
+
+        } catch (error) {
+            console.error('Error:', error);
+
+            const errorMessage: Message = {
+                id: Date.now() + 1,
+                role: 'assistant',
+                content: 'Przepraszam, wystąpił błąd podczas przetwarzania Twojego pytania. Spróbuj ponownie.',
+                timestamp: new Date()
+            };
+
+            setMessages(prev => [...prev, errorMessage]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
     const handleKeyPress = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();

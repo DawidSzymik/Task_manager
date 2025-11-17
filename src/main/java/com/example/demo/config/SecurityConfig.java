@@ -44,7 +44,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+
                 // ✅ DODAJ TO NA POCZĄTKU - POZA authorizeHttpRequests!
+
                 .headers()
                 .frameOptions().disable() // Wyłącz X-Frame-Options
                 .and()
@@ -57,6 +59,8 @@ public class SecurityConfig {
 
                         // API - tylko login i register bez autentykacji
                         .antMatchers("/api/v1/auth/login", "/api/v1/auth/register").permitAll()
+                        // ✅ DODAJ TO (tymczasowo na test):
+        .antMatchers("/api/v1/chatbot/**").permitAll()
                         .antMatchers("/api/v1/auth/**").authenticated()
 
                         // Reszta API wymaga autentykacji
