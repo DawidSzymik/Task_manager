@@ -40,11 +40,15 @@ public class ChatbotApiController {
      */
     @PostMapping("/ask")
     public ResponseEntity<Map<String, Object>> askQuestion(
-            @RequestBody Map<String, String> request,
+            @RequestBody Map<String, Object> request,
             HttpServletRequest httpRequest) {
 
         try {
-            String query = request.get("query");
+            String query = (String) request.get("query");
+
+            // ✅ DODANE - pobierz historię konwersacji
+            List<Map<String, String>> conversationHistory =
+                    (List<Map<String, String>>) request.get("conversationHistory");
 
             if (query == null || query.trim().isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of(
@@ -69,7 +73,6 @@ public class ChatbotApiController {
                 }
             }
 
-            // Sprawdź czy user jest zalogowany
             if (username == null || username.equals("anonymousUser")) {
                 return ResponseEntity.ok(Map.of(
                         "success", true,
@@ -78,12 +81,13 @@ public class ChatbotApiController {
                 ));
             }
 
-            // Pobierz usera z bazy
             User currentUser = userService.getUserByUsername(username)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
             System.out.println("💬 Chatbot query from user: " + currentUser.getUsername());
             System.out.println("📝 Query: " + query);
+            System.out.println("📚 Conversation history size: " +
+                    (conversationHistory != null ? conversationHistory.size() : 0));
 
             // 1. Stwórz embedding dla pytania użytkownika
             List<Float> queryEmbedding = openAIService.createEmbedding(query);
@@ -102,26 +106,21 @@ public class ChatbotApiController {
 
             System.out.println("📚 Found " + accessibleEmbeddings.size() + " accessible chunks");
 
-            // 3. Znajdź najbardziej podobne chunki (cosine similarity)
+            // 3. Znajdź najbardziej podobne chunki
             List<ScoredChunk> scoredChunks = new ArrayList<>();
 
             for (DocumentEmbedding embedding : accessibleEmbeddings) {
-                // Parse embedding z JSON
                 List<Float> chunkEmbedding = objectMapper.readValue(
                         embedding.getEmbedding(),
                         objectMapper.getTypeFactory().constructCollectionType(List.class, Float.class)
                 );
 
-                // Oblicz podobieństwo
                 double similarity = cosineSimilarity(queryEmbedding, chunkEmbedding);
-
                 scoredChunks.add(new ScoredChunk(embedding, similarity));
             }
 
-            // 4. Sortuj po podobieństwie (od największego)
             scoredChunks.sort((a, b) -> Double.compare(b.score, a.score));
 
-            // 5. Weź top 3 najbardziej podobne chunki
             List<String> topChunks = scoredChunks.stream()
                     .limit(3)
                     .map(sc -> sc.embedding.getChunkText())
@@ -130,10 +129,14 @@ public class ChatbotApiController {
             System.out.println("🎯 Top 3 chunks similarity scores: " +
                     scoredChunks.stream().limit(3).map(sc -> sc.score).collect(Collectors.toList()));
 
-            // 6. Wygeneruj odpowiedź przez GPT
-            String answer = openAIService.generateChatResponse(query, topChunks);
+            // 4. Wygeneruj odpowiedź z historią
+            String answer = openAIService.generateChatResponseWithHistory(
+                    query,
+                    topChunks,
+                    conversationHistory  // ✅ DODANE - przekaż historię!
+            );
 
-            // 7. Przygotuj listę źródeł (unikalne pliki)
+            // 5. Przygotuj listę źródeł
             Set<Long> sourceFileIds = scoredChunks.stream()
                     .limit(3)
                     .map(sc -> sc.embedding.getFileId())

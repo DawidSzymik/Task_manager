@@ -1,4 +1,5 @@
 // src/main/java/com/example/demo/api/controller/DashboardApiController.java
+// ✅ NAPRAWIONY - Zachowuje zgodność z frontendem + używa aktualnie zalogowanego użytkownika
 package com.example.demo.api.controller;
 
 import com.example.demo.api.dto.response.ActivityDto;
@@ -19,7 +20,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/dashboard")
-@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001", "http://localhost:5173"})
 public class DashboardApiController {
 
     private final DashboardService dashboardService;
@@ -31,12 +32,19 @@ public class DashboardApiController {
         this.userService = userService;
     }
 
+    // ✅ NOWA METODA - Pobiera aktualnie zalogowanego użytkownika
+    private User getCurrentUser(UserDetails userDetails) {
+        return userService.getUserByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
     // GET /api/v1/dashboard/stats - Get system-wide statistics (admin only)
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getSystemStats() {
+    public ResponseEntity<Map<String, Object>> getSystemStats(
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
 
             // Only super admin can see system-wide stats
             if (currentUser.getSystemRole() != SystemRole.SUPER_ADMIN) {
@@ -59,11 +67,13 @@ public class DashboardApiController {
     }
 
     // GET /api/v1/dashboard/user-stats - Get current user's statistics
+    // ✅ ENDPOINT UŻYWANY PRZEZ FRONTEND
     @GetMapping("/user-stats")
-    public ResponseEntity<Map<String, Object>> getUserStats() {
+    public ResponseEntity<Map<String, Object>> getUserStats(
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
 
             StatsDto stats = dashboardService.getUserStats(currentUser);
 
@@ -83,10 +93,12 @@ public class DashboardApiController {
 
     // GET /api/v1/dashboard/user-stats/{userId} - Get specific user's statistics (admin)
     @GetMapping("/user-stats/{userId}")
-    public ResponseEntity<Map<String, Object>> getUserStatsById(@PathVariable Long userId) {
+    public ResponseEntity<Map<String, Object>> getUserStatsById(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
 
             // Only super admin or the user themselves can view their stats
             if (currentUser.getSystemRole() != SystemRole.SUPER_ADMIN && !currentUser.getId().equals(userId)) {
@@ -117,10 +129,11 @@ public class DashboardApiController {
     // GET /api/v1/dashboard/recent-activity - Get recent activity
     @GetMapping("/recent-activity")
     public ResponseEntity<Map<String, Object>> getRecentActivity(
-            @RequestParam(value = "limit", defaultValue = "20") int limit) {
+            @RequestParam(value = "limit", defaultValue = "20") int limit,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
 
             // Limit max to 100
             if (limit > 100) {
@@ -151,12 +164,14 @@ public class DashboardApiController {
     }
 
     // GET /api/v1/dashboard/my-activity - Get current user's activity
+    // ✅ ENDPOINT UŻYWANY PRZEZ FRONTEND
     @GetMapping("/my-activity")
     public ResponseEntity<Map<String, Object>> getMyActivity(
-            @RequestParam(value = "limit", defaultValue = "20") int limit) {
+            @RequestParam(value = "limit", defaultValue = "20") int limit,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
 
             if (limit > 100) {
                 limit = 100;
@@ -174,16 +189,26 @@ public class DashboardApiController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            return createErrorResponse("Failed to retrieve activity: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+            return createErrorResponse("Failed to retrieve user activity: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    // GET /api/v1/dashboard/activity - Alias dla my-activity (dla kompatybilności)
+    @GetMapping("/activity")
+    public ResponseEntity<Map<String, Object>> getActivity(
+            @RequestParam(value = "limit", defaultValue = "10") int limit,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        return getMyActivity(limit, userDetails);
     }
 
     // GET /api/v1/dashboard/overview - Get complete dashboard overview
     @GetMapping("/overview")
-    public ResponseEntity<Map<String, Object>> getDashboardOverview() {
+    public ResponseEntity<Map<String, Object>> getDashboardOverview(
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
-            User currentUser = getTestUser();
+            User currentUser = getCurrentUser(userDetails);
 
             StatsDto userStats = dashboardService.getUserStats(currentUser);
             List<ActivityDto> recentActivity = dashboardService.getUserRecentActivity(currentUser, 10);
@@ -210,15 +235,7 @@ public class DashboardApiController {
         }
     }
 
-    // Helper methods
-    private User getTestUser() {
-        List<User> users = userService.getAllUsers();
-        if (users.isEmpty()) {
-            throw new RuntimeException("No users found in database");
-        }
-        return users.get(0);
-    }
-
+    // Helper method
     private ResponseEntity<Map<String, Object>> createErrorResponse(String message, HttpStatus status) {
         Map<String, Object> response = new HashMap<>();
         response.put("success", false);
