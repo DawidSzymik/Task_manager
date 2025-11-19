@@ -51,16 +51,15 @@ const AIAssistant: React.FC = () => {
         setIsLoading(true);
 
         try {
-            // ✅ ZMIENIONE - użyj credentials zamiast tokena!
             const response = await fetch('http://localhost:8080/api/v1/chatbot/ask', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
-                    // ❌ USUŃ: 'Authorization': `Bearer ${token}`
                 },
-                credentials: 'include',  // ✅ TO wysyła session cookie!
+                credentials: 'include',
                 body: JSON.stringify({
-                    query: inputValue
+                    query: inputValue,
+                    conversationHistory: messages  // ✅ DODANE - wyślij historię!
                 })
             });
 
