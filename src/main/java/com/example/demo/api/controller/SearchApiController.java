@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/api/controller/SearchApiController.java
+// src/main/java/com/example/demo/api/com.example.demo.controller/SearchApiController.java
 package com.example.demo.api.controller;
 
 import com.example.demo.model.*;

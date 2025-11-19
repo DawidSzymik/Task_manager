@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/api/controller/TeamApiController.java
+// src/main/java/com/example/demo/api/com.example.demo.controller/TeamApiController.java
 package com.example.demo.api.controller;
 
 import com.example.demo.api.dto.request.CreateTeamRequest;

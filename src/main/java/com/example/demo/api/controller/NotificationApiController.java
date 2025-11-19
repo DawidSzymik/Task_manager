@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/api/controller/NotificationApiController.java
+// src/main/java/com/example/demo/api/com.example.demo.controller/NotificationApiController.java
 // ✅ NAPRAWIONY - Używa aktualnie zalogowanego użytkownika zamiast getTestUser()
 package com.example.demo.api.controller;
 
