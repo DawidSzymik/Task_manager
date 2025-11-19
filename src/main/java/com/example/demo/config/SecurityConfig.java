@@ -1,4 +1,3 @@
-// src/main/java/com/example/demo/config/SecurityConfig.java
 package com.example.demo.config;
 
 import com.example.demo.service.CustomUserDetailsService;
@@ -44,48 +43,69 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-
-                // ✅ DODAJ TO NA POCZĄTKU - POZA authorizeHttpRequests!
-
                 .headers()
-                .frameOptions().disable() // Wyłącz X-Frame-Options
+                .frameOptions().disable()
                 .and()
 
                 .authorizeHttpRequests(auth -> auth
+                        // ✅ NAJWAŻNIEJSZE - Static resources PIERWSZE!
+                        .antMatchers(
+                                "/",
+                                "/index.html",
+                                "/static/**",
+                                "/assets/**",
+                                "/*.js",
+                                "/*.css",
+                                "/*.ico",
+                                "/*.png",
+                                "/*.svg",
+                                "/*.woff",
+                                "/*.woff2",
+                                "/favicon.ico",
+                                "/vite.svg"
+                        ).permitAll()
+
+                        // React Router paths - SpaController obsługuje
+                        .antMatchers(
+                                "/dashboard",
+                                "/dashboard/**",
+                                "/tasks",
+                                "/tasks/**",
+                                "/projects",
+                                "/projects/**",
+                                "/teams",
+                                "/teams/**",
+                                "/profile",
+                                "/profile/**",
+                                "/login",
+                                "/register",
+                                "/settings",
+                                "/settings/**"
+                        ).permitAll()
+
                         // Public endpoints
-                        .antMatchers("/registration", "/login", "/kontakt").permitAll()
+                        .antMatchers("/registration", "/kontakt").permitAll()
                         .antMatchers("/css/**", "/js/**", "/images/**").permitAll()
                         .antMatchers("/files/**").permitAll()
 
-                        // API - tylko login i register bez autentykacji
+                        // API - public
                         .antMatchers("/api/v1/auth/login", "/api/v1/auth/register").permitAll()
-                        // ✅ DODAJ TO (tymczasowo na test):
-        .antMatchers("/api/v1/chatbot/**").permitAll()
-                        .antMatchers("/api/v1/auth/**").authenticated()
+                        .antMatchers("/api/v1/chatbot/**").permitAll()
 
-                        // Reszta API wymaga autentykacji
+                        // API - authenticated
+                        .antMatchers("/api/v1/auth/**").authenticated()
                         .antMatchers("/api/**").authenticated()
 
-                        // Admin panel - tylko dla super adminów
+                        // Admin
                         .antMatchers("/admin/**").hasAuthority("SUPER_ADMIN")
 
-                        // Protected routes
-                        .antMatchers("/teams/**").authenticated()
-                        .antMatchers("/projects/**").authenticated()
-                        .antMatchers("/proposals/**").authenticated()
-                        .antMatchers("/tasks/**").authenticated()
-                        .antMatchers("/status-requests/**").authenticated()
-                        .antMatchers("/notifications/**").authenticated()
-
-                        .anyRequest().authenticated()
+                        // Reszta
+                        .anyRequest().permitAll()
                 )
                 .formLogin(form -> form
                         .loginPage("/login")
-                        .defaultSuccessUrl("/tasks/dashboard", true)
-                        .successHandler((request, response, authentication) -> {
-                            System.out.println("Użytkownik zalogował się: " + authentication.getName());
-                            response.sendRedirect("/tasks/dashboard");
-                        })
+                        .defaultSuccessUrl("/dashboard", true)
+                        .permitAll()
                 )
                 .logout(logout -> logout
                         .logoutUrl("/logout")
@@ -102,6 +122,7 @@ public class SecurityConfig {
                         "/admin/**",
                         "/api/**"
                 );
+
         return http.build();
     }
 }

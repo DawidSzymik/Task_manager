@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/api/controller/FileApiController.java
+// src/main/java/com/example/demo/api/com.example.demo.controller/FileApiController.java
 package com.example.demo.api.controller;
 
 import com.example.demo.api.dto.response.FileDto;

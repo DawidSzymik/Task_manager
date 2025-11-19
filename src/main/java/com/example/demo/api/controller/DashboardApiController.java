@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/api/controller/DashboardApiController.java
+// src/main/java/com/example/demo/api/com.example.demo.controller/DashboardApiController.java
 // ✅ NAPRAWIONY - Zachowuje zgodność z frontendem + używa aktualnie zalogowanego użytkownika
 package com.example.demo.api.controller;
 

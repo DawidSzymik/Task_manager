@@ -1,4 +1,4 @@
-// src/main/java/com/example/demo/api/controller/ProjectApiController.java
+// src/main/java/com/example/demo/api/com.example.demo.controller/ProjectApiController.java
 package com.example.demo.api.controller;
 
 import com.example.demo.api.dto.request.CreateProjectRequest;
@@ -388,7 +388,7 @@ public class ProjectApiController {
     // PUT /api/v1/projects/{projectId}/members/{memberId}/role - Change member role
     // ============================================================================
 // POPRAWIONA METODA changeMemberRole w ProjectApiController
-// Wklej tę metodę do src/main/java/com/example/demo/api/controller/ProjectApiController.java
+// Wklej tę metodę do src/main/java/com/example/demo/api/com.example.demo.controller/ProjectApiController.java
 // Zastąp istniejącą metodę changeMemberRole
 // ============================================================================
 
@@ -469,7 +469,7 @@ public class ProjectApiController {
     // DELETE /api/v1/projects/{id} - Delete project
     // ============================================================================
 // POPRAWIONA METODA deleteProject w ProjectApiController
-// Wklej tę metodę do src/main/java/com/example/demo/api/controller/ProjectApiController.java
+// Wklej tę metodę do src/main/java/com/example/demo/api/com.example.demo.controller/ProjectApiController.java
 // Zastąp istniejącą metodę deleteProject
 // ============================================================================
 
@@ -527,7 +527,7 @@ public class ProjectApiController {
     // DELETE /api/v1/projects/{projectId}/members/{memberId} - Remove member from project
     // ============================================================================
 // POPRAWIONA METODA removeMemberFromProject w ProjectApiController
-// Wklej tę metodę do src/main/java/com/example/demo/api/controller/ProjectApiController.java
+// Wklej tę metodę do src/main/java/com/example/demo/api/com.example.demo.controller/ProjectApiController.java
 // Zastąp istniejącą metodę removeMemberFromProject
 // ============================================================================
 

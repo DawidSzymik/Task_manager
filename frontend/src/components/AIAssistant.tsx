@@ -37,6 +37,8 @@ const AIAssistant: React.FC = () => {
     }, [isOpen]);
 
     const handleSendMessage = async () => {
+        const API_URL = import.meta.env.VITE_API_URL || '';
+
         if (!inputValue.trim() || isLoading) return;
 
         const userMessage: Message = {
@@ -51,8 +53,7 @@ const AIAssistant: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch('http://localhost:8080/api/v1/chatbot/ask', {
-                method: 'POST',
+            const response = await fetch(`${API_URL}/api/v1/chatbot/ask`, {                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
