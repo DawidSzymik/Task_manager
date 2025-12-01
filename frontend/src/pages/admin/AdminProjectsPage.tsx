@@ -35,15 +35,24 @@ const AdminProjectsPage: React.FC = () => {
         try {
             setLoading(true);
             setError(null);
-            const data = await adminService.getAllProjects();
-            setProjects(data);
+            // ✅ DODAJ: ?includeAll=true
+            const response = await fetch('/api/v1/projects?includeAll=true', {
+                method: 'GET',
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                throw new Error('Nie udało się załadować projektów');
+            }
+
+            const result = await response.json();
+            setProjects(result.data || []);
         } catch (err: any) {
             setError(err.message || 'Nie udało się załadować projektów');
         } finally {
             setLoading(false);
         }
     };
-
     const filterProjects = () => {
         let filtered = [...projects];
 

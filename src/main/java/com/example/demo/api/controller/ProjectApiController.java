@@ -7,6 +7,7 @@ import com.example.demo.api.dto.response.ProjectDto;
 import com.example.demo.api.dto.response.ProjectMemberDto;
 import com.example.demo.api.mapper.ProjectMapper;
 import com.example.demo.model.*;
+import com.example.demo.repository.TaskRepository;
 import com.example.demo.service.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,17 +28,19 @@ public class ProjectApiController {
     private final TaskService taskService;
     private final UserService userService;
     private final ProjectMapper projectMapper;
-
+    private final TaskRepository taskRepository;
     public ProjectApiController(ProjectService projectService,
                                 ProjectMemberService projectMemberService,
                                 TaskService taskService,
                                 UserService userService,
-                                ProjectMapper projectMapper) {
+                                ProjectMapper projectMapper,
+                                TaskRepository taskRepository, TaskRepository taskRepository1) {
         this.projectService = projectService;
         this.projectMemberService = projectMemberService;
         this.taskService = taskService;
         this.userService = userService;
         this.projectMapper = projectMapper;
+        this.taskRepository = taskRepository1;
     }
 
     // ✅ Używa prawdziwego zalogowanego użytkownika
@@ -72,6 +75,9 @@ public class ProjectApiController {
 
     // GET /api/v1/projects - Get all projects (filtered by user access)
     // ✅ POPRAWIONE: zwraca ProjectDto z memberCount i taskCount
+    // UPROSZCZONA WERSJA getAllProjects
+// Zastąp tylko metodę getAllProjects w ProjectApiController
+
     @GetMapping
     public ResponseEntity<Map<String, Object>> getAllProjects(
             @RequestParam(value = "includeAll", defaultValue = "false") boolean includeAll,
@@ -79,14 +85,12 @@ public class ProjectApiController {
 
         try {
             User currentUser = getCurrentUser(userDetails);
-
             List<Project> projects;
 
-            // Super admin can see all projects if requested
+            // Pobierz projekty
             if (includeAll && currentUser.getSystemRole() == SystemRole.SUPER_ADMIN) {
                 projects = projectService.getAllProjects();
             } else {
-                // Regular users see only their projects
                 List<ProjectMember> memberships = projectMemberService.getUserProjects(currentUser);
                 projects = memberships.stream()
                         .map(ProjectMember::getProject)
@@ -94,26 +98,43 @@ public class ProjectApiController {
                         .toList();
             }
 
-            // ✅ KLUCZOWA ZMIANA: Konwertuj na ProjectDto ze statystykami
+            // ✅ OPTYMALIZACJA: Pobierz ID projektów
+            List<Long> projectIds = projects.stream()
+                    .map(Project::getId)
+                    .toList();
+
+            // ✅ OPTYMALIZACJA: Pobierz WSZYSTKIE zadania jednym zapytaniem
+            List<Task> allTasks;
+            if (!projectIds.isEmpty()) {
+                allTasks = taskRepository.findByProjectIdIn(projectIds);
+            } else {
+                allTasks = new ArrayList<>();
+            }
+
+            // Grupuj zadania per projekt
+            Map<Long, List<Task>> tasksByProject = allTasks.stream()
+                    .collect(Collectors.groupingBy(t -> t.getProject().getId()));
+
+            // Konwertuj na DTO
             List<ProjectDto> projectDtos = projects.stream()
                     .map(project -> {
                         ProjectDto dto = projectMapper.toDto(project);
 
-                        // Policz członków
+                        // Policz członków (standardowo - nie optymalizowane, ale działa)
                         List<ProjectMember> members = projectMemberService.getProjectMembers(project);
                         dto.setMemberCount(members.size());
 
-                        // Policz zadania
-                        List<Task> tasks = taskService.getTasksByProject(project);
+                        // Zadania z mapy (ZOPTYMALIZOWANE)
+                        List<Task> tasks = tasksByProject.getOrDefault(project.getId(), new ArrayList<>());
                         dto.setTaskCount(tasks.size());
 
-                        // Policz ukończone zadania
+                        // Policz ukończone
                         long completedTasks = tasks.stream()
                                 .filter(t -> "COMPLETED".equals(t.getStatus()))
                                 .count();
                         dto.setCompletedTaskCount((int) completedTasks);
 
-                        // Ustaw status projektu
+                        // Status
                         if (tasks.isEmpty()) {
                             dto.setStatus("planning");
                         } else if (completedTasks == tasks.size()) {
@@ -129,7 +150,7 @@ public class ProjectApiController {
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "Projects retrieved successfully");
-            response.put("data", projectDtos);  // ✅ Zwracamy ProjectDto zamiast surowych Project
+            response.put("data", projectDtos);
             response.put("currentUser", currentUser.getUsername());
 
             return ResponseEntity.ok(response);

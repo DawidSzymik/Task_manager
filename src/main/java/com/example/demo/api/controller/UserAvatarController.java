@@ -1,9 +1,10 @@
-// src/main/java/com/example/demo/api/com.example.demo.controller/UserAvatarController.java
+// src/main/java/com/example/demo/api/controller/UserAvatarController.java
 package com.example.demo.api.controller;
 
-import com.example.demo.model.SystemRole;
 import com.example.demo.model.User;
 import com.example.demo.service.UserService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -15,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -29,6 +29,8 @@ import java.util.Map;
 @RequestMapping("/api/v1/users")
 @CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
 public class UserAvatarController {
+
+    private static final Logger logger = LoggerFactory.getLogger(UserAvatarController.class);
 
     private final UserService userService;
 
@@ -53,16 +55,24 @@ public class UserAvatarController {
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal UserDetails userDetails) {
 
+        logger.info("📤 Avatar upload request from user: {}", userDetails.getUsername());
+
         try {
             User currentUser = getCurrentUser(userDetails);
+            logger.info("✅ Current user found: {} (ID: {})", currentUser.getUsername(), currentUser.getId());
 
             // Walidacja pliku
             if (file.isEmpty()) {
+                logger.warn("❌ Empty file uploaded");
                 return createErrorResponse("Plik jest pusty", HttpStatus.BAD_REQUEST);
             }
 
+            logger.info("📁 File info: name={}, size={}, type={}",
+                    file.getOriginalFilename(), file.getSize(), file.getContentType());
+
             // Sprawdź rozmiar
             if (file.getSize() > MAX_AVATAR_SIZE) {
+                logger.warn("❌ File too large: {} bytes", file.getSize());
                 return createErrorResponse(
                         "Plik jest za duży. Maksymalny rozmiar: 5MB",
                         HttpStatus.BAD_REQUEST
@@ -72,6 +82,7 @@ public class UserAvatarController {
             // Sprawdź typ pliku
             String contentType = file.getContentType();
             if (contentType == null || !isAllowedType(contentType)) {
+                logger.warn("❌ Invalid file type: {}", contentType);
                 return createErrorResponse(
                         "Nieprawidłowy typ pliku. Dozwolone: JPG, PNG, GIF, WEBP",
                         HttpStatus.BAD_REQUEST
@@ -79,9 +90,13 @@ public class UserAvatarController {
             }
 
             // Zapisz avatar
-            currentUser.setAvatar(file.getBytes());
+            logger.info("💾 Saving avatar to database...");
+            byte[] avatarBytes = file.getBytes();
+            currentUser.setAvatar(avatarBytes);
             currentUser.setAvatarContentType(contentType);
-            userService.saveUser(currentUser);
+
+            User savedUser = userService.saveUser(currentUser);
+            logger.info("✅ Avatar saved successfully for user: {}", savedUser.getUsername());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -91,7 +106,7 @@ public class UserAvatarController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("❌ Error uploading avatar", e);
             return createErrorResponse(
                     "Nie udało się zapisać avatara: " + e.getMessage(),
                     HttpStatus.INTERNAL_SERVER_ERROR
@@ -107,10 +122,13 @@ public class UserAvatarController {
     public ResponseEntity<ByteArrayResource> getAvatar(@PathVariable Long id) {
 
         try {
+            logger.debug("📥 Fetching avatar for user ID: {}", id);
+
             User user = userService.getUserById(id)
                     .orElseThrow(() -> new RuntimeException("Użytkownik nie znaleziony"));
 
             if (!user.hasAvatar()) {
+                logger.debug("⚠️ User {} has no avatar", id);
                 return ResponseEntity.notFound().build();
             }
 
@@ -123,9 +141,10 @@ public class UserAvatarController {
                     .body(resource);
 
         } catch (RuntimeException e) {
+            logger.warn("❌ User not found: {}", id);
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("❌ Error fetching avatar for user: {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -141,8 +160,6 @@ public class UserAvatarController {
         try {
             User currentUser = getCurrentUser(userDetails);
 
-            // Użyj UserMapper do konwersji (z avatarUrl)
-            // Zakładam że masz dostęp do UserMapper - jeśli nie, zrób to ręcznie
             Map<String, Object> userDto = new HashMap<>();
             userDto.put("id", currentUser.getId());
             userDto.put("username", currentUser.getUsername());
@@ -168,7 +185,7 @@ public class UserAvatarController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("❌ Error fetching profile", e);
             return createErrorResponse(
                     "Nie udało się pobrać profilu: " + e.getMessage(),
                     HttpStatus.INTERNAL_SERVER_ERROR
@@ -185,15 +202,20 @@ public class UserAvatarController {
             @AuthenticationPrincipal UserDetails userDetails) {
 
         try {
+            logger.info("🗑️ Deleting avatar for user: {}", userDetails.getUsername());
+
             User currentUser = getCurrentUser(userDetails);
 
             if (!currentUser.hasAvatar()) {
+                logger.warn("⚠️ User {} has no avatar to delete", currentUser.getUsername());
                 return createErrorResponse("Nie masz ustawionego avatara", HttpStatus.NOT_FOUND);
             }
 
             currentUser.setAvatar(null);
             currentUser.setAvatarContentType(null);
             userService.saveUser(currentUser);
+
+            logger.info("✅ Avatar deleted successfully for user: {}", currentUser.getUsername());
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -202,7 +224,7 @@ public class UserAvatarController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("❌ Error deleting avatar", e);
             return createErrorResponse(
                     "Nie udało się usunąć avatara: " + e.getMessage(),
                     HttpStatus.INTERNAL_SERVER_ERROR
@@ -210,31 +232,31 @@ public class UserAvatarController {
         }
     }
 
-    // Helper methods
+    // ========== HELPER METHODS ==========
 
+    /**
+     * Pobiera aktualnie zalogowanego użytkownika
+     */
     private User getCurrentUser(UserDetails userDetails) {
-        if (userDetails == null) {
-            // Fallback dla testów - pobierz pierwszego użytkownika
-            List<User> users = userService.getAllUsers();
-            if (users.isEmpty()) {
-                throw new RuntimeException("Brak użytkowników w systemie");
-            }
-            return users.get(0);
-        }
-
         return userService.getUserByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new RuntimeException("Użytkownik nie znaleziony"));
     }
 
+    /**
+     * Sprawdza czy typ pliku jest dozwolony
+     */
     private boolean isAllowedType(String contentType) {
-        for (String allowed : ALLOWED_TYPES) {
-            if (allowed.equalsIgnoreCase(contentType)) {
+        for (String allowedType : ALLOWED_TYPES) {
+            if (allowedType.equalsIgnoreCase(contentType)) {
                 return true;
             }
         }
         return false;
     }
 
+    /**
+     * Tworzy odpowiedź błędu
+     */
     private ResponseEntity<Map<String, Object>> createErrorResponse(String message, HttpStatus status) {
         Map<String, Object> response = new HashMap<>();
         response.put("success", false);

@@ -61,6 +61,9 @@ public class ProjectMemberService {
 
         return saved;
     }
+    public List<ProjectMember> getMembersByProjectIds(List<Long> projectIds) {
+        return projectMemberRepository.findByProject_IdIn(projectIds);
+    }
 
     // Usuń użytkownika z projektu
     @Transactional
