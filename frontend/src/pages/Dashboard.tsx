@@ -170,7 +170,7 @@ const Dashboard: React.FC = () => {
             key: 'teams',
             title: 'Zespoły',
             value: stats.userTeams,
-            subtitle: 'Moje zespoły',
+            subtitle: 'Moja organizacja',
             color: 'purple',
             showProgress: false,
             icon: (
@@ -224,7 +224,7 @@ const Dashboard: React.FC = () => {
         {
             key: 'teams',
             title: 'Zespoły',
-            subtitle: 'Zobacz zespoły',
+            subtitle: 'Zobacz organizacje',
             color: 'purple',
             onClick: () => navigate('/teams'),
             icon: (
